@@ -62,17 +62,12 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var item *Item
 	var err error
 
-	item = r.Mapper().Get(secret)
-
-	if item == nil {
-		item, err = r.Trader().Trade(secret)
-		if err != nil {
-			r.OnTradeError(w, err)
-			return
-		}
+	_, err = r.Trader().Trade(secret)
+	if err != nil {
+		r.OnTradeError(w, err)
+		return
 	}
 
 	w.Write([]byte("Hello Router"))
