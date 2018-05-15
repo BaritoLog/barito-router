@@ -16,10 +16,23 @@ func TestNew(t *testing.T) {
 	FatalIf(t, router.Server() == nil, "server can't be nil")
 }
 
-func TestServeHTTP(t *testing.T) {
+func TestServeHTTP_NoSecret(t *testing.T) {
 	r := router{}
 
-	req, _ := http.NewRequest("GET", "/health-check", nil)
+	req, _ := http.NewRequest("GET", "/", nil)
+	rr := httptest.NewRecorder()
+
+	handler := http.HandlerFunc(r.ServeHTTP)
+	handler.ServeHTTP(rr, req)
+
+	FatalIfWrongHttpCode(t, rr, http.StatusUnauthorized)
+}
+
+func TestServeHTTP_Ok(t *testing.T) {
+	r := router{}
+
+	req, _ := http.NewRequest("GET", "/", nil)
+	req.Header.Add("X-App-Secret", "abcdefgh")
 	rr := httptest.NewRecorder()
 
 	handler := http.HandlerFunc(r.ServeHTTP)

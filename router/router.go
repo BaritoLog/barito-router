@@ -45,6 +45,11 @@ func (r *router) Server() *http.Server {
 
 // ServerHTTP
 func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	secret := req.Header.Get(SecretHeaderName)
+	if secret == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 
 	w.Write([]byte("Hello Router"))
 
