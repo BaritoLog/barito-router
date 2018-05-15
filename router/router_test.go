@@ -1,6 +1,7 @@
 package router
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -9,15 +10,18 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	router := NewRouter(":8080")
+	trader := NewTrader("http://some-url")
+	router := NewRouter(":8080", trader)
 
 	FatalIf(t, router.Address() != ":8080", "address is return wrong value")
 	FatalIf(t, router.Mapper() == nil, "mapper can't be nil")
 	FatalIf(t, router.Server() == nil, "server can't be nil")
+	FatalIf(t, router.Trader() != trader, "trader is wrong")
 }
 
 func TestServeHTTP_NoSecret(t *testing.T) {
-	r := router{}
+	trader := NewTrader("http://some-url")
+	r := NewRouter(":8080", trader)
 
 	req, _ := http.NewRequest("GET", "/", nil)
 	rr := httptest.NewRecorder()
@@ -28,8 +32,29 @@ func TestServeHTTP_NoSecret(t *testing.T) {
 	FatalIfWrongHttpCode(t, rr, http.StatusUnauthorized)
 }
 
+func TestServeHTTP_TradeError(t *testing.T) {
+	want := "some-error"
+
+	trader := &DummyTrader{err: fmt.Errorf(want)}
+	r := NewRouter(":8080", trader)
+
+	req, _ := http.NewRequest("GET", "/", nil)
+	req.Header.Add("X-App-Secret", "abcdefgh")
+	rr := httptest.NewRecorder()
+
+	handler := http.HandlerFunc(r.ServeHTTP)
+	handler.ServeHTTP(rr, req)
+
+	got := rr.Body.String()
+
+	FatalIfWrongHttpCode(t, rr, http.StatusBadGateway)
+	FatalIf(t, got != want, "wrong body result: %s != %s", got, want)
+
+}
+
 func TestServeHTTP_Ok(t *testing.T) {
-	r := router{}
+	trader := NewTrader("http://some-url")
+	r := NewRouter(":8080", trader)
 
 	req, _ := http.NewRequest("GET", "/", nil)
 	req.Header.Add("X-App-Secret", "abcdefgh")

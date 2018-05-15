@@ -1,7 +1,7 @@
 package router
 
 type Trader interface {
-	Trade(secret string) *Item
+	Trade(secret string) (item *Item, err error)
 	Url() string
 }
 
@@ -20,6 +20,7 @@ func (t *trader) Url() string {
 }
 
 // Trade
-func (t *trader) Trade(secret string) *Item {
-	return &Item{}
+func (t *trader) Trade(secret string) (item *Item, err error) {
+	item = &Item{}
+	return
 }

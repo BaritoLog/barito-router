@@ -3,7 +3,7 @@ package router
 import (
 	"testing"
 
-	"github.com/BaritoLog/go-boilerplate/testkit"
+	. "github.com/BaritoLog/go-boilerplate/testkit"
 )
 
 func TestTrader_New(t *testing.T) {
@@ -11,13 +11,14 @@ func TestTrader_New(t *testing.T) {
 	trader := NewTrader(want)
 
 	got := trader.Url()
-	testkit.FatalIf(t, got != want, "%s != %s", got, want)
+	FatalIf(t, got != want, "%s != %s", got, want)
 }
 
 func TestTrader_Trade(t *testing.T) {
 	trader := NewTrader("http://host:port")
 
-	item := trader.Trade("secret")
-	testkit.FatalIf(t, item == nil, "item can't be nil")
+	item, err := trader.Trade("secret")
+	FatalIfError(t, err)
+	FatalIf(t, item == nil, "item can't be nil")
 
 }

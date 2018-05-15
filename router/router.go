@@ -1,6 +1,8 @@
 package router
 
-import "net/http"
+import (
+	"net/http"
+)
 
 const (
 	SecretHeaderName = "X-App-Secret"
@@ -10,20 +12,24 @@ const (
 type Router interface {
 	Server() *http.Server
 	Address() string
-	Mapper() *Mapper
+	Mapper() Mapper
+	Trader() Trader
+	ServeHTTP(w http.ResponseWriter, req *http.Request)
 }
 
 type router struct {
 	addr   string
-	mapper *Mapper
+	trader Trader
+	mapper Mapper
 	server *http.Server
 }
 
 // NewRouter
-func NewRouter(addr string) Router {
+func NewRouter(addr string, trader Trader) Router {
 	r := new(router)
 	r.addr = addr
-	r.mapper = &Mapper{}
+	r.mapper = NewMapper()
+	r.trader = trader
 	r.server = &http.Server{Addr: addr, Handler: r}
 
 	return r
@@ -34,8 +40,13 @@ func (r *router) Address() string {
 	return r.addr
 }
 
-func (r *router) Mapper() *Mapper {
+// Mapper
+func (r *router) Mapper() Mapper {
 	return r.mapper
+}
+
+func (r *router) Trader() Trader {
+	return r.trader
 }
 
 // Start
@@ -47,11 +58,32 @@ func (r *router) Server() *http.Server {
 func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	secret := req.Header.Get(SecretHeaderName)
 	if secret == "" {
-		w.WriteHeader(http.StatusUnauthorized)
+		r.OnUnauthorized(w)
 		return
 	}
 
-	w.Write([]byte("Hello Router"))
+	var item *Item
+	var err error
 
+	item = r.Mapper().Get(secret)
+
+	if item == nil {
+		item, err = r.Trader().Trade(secret)
+		if err != nil {
+			r.OnTradeError(w, err)
+			return
+		}
+	}
+
+	w.Write([]byte("Hello Router"))
 	w.WriteHeader(http.StatusOK)
+}
+
+func (r *router) OnTradeError(w http.ResponseWriter, err error) {
+	w.WriteHeader(http.StatusBadGateway)
+	w.Write([]byte(err.Error()))
+}
+
+func (r *router) OnUnauthorized(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusUnauthorized)
 }
