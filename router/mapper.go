@@ -1,3 +1,3 @@
 package router
 
-type Mapper map[string]Target
+type Mapper map[string]Item

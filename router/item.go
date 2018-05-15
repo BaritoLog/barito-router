@@ -2,7 +2,7 @@ package router
 
 import "time"
 
-type Target struct {
+type Item struct {
 	consul     string
 	receiver   string
 	updatedAt  time.Time
