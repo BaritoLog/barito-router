@@ -10,9 +10,10 @@ import (
 
 func TestNew(t *testing.T) {
 	router := NewRouter(":8080")
-	addr := router.Address()
 
-	FatalIf(t, addr != ":8080", "address is return wrong value")
+	FatalIf(t, router.Address() != ":8080", "address is return wrong value")
+	FatalIf(t, router.Mapper() == nil, "mapper can't be nil")
+	FatalIf(t, router.Server() == nil, "server can't be nil")
 }
 
 func TestServeHTTP(t *testing.T) {
