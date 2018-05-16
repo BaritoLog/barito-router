@@ -10,7 +10,9 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	trader := NewTrader("http://some-url")
+	trader := &DummyTrader{url: "http://some-url"}
+	FatalIf(t, trader.Url() != "http://some-url", "trader.Url() return wrong")
+
 	router := NewRouter(":8080", trader)
 
 	FatalIf(t, router.Address() != ":8080", "address is return wrong value")
@@ -79,10 +81,4 @@ func TestServeHTTP_Ok(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	FatalIfWrongHttpCode(t, rr, http.StatusOK)
-
-	got := rr.Body.String()
-	want := "Hello Router"
-	FatalIf(t, got != want, "wrong result: got %v want %v",
-		got, want)
-
 }

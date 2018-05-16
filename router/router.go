@@ -2,6 +2,8 @@ package router
 
 import (
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 )
 
 const (
@@ -75,8 +77,9 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	w.Write([]byte("Hello Router"))
-	w.WriteHeader(http.StatusOK)
+	url, _ := url.Parse(profile.ReceiverURL())
+	proxy := httputil.NewSingleHostReverseProxy(url)
+	proxy.ServeHTTP(w, req)
 }
 
 func (r *router) OnTradeError(w http.ResponseWriter, err error) {
