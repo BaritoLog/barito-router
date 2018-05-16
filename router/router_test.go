@@ -68,7 +68,7 @@ func TestServeHTTP_Trade_Unauthorized(t *testing.T) {
 
 func TestServeHTTP_Ok(t *testing.T) {
 
-	trader := &DummyTrader{profile: &Profile{}}
+	trader := &DummyTrader{profile: profile{}}
 	r := NewRouter(":8080", trader)
 
 	req, _ := http.NewRequest("GET", "/", nil)

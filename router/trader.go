@@ -7,7 +7,7 @@ import (
 )
 
 type Trader interface {
-	Trade(secret string) (profile *Profile, err error)
+	Trade(secret string) (profile Profile, err error)
 	Url() string
 }
 
@@ -26,7 +26,7 @@ func (t *trader) Url() string {
 }
 
 // Trade
-func (t *trader) Trade(secret string) (profile *Profile, err error) {
+func (t *trader) Trade(secret string) (profile Profile, err error) {
 	var netTransport = &http.Transport{
 		Dial: (&net.Dialer{
 			Timeout: 60 * time.Second,
@@ -47,7 +47,7 @@ func (t *trader) Trade(secret string) (profile *Profile, err error) {
 	}
 
 	if res.StatusCode == http.StatusOK {
-		profile = &Profile{consul: "some-consul"}
+		profile = NewProfile("some-consul")
 	}
 
 	return
