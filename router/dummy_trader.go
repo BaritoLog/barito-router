@@ -1,13 +1,13 @@
 package router
 
 type DummyTrader struct {
-	url  string
-	item *Profile
-	err  error
+	url     string
+	profile *Profile
+	err     error
 }
 
-func (t *DummyTrader) Trade(secret string) (item *Profile, err error) {
-	item = t.item
+func (t *DummyTrader) Trade(secret string) (profile *Profile, err error) {
+	profile = t.profile
 	err = t.err
 	return
 }

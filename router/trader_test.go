@@ -1,6 +1,9 @@
 package router
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	. "github.com/BaritoLog/go-boilerplate/testkit"
@@ -14,8 +17,13 @@ func TestTrader_New(t *testing.T) {
 	FatalIf(t, got != want, "%s != %s", got, want)
 }
 
-func TestTrader_Trade(t *testing.T) {
-	trader := NewTrader("http://host:port")
+func TestTrader_Trade_Ok(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "Hello test")
+	}))
+	defer ts.Close()
+
+	trader := NewTrader(ts.URL)
 
 	item, err := trader.Trade("secret")
 	FatalIfError(t, err)

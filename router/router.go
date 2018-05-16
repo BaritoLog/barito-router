@@ -64,9 +64,14 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	var err error
 
-	_, err = r.Trader().Trade(secret)
+	profile, err := r.Trader().Trade(secret)
 	if err != nil {
 		r.OnTradeError(w, err)
+		return
+	}
+
+	if profile == nil {
+		r.OnUnauthorized(w)
 		return
 	}
 

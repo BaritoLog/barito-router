@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/BaritoLog/barito-router/router"
 	"os"
+
+	"github.com/BaritoLog/barito-router/router"
 )
 
 const (
@@ -18,7 +19,7 @@ func main() {
 
 	baritoMarketUrl := os.Getenv(EnvBaritoMarketUrl)
 	if baritoMarketUrl == "" {
-		baritoMarketUrl = "http://localhost:3000/apps"
+		baritoMarketUrl = "http://localhost:3000/api/apps"
 	}
 
 	t := router.NewTrader(baritoMarketUrl)

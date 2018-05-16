@@ -52,8 +52,23 @@ func TestServeHTTP_TradeError(t *testing.T) {
 
 }
 
+func TestServeHTTP_Trade_Unauthorized(t *testing.T) {
+	trader := &DummyTrader{}
+	r := NewRouter(":8080", trader)
+
+	req, _ := http.NewRequest("GET", "/", nil)
+	req.Header.Add("X-App-Secret", "abcdefgh")
+	rr := httptest.NewRecorder()
+
+	handler := http.HandlerFunc(r.ServeHTTP)
+	handler.ServeHTTP(rr, req)
+
+	FatalIfWrongHttpCode(t, rr, http.StatusUnauthorized)
+}
+
 func TestServeHTTP_Ok(t *testing.T) {
-	trader := NewTrader("http://some-url")
+
+	trader := &DummyTrader{profile: &Profile{}}
 	r := NewRouter(":8080", trader)
 
 	req, _ := http.NewRequest("GET", "/", nil)
