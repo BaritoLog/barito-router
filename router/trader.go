@@ -1,6 +1,7 @@
 package router
 
 import (
+	"io/ioutil"
 	"net"
 	"net/http"
 	"time"
@@ -48,8 +49,8 @@ func (t *trader) Trade(secret string) (profile *Profile, err error) {
 	}
 
 	if res.StatusCode == http.StatusOK {
-
-		profile, err = NewProfileFromBytes([]byte("some-consul"))
+		body, _ := ioutil.ReadAll(res.Body)
+		profile, err = NewProfileFromBytes(body)
 	}
 
 	return

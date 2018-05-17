@@ -1,6 +1,9 @@
 package router
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	. "github.com/BaritoLog/go-boilerplate/testkit"
@@ -14,18 +17,22 @@ func TestTrader_New(t *testing.T) {
 	FatalIf(t, got != want, "%s != %s", got, want)
 }
 
-// func TestTrader_Trade_Ok(t *testing.T) {
-// 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		fmt.Fprintln(w, "Hello test")
-// 	}))
-// 	defer ts.Close()
-//
-// 	trader := NewTrader(ts.URL)
-//
-// 	item, err := trader.Trade("secret")
-// 	FatalIfError(t, err)
-// 	FatalIf(t, item == nil, "item can't be nil")
-// }
+func TestTrader_Trade_Ok(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `{
+				"id": "some-id",
+				"name": "some-name",
+				"consul": "some-consul"
+			}`)
+	}))
+	defer ts.Close()
+
+	trader := NewTrader(ts.URL)
+	profile, err := trader.Trade("secret")
+
+	FatalIfError(t, err)
+	FatalIf(t, profile == nil, "profile can't be nil")
+}
 
 func TestTrader_Trade_HttpClientError(t *testing.T) {
 	trader := NewTrader("https://wrong-url")
