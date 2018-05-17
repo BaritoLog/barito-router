@@ -7,17 +7,28 @@ import (
 )
 
 type Trader interface {
-	Trade(secret string) (profile Profile, err error)
+	Trade(secret string) (profile *Profile, err error)
 	Url() string
 }
 
 // NewHttpTrader
 func NewTrader(url string) Trader {
-	return &trader{url: url}
+	client := &http.Client{
+		Timeout: time.Second * 60,
+		Transport: &http.Transport{
+			Dial: (&net.Dialer{
+				Timeout: 60 * time.Second,
+			}).Dial,
+			TLSHandshakeTimeout: 60 * time.Second,
+		},
+	}
+
+	return &trader{url: url, client: client}
 }
 
 type trader struct {
-	url string
+	url    string
+	client *http.Client
 }
 
 // Address
@@ -26,28 +37,19 @@ func (t *trader) Url() string {
 }
 
 // Trade
-func (t *trader) Trade(secret string) (profile Profile, err error) {
-	var netTransport = &http.Transport{
-		Dial: (&net.Dialer{
-			Timeout: 60 * time.Second,
-		}).Dial,
-		TLSHandshakeTimeout: 60 * time.Second,
-	}
-	var netClient = &http.Client{
-		Timeout:   time.Second * 60,
-		Transport: netTransport,
-	}
+func (t *trader) Trade(secret string) (profile *Profile, err error) {
 
 	req, _ := http.NewRequest("GET", t.Url(), nil)
 	req.Header.Set("X-App-Secret", secret)
 
-	res, err := netClient.Do(req)
+	res, err := t.client.Do(req)
 	if err != nil {
 		return
 	}
 
 	if res.StatusCode == http.StatusOK {
-		profile = NewProfile("some-consul")
+
+		profile, err = NewProfileFromBytes([]byte("some-consul"))
 	}
 
 	return

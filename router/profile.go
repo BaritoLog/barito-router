@@ -1,24 +1,24 @@
 package router
 
-type Profile interface {
-	ReceiverURL() string
-	Consul() string
+import "encoding/json"
+
+type Profile struct {
+	Id     string `json:"id"`
+	Name   string `json:"name"`
+	Consul string `json:"consul"`
 }
 
-type profile struct {
-	consul string
+func NewProfileFromBytes(b []byte) (*Profile, error) {
+	var profile Profile
+	err := json.Unmarshal(b, &profile)
+	if err != nil {
+		return nil, err
+	}
+
+	return &profile, nil
 }
 
-func NewProfile(consul string) Profile {
-	return &profile{consul: consul}
-}
-
-func (p profile) ReceiverURL() string {
+func (p Profile) ReceiverURL() string {
 	// TODO: dig from consul
 	return "https://jsonplaceholder.typicode.com/users/1"
-}
-
-// Consul
-func (p profile) Consul() string {
-	return p.consul
 }
