@@ -18,12 +18,9 @@ func NewConsulHandler() ConsulHandler {
 }
 
 func (c consulHandler) Service(consulAddr, serviceName string) (srv *api.CatalogService, err error) {
-	consulClient, err := api.NewClient(&api.Config{
+	consulClient, _ := api.NewClient(&api.Config{
 		Address: consulAddr,
 	})
-	if err != nil {
-		return
-	}
 
 	services, _, err := consulClient.Catalog().Service(serviceName, "", nil)
 	if err != nil {

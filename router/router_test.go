@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
-	"strconv"
-	"strings"
 	"testing"
 
+	"github.com/BaritoLog/go-boilerplate/httpkit"
 	. "github.com/BaritoLog/go-boilerplate/testkit"
 	"github.com/hashicorp/consul/api"
 )
@@ -21,47 +19,17 @@ func TestNew(t *testing.T) {
 	router := NewRouter(":8080", trader, consul)
 
 	FatalIf(t, router.Address() != ":8080", "address is return wrong value")
-	FatalIf(t, router.Mapper() == nil, "mapper can't be nil")
 	FatalIf(t, router.Server() == nil, "server can't be nil")
 	FatalIf(t, router.Trader() != trader, "trader is wrong")
 }
 
-// func TestServeHTTP_NoSecret(t *testing.T) {
-// 	trader := NewTrader("http://some-url")
-// 	r := NewRouter(":8080", trader)
-//
-// 	req, _ := http.NewRequest("GET", "/", nil)
-// 	rr := httptest.NewRecorder()
-//
-// 	handler := http.HandlerFunc(r.ServeHTTP)
-// 	handler.ServeHTTP(rr, req)
-//
-// 	FatalIfWrongHttpCode(t, rr, http.StatusUnauthorized)
-// }
-
-// func TestServeHTTP_TradeError(t *testing.T) {
-// 	want := "some-error"
-//
-// 	trader := &DummyTrader{err: fmt.Errorf(want)}
-// 	r := NewRouter(":8080", trader)
-//
-// 	req, _ := http.NewRequest("GET", "/", nil)
-// 	req.Header.Add("X-App-Secret", "abcdefgh")
-// 	rr := httptest.NewRecorder()
-//
-// 	handler := http.HandlerFunc(r.ServeHTTP)
-// 	handler.ServeHTTP(rr, req)
-//
-// 	got := rr.Body.String()
-//
-// 	FatalIfWrongHttpCode(t, rr, http.StatusBadGateway)
-// 	FatalIf(t, got != want, "wrong body result: %s != %s", got, want)
-// }
-
-func TestServeHTTP_Trade_Unauthorized(t *testing.T) {
-	trader := &DummyTrader{}
-	consul := &DummyConsulHandler{}
-	r := NewRouter(":8080", trader, consul)
+func TestServeHTTP_TradeError(t *testing.T) {
+	want := "some-error"
+	r := NewRouter(
+		":8080",
+		&DummyTrader{err: fmt.Errorf(want)},
+		&DummyConsulHandler{},
+	)
 
 	req, _ := http.NewRequest("GET", "/", nil)
 	req.Header.Add("X-App-Secret", "abcdefgh")
@@ -70,36 +38,62 @@ func TestServeHTTP_Trade_Unauthorized(t *testing.T) {
 	handler := http.HandlerFunc(r.ServeHTTP)
 	handler.ServeHTTP(rr, req)
 
-	FatalIfWrongHttpCode(t, rr, http.StatusUnauthorized)
+	got := rr.Body.String()
+
+	FatalIfWrongHttpCode(t, rr, http.StatusBadGateway)
+	FatalIf(t, got != want, "wrong body result: %s != %s", got, want)
+}
+
+func TestServeHTTP_Trade_NoSecret(t *testing.T) {
+	r := NewRouter(":8080", &DummyTrader{}, &DummyConsulHandler{})
+
+	req, _ := http.NewRequest("GET", "/", nil)
+
+	rr := HttpRecord(r.ServeHTTP, req)
+	FatalIfWrongHttpCode(t, rr, http.StatusBadRequest)
+}
+
+func TestServeHTTP_Trade_ConsulError(t *testing.T) {
+	r := NewRouter(":8080",
+		&DummyTrader{profile: &Profile{}},
+		&DummyConsulHandler{err: fmt.Errorf("some-error")})
+
+	req, _ := http.NewRequest("GET", "/", nil)
+	req.Header.Add("X-App-Secret", "abcdefgh")
+
+	rr := HttpRecord(r.ServeHTTP, req)
+	FatalIfWrongHttpCode(t, rr, http.StatusFailedDependency)
+}
+
+func TestServeHTTP_Trade_NoProfile(t *testing.T) {
+	r := NewRouter(":8080", &DummyTrader{}, &DummyConsulHandler{})
+
+	req, _ := http.NewRequest("GET", "/", nil)
+	req.Header.Add("X-App-Secret", "abcdefgh")
+
+	rr := HttpRecord(r.ServeHTTP, req)
+	FatalIfWrongHttpCode(t, rr, http.StatusNotFound)
 }
 
 func TestServeHTTP_Ok(t *testing.T) {
-
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "hello")
-	}))
+	ts := NewHttpTestServer(http.StatusOK, []byte("hello"))
 	defer ts.Close()
 
-	urls, _ := url.Parse(ts.URL)
-	urlsDetail := strings.Split(urls.Host, ":")
-	serverHost := urlsDetail[0]
-	serverPort, _ := strconv.Atoi(urls.Port())
+	serverHost, serverPort := httpkit.Host(ts.URL)
 
-	trader := &DummyTrader{profile: &Profile{}}
-	consul := &DummyConsulHandler{
-		catalogService: &api.CatalogService{
-			ServiceAddress: serverHost,
-			ServicePort:    serverPort,
-		},
-	}
-	r := NewRouter(":8080", trader, consul)
+	r := NewRouter(":8080",
+		&DummyTrader{profile: &Profile{}},
+		&DummyConsulHandler{
+			catalogService: &api.CatalogService{
+				ServiceAddress: serverHost,
+				ServicePort:    serverPort,
+			},
+		})
 
 	req, _ := http.NewRequest("GET", "/", nil)
 	req.Header.Add("X-App-Secret", "abcdefgh")
-	rr := httptest.NewRecorder()
 
-	handler := http.HandlerFunc(r.ServeHTTP)
-	handler.ServeHTTP(rr, req)
+	rr := HttpRecord(r.ServeHTTP, req)
 
 	FatalIfWrongHttpCode(t, rr, http.StatusOK)
 }

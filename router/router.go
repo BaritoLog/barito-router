@@ -15,7 +15,6 @@ const (
 type Router interface {
 	Server() *http.Server
 	Address() string
-	Mapper() Mapper
 	Trader() Trader
 	ServeHTTP(w http.ResponseWriter, req *http.Request)
 }
@@ -24,7 +23,6 @@ type router struct {
 	addr   string
 	trader Trader
 	consul ConsulHandler
-	mapper Mapper
 	server *http.Server
 }
 
@@ -32,7 +30,6 @@ type router struct {
 func NewRouter(addr string, trader Trader, consul ConsulHandler) Router {
 	r := new(router)
 	r.addr = addr
-	r.mapper = NewMapper()
 	r.trader = trader
 	r.consul = consul
 	r.server = &http.Server{Addr: addr, Handler: r}
@@ -43,11 +40,6 @@ func NewRouter(addr string, trader Trader, consul ConsulHandler) Router {
 // Address
 func (r *router) Address() string {
 	return r.addr
-}
-
-// Mapper
-func (r *router) Mapper() Mapper {
-	return r.mapper
 }
 
 func (r *router) Trader() Trader {
@@ -63,7 +55,7 @@ func (r *router) Server() *http.Server {
 func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	secret := req.Header.Get(SecretHeaderName)
 	if secret == "" {
-		r.OnUnauthorized(w)
+		r.OnNoSecret(w)
 		return
 	}
 
@@ -74,12 +66,13 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if profile == nil {
-		r.OnUnauthorized(w)
+		r.OnNoProfile(w)
 		return
 	}
 
 	srv, err := r.consul.Service(profile.Consul, "barito-receiver")
 	if err != nil {
+		r.OnConsulError(w, err)
 		return
 	}
 
@@ -96,6 +89,14 @@ func (r *router) OnTradeError(w http.ResponseWriter, err error) {
 	w.Write([]byte(err.Error()))
 }
 
-func (r *router) OnUnauthorized(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusUnauthorized)
+func (r *router) OnNoProfile(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusNotFound)
+}
+
+func (r *router) OnNoSecret(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusBadRequest)
+}
+
+func (r *router) OnConsulError(w http.ResponseWriter, err error) {
+	w.WriteHeader(http.StatusFailedDependency)
 }

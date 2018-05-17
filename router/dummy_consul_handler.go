@@ -4,8 +4,9 @@ import "github.com/hashicorp/consul/api"
 
 type DummyConsulHandler struct {
 	catalogService *api.CatalogService
+	err            error
 }
 
-func (d *DummyConsulHandler) Service(consulAddr, serviceName string) (srv *api.CatalogService, err error) {
-	return d.catalogService, nil
+func (d *DummyConsulHandler) Service(consulAddr, serviceName string) (*api.CatalogService, error) {
+	return d.catalogService, d.err
 }
