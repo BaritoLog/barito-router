@@ -20,7 +20,7 @@ func TestTrader_New(t *testing.T) {
 func TestTrader_Trade_Ok(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `{
-				"id": "some-id",
+				"id": 1,
 				"name": "some-name",
 				"consul": "some-consul"
 			}`)

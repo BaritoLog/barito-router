@@ -23,6 +23,7 @@ func main() {
 	}
 
 	t := router.NewTrader(baritoMarketUrl)
-	r := router.NewRouter(routerAddress, t)
+	c := router.NewConsulHandler()
+	r := router.NewRouter(routerAddress, t, c)
 	r.Server().ListenAndServe()
 }
