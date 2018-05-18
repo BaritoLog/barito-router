@@ -2,6 +2,7 @@ package router
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	. "github.com/BaritoLog/go-boilerplate/testkit"
@@ -17,7 +18,7 @@ func TestConsulHandler_Service_InvalidConsulAddress(t *testing.T) {
 	consul := NewConsulHandler()
 	_, err := consul.Service("invalid-consul-address", "some-service")
 
-	FatalIfWrongError(t, err, "Get http://invalid-consul-address/v1/catalog/service/some-service: dial tcp: lookup invalid-consul-address: no such host")
+	FatalIf(t, !strings.Contains(err.Error(), "no such host"), "wrong error")
 }
 
 func TestConsulHandler_Service_NoService(t *testing.T) {
