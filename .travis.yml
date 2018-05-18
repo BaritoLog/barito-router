@@ -1,0 +1,28 @@
+language: go
+
+go:
+  - 1.9
+
+notifications:
+  email: false
+
+install:
+  - # skip
+
+script:
+  - go test ./...
+  - GOOS=linux GOARCH=amd64 go build -o barito-router-linux
+  - GOOS=darwin GOARCH=amd64 go build -o barito-router-darwin
+  - ls # debug purpose
+
+deploy:
+  provider: releases
+  skip_cleanup: true
+  api_key: $GITHUB_TOKEN
+  file:
+    - barito-router-linux
+    - barito-router-darwin
+  on:
+    tags: true
+    repo: BaritoLog/barito-router
+    all_branches: true

@@ -1,0 +1,31 @@
+hash: 19de112eaf2c3ca01b2e3165a54603847c17c97856650d3c91cb692a6881ec75
+updated: 2018-05-18T10:17:39.657320328+07:00
+imports:
+- name: github.com/armon/go-metrics
+  version: 7aa49fde808223f8dadfdbfd3a20ff6c19e5f9ec
+- name: github.com/hashicorp/consul
+  version: ad27d72d6a495838cced3308690e753fc59cd4b4
+  subpackages:
+  - api
+- name: github.com/hashicorp/go-cleanhttp
+  version: d5fe4b57a186c716b0e00b8c301cbd9b4182694d
+- name: github.com/hashicorp/go-immutable-radix
+  version: 8aac2701530899b64bdea735a1de8da899815220
+- name: github.com/hashicorp/go-rootcerts
+  version: 6bb64b370b90e7ef1fa532be9e591a81c3493e00
+- name: github.com/hashicorp/golang-lru
+  version: 0a025b7e63adc15a622f29b0b2c4c3848243bbf6
+  subpackages:
+  - simplelru
+- name: github.com/hashicorp/serf
+  version: 80ab48778deee28e4ea2dc4ef1ebb2c5f4063996
+  subpackages:
+  - coordinate
+- name: github.com/mitchellh/go-homedir
+  version: b8bc1bf767474819792c23f32d8286a45736f1c6
+testImports:
+- name: github.com/BaritoLog/go-boilerplate
+  version: 292fd4bf6ba42fcf863f199b0999fb7dcf105505
+  subpackages:
+  - httpkit
+  - testkit

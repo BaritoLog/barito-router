@@ -1,0 +1,10 @@
+package: github.com/BaritoLog/barito-router
+import:
+- package: github.com/hashicorp/consul
+  subpackages:
+  - api
+testImport:
+- package: github.com/BaritoLog/go-boilerplate
+  subpackages:
+  - httpkit
+  - testkit
