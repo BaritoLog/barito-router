@@ -2,6 +2,7 @@ package router
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	. "github.com/BaritoLog/go-boilerplate/testkit"
@@ -34,5 +35,5 @@ func TestTrader_Trade_HttpClientError(t *testing.T) {
 	trader := NewTrader("https://wrong-url")
 
 	_, err := trader.Trade("secret")
-	FatalIfWrongError(t, err, "Get https://wrong-url: dial tcp: lookup wrong-url: no such host")
+	FatalIf(t, !strings.Contains(err.Error(), "no such host"), "wrong error")
 }
