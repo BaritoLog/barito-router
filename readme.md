@@ -13,3 +13,10 @@ cd barito-router
 go build
 ./barito-router
 ```
+
+### Env
+
+|Name| Description| Default Value |
+|---|---|---|
+|BARITO_ROUTER_ADDRESS|Address that router listen and serve|:8081|
+|BARITO_ROUTER_MARKET_URL|URL of market API|http://localhost:3000/api/apps|
