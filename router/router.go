@@ -17,6 +17,7 @@ type Router interface {
 	Address() string
 	Trader() Trader
 	ServeHTTP(w http.ResponseWriter, req *http.Request)
+	KibanaRouter(w http.ResponseWriter, req *http.Request)
 }
 
 type router struct {
@@ -32,7 +33,7 @@ func NewRouter(addr string, trader Trader, consul ConsulHandler) Router {
 	r.addr = addr
 	r.trader = trader
 	r.consul = consul
-	r.server = &http.Server{Addr: addr, Handler: r}
+	r.server = &http.Server{Addr: addr}
 
 	return r
 }
@@ -51,6 +52,33 @@ func (r *router) Server() *http.Server {
 	return r.server
 }
 
+func (r *router) KibanaRouter(w http.ResponseWriter, req *http.Request) {
+	clusterName := req.Host
+	profile, err := r.Trader().TradeName(clusterName)
+	if err != nil {
+		r.OnTradeError(w, err)
+		return
+	}
+
+	if profile == nil {
+		r.OnNoProfile(w)
+		return
+	}
+
+	srv, err := r.consul.Service(profile.Consul, "kibana")
+	if err != nil {
+		r.OnConsulError(w, err)
+		return
+	}
+
+	url := &url.URL{
+		Scheme: req.URL.Scheme,
+		Host:   fmt.Sprintf("%s:%d", srv.ServiceAddress, srv.ServicePort),
+	}
+	proxy := httputil.NewSingleHostReverseProxy(url)
+	proxy.ServeHTTP(w, req)
+}
+
 // ServerHTTP
 func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	secret := req.Header.Get(SecretHeaderName)
@@ -59,7 +87,7 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	profile, err := r.Trader().Trade(secret)
+	profile, err := r.Trader().TradeSecret(secret)
 	if err != nil {
 		r.OnTradeError(w, err)
 		return

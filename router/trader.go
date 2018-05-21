@@ -8,7 +8,8 @@ import (
 )
 
 type Trader interface {
-	Trade(secret string) (profile *Profile, err error)
+	TradeSecret(secret string) (profile *Profile, err error)
+	TradeName(name string) (profile *Profile, err error)
 	Url() string
 }
 
@@ -37,11 +38,29 @@ func (t *trader) Url() string {
 	return t.url
 }
 
-// Trade
-func (t *trader) Trade(secret string) (profile *Profile, err error) {
+// TradeSecret
+func (t *trader) TradeSecret(secret string) (profile *Profile, err error) {
 
 	req, _ := http.NewRequest("GET", t.Url(), nil)
 	req.Header.Set("X-App-Secret", secret)
+
+	res, err := t.client.Do(req)
+	if err != nil {
+		return
+	}
+
+	if res.StatusCode == http.StatusOK {
+		body, _ := ioutil.ReadAll(res.Body)
+		profile, err = NewProfileFromBytes(body)
+	}
+
+	return
+}
+
+// TradeName
+func (t *trader) TradeName(name string) (profile *Profile, err error) {
+	req, _ := http.NewRequest("GET", t.Url(), nil)
+	req.Header.Set("X-App-Cluster-Name", name)
 
 	res, err := t.client.Do(req)
 	if err != nil {

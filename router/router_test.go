@@ -35,8 +35,8 @@ func TestServeHTTP_TradeError(t *testing.T) {
 	req.Header.Add("X-App-Secret", "abcdefgh")
 	rr := httptest.NewRecorder()
 
-	handler := http.HandlerFunc(r.ServeHTTP)
-	handler.ServeHTTP(rr, req)
+	// handler := http.HandlerFunc(r.ServeHTTP)
+	r.ServeHTTP(rr, req)
 
 	got := rr.Body.String()
 
