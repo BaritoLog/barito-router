@@ -1,8 +1,14 @@
 hash: 19de112eaf2c3ca01b2e3165a54603847c17c97856650d3c91cb692a6881ec75
-updated: 2018-05-18T10:17:39.657320328+07:00
+updated: 2018-05-23T05:57:19.350347463+07:00
 imports:
 - name: github.com/armon/go-metrics
   version: 7aa49fde808223f8dadfdbfd3a20ff6c19e5f9ec
+- name: github.com/cssivision/reverseproxy
+  version: b27a2af48c77f8b28ea55a3be5ebc4d19704fce4
+- name: github.com/gorilla/context
+  version: 1ea25387ff6f684839d82767c1733ff4d4d15d0a
+- name: github.com/gorilla/mux
+  version: 7f08801859139f86dfafd1c296e2cba9a80d292e
 - name: github.com/hashicorp/consul
   version: ad27d72d6a495838cced3308690e753fc59cd4b4
   subpackages:
