@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 
 	"github.com/gorilla/mux"
 )
@@ -18,7 +19,7 @@ type Router interface {
 	Server() *http.Server
 	Address() string
 	Trader() Trader
-	ReceiverHandler(w http.ResponseWriter, req *http.Request)
+	ProduceHandler(w http.ResponseWriter, req *http.Request)
 	KibanaHandler(w http.ResponseWriter, req *http.Request)
 }
 
@@ -29,8 +30,8 @@ type router struct {
 	server *http.Server
 }
 
-// NewRouter
-func NewRouter(addr string, trader Trader, consul ConsulHandler) Router {
+// NewProduceRouter
+func NewProduceRouter(addr string, trader Trader, consul ConsulHandler) Router {
 
 	r := new(router)
 	r.addr = addr
@@ -38,11 +39,27 @@ func NewRouter(addr string, trader Trader, consul ConsulHandler) Router {
 	r.consul = consul
 
 	muxRouter := mux.NewRouter()
-	muxRouter.HandleFunc("/produce", r.ReceiverHandler)
-	muxRouter.HandleFunc("/kibana", r.KibanaHandler)
+	muxRouter.HandleFunc("/produce", r.ProduceHandler)
+
 	r.server = &http.Server{
 		Addr:    addr,
 		Handler: muxRouter,
+	}
+
+	return r
+}
+
+// NewKibanaRouter
+func NewKibanaRouter(addr string, trader Trader, consul ConsulHandler) Router {
+
+	r := new(router)
+	r.addr = addr
+	r.trader = trader
+	r.consul = consul
+
+	r.server = &http.Server{
+		Addr:    addr,
+		Handler: http.HandlerFunc(r.KibanaHandler),
 	}
 
 	return r
@@ -63,7 +80,14 @@ func (r *router) Server() *http.Server {
 }
 
 func (r *router) KibanaHandler(w http.ResponseWriter, req *http.Request) {
-	clusterName := req.Host
+	scheme := "http"
+	if req.TLS != nil {
+		scheme = "https"
+	}
+
+	host := strings.Split(req.Host, ".")
+	clusterName := host[0]
+
 	profile, err := r.Trader().TradeName(clusterName)
 	if err != nil {
 		r.OnTradeError(w, err)
@@ -81,16 +105,22 @@ func (r *router) KibanaHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	url := &url.URL{
-		Scheme: req.URL.Scheme,
+	sourceUrl := &url.URL{
+		Scheme: scheme,
+		Host:   fmt.Sprintf("%s:%s", req.Host, r.Address()),
+	}
+
+	targetUrl := &url.URL{
+		Scheme: scheme,
 		Host:   fmt.Sprintf("%s:%d", srv.ServiceAddress, srv.ServicePort),
 	}
-	proxy := httputil.NewSingleHostReverseProxy(url)
-	proxy.ServeHTTP(w, req)
+
+	proxy := NewProxy(sourceUrl.String(), targetUrl.String())
+	proxy.ReverseProxy().ServeHTTP(w, req)
 }
 
-// ServerHTTP
-func (r *router) ReceiverHandler(w http.ResponseWriter, req *http.Request) {
+// ProduceHandler
+func (r *router) ProduceHandler(w http.ResponseWriter, req *http.Request) {
 	secret := req.Header.Get(SecretHeaderName)
 	if secret == "" {
 		r.OnNoSecret(w)
