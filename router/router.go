@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+
+	"github.com/gorilla/mux"
 )
 
 const (
@@ -16,8 +18,8 @@ type Router interface {
 	Server() *http.Server
 	Address() string
 	Trader() Trader
-	ServeHTTP(w http.ResponseWriter, req *http.Request)
-	KibanaRouter(w http.ResponseWriter, req *http.Request)
+	ReceiverHandler(w http.ResponseWriter, req *http.Request)
+	KibanaHandler(w http.ResponseWriter, req *http.Request)
 }
 
 type router struct {
@@ -29,11 +31,19 @@ type router struct {
 
 // NewRouter
 func NewRouter(addr string, trader Trader, consul ConsulHandler) Router {
+
 	r := new(router)
 	r.addr = addr
 	r.trader = trader
 	r.consul = consul
-	r.server = &http.Server{Addr: addr}
+
+	muxRouter := mux.NewRouter()
+	muxRouter.HandleFunc("/produce", r.ReceiverHandler)
+	muxRouter.HandleFunc("/kibana", r.KibanaHandler)
+	r.server = &http.Server{
+		Addr:    addr,
+		Handler: muxRouter,
+	}
 
 	return r
 }
@@ -52,7 +62,7 @@ func (r *router) Server() *http.Server {
 	return r.server
 }
 
-func (r *router) KibanaRouter(w http.ResponseWriter, req *http.Request) {
+func (r *router) KibanaHandler(w http.ResponseWriter, req *http.Request) {
 	clusterName := req.Host
 	profile, err := r.Trader().TradeName(clusterName)
 	if err != nil {
@@ -80,7 +90,7 @@ func (r *router) KibanaRouter(w http.ResponseWriter, req *http.Request) {
 }
 
 // ServerHTTP
-func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (r *router) ReceiverHandler(w http.ResponseWriter, req *http.Request) {
 	secret := req.Header.Get(SecretHeaderName)
 	if secret == "" {
 		r.OnNoSecret(w)

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 
 	"github.com/BaritoLog/barito-router/router"
@@ -30,12 +29,9 @@ func main() {
 	fmt.Printf("%s=%s\n", EnvBaritoMarketUrl, baritoMarketUrl)
 	fmt.Printf("\n")
 
-	t := router.NewTrader(baritoMarketUrl)
-	c := router.NewConsulHandler()
-	r := router.NewRouter(routerAddress, t, c)
+	trader := router.NewTrader(baritoMarketUrl)
+	consul := router.NewConsulHandler()
 
-	http.HandleFunc("/", r.ServeHTTP)
-	http.HandleFunc("/kibana", r.KibanaRouter)
-
+	r := router.NewRouter(routerAddress, trader, consul)
 	r.Server().ListenAndServe()
 }

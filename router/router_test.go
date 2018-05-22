@@ -36,7 +36,7 @@ func TestServeHTTP_TradeError(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	// handler := http.HandlerFunc(r.ServeHTTP)
-	r.ServeHTTP(rr, req)
+	r.ReceiverHandler(rr, req)
 
 	got := rr.Body.String()
 
@@ -49,7 +49,7 @@ func TestServeHTTP_Trade_NoSecret(t *testing.T) {
 
 	req, _ := http.NewRequest("GET", "/", nil)
 
-	rr := HttpRecord(r.ServeHTTP, req)
+	rr := HttpRecord(r.ReceiverHandler, req)
 	FatalIfWrongHttpCode(t, rr, http.StatusBadRequest)
 }
 
@@ -61,7 +61,7 @@ func TestServeHTTP_Trade_ConsulError(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/", nil)
 	req.Header.Add("X-App-Secret", "abcdefgh")
 
-	rr := HttpRecord(r.ServeHTTP, req)
+	rr := HttpRecord(r.ReceiverHandler, req)
 	FatalIfWrongHttpCode(t, rr, http.StatusFailedDependency)
 }
 
@@ -71,7 +71,7 @@ func TestServeHTTP_Trade_NoProfile(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/", nil)
 	req.Header.Add("X-App-Secret", "abcdefgh")
 
-	rr := HttpRecord(r.ServeHTTP, req)
+	rr := HttpRecord(r.ReceiverHandler, req)
 	FatalIfWrongHttpCode(t, rr, http.StatusNotFound)
 }
 
@@ -93,7 +93,7 @@ func TestServeHTTP_Ok(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/", nil)
 	req.Header.Add("X-App-Secret", "abcdefgh")
 
-	rr := HttpRecord(r.ServeHTTP, req)
+	rr := HttpRecord(r.ReceiverHandler, req)
 
 	FatalIfWrongHttpCode(t, rr, http.StatusOK)
 }
