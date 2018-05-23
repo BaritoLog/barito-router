@@ -6,12 +6,19 @@ Route incoming request from external to Barito world
 ## Setup Development
 
 ```sh
-cd $GOPATH/src
+cd $GOPATH/src/github.com/BaritoLog/barito-router
 git clone git@github.com:BaritoLog/barito-router.git
 
 cd barito-router
 go build
 ./barito-router
+```
+
+or 
+
+```sh
+go get github.com/BaritoLog/barito-router
+$GOPATH/bin/barito-router
 ```
 
 ### Env
