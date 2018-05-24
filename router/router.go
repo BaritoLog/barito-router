@@ -159,12 +159,15 @@ func (r *router) OnTradeError(w http.ResponseWriter, err error) {
 
 func (r *router) OnNoProfile(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusNotFound)
+	w.Write([]byte("No Profile"))
 }
 
 func (r *router) OnNoSecret(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusBadRequest)
+	w.Write([]byte("No Secret"))
 }
 
 func (r *router) OnConsulError(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusFailedDependency)
+	w.Write([]byte(err.Error()))
 }
