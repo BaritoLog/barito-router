@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	"golang.org/x/net/http2"
 )
 
 const (
@@ -21,6 +22,7 @@ type Router interface {
 	Trader() Trader
 	ProduceHandler(w http.ResponseWriter, req *http.Request)
 	KibanaHandler(w http.ResponseWriter, req *http.Request)
+	XtailHandler(w http.ResponseWriter, req *http.Request)
 }
 
 type router struct {
@@ -61,6 +63,26 @@ func NewKibanaRouter(addr string, trader Trader, consul ConsulHandler) Router {
 		Addr:    addr,
 		Handler: http.HandlerFunc(r.KibanaHandler),
 	}
+
+	return r
+}
+
+// NewXtailRouter
+func NewXtailRouter(addr string, trader Trader, consul ConsulHandler) Router {
+	r := new(router)
+	r.addr = addr
+	r.trader = trader
+	r.consul = consul
+
+	muxRouter := mux.NewRouter()
+	muxRouter.HandleFunc("/xtail", r.XtailHandler)
+
+	r.server = &http.Server{
+		Addr:    addr,
+		Handler: muxRouter,
+	}
+
+	http2.ConfigureServer(r.server, &http2.Server{})
 
 	return r
 }
@@ -152,6 +174,49 @@ func (r *router) ProduceHandler(w http.ResponseWriter, req *http.Request) {
 	proxy.ServeHTTP(w, req)
 }
 
+// XtailHandler
+func (r *router) XtailHandler(w http.ResponseWriter, req *http.Request) {
+	host := strings.Split(req.Host, ".")
+	clusterName := host[0]
+
+	profile, err := r.Trader().TradeName(clusterName)
+	if err != nil {
+		r.OnTradeError(w, err)
+		return
+	}
+
+	if profile == nil {
+		r.OnNoProfile(w)
+		return
+	}
+
+	srv, err := r.consul.Service(profile.Consul, "kafka-pixy")
+	if err != nil {
+		r.OnConsulError(w, err)
+		return
+	}
+
+	kafkaPixyHost := fmt.Sprintf("%s:%d", srv.ServiceAddress, srv.ServicePort)
+	kafkaTopic := srv.NodeMeta["kafka_topic"]
+	if kafkaTopic == "" {
+		kafkaTopic = "barito-log"
+	}
+
+	k := NewKafkaPixy(kafkaPixyHost, kafkaTopic, "barito-log-consumer")
+
+	for {
+		message, err := k.Consume()
+		if err != nil {
+			r.OnKafkaPixyError(w, err)
+			break
+		}
+
+		fmt.Fprintf(w, "%s\n", string(message))
+		w.(http.Flusher).Flush()
+	}
+
+}
+
 func (r *router) OnTradeError(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusBadGateway)
 	w.Write([]byte(err.Error()))
@@ -168,6 +233,11 @@ func (r *router) OnNoSecret(w http.ResponseWriter) {
 }
 
 func (r *router) OnConsulError(w http.ResponseWriter, err error) {
+	w.WriteHeader(http.StatusFailedDependency)
+	w.Write([]byte(err.Error()))
+}
+
+func (r *router) OnKafkaPixyError(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusFailedDependency)
 	w.Write([]byte(err.Error()))
 }

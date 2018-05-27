@@ -35,6 +35,18 @@ func TestNewNewKibanaRouter(t *testing.T) {
 	FatalIf(t, router.Trader() != trader, "trader is wrong")
 }
 
+func TestNewNewXtailRouter(t *testing.T) {
+	consul := &DummyConsulHandler{}
+	trader := &DummyTrader{url: "http://some-url"}
+	FatalIf(t, trader.Url() != "http://some-url", "trader.Url() return wrong")
+
+	router := NewXtailRouter(":8083", trader, consul)
+
+	FatalIf(t, router.Address() != ":8083", "address is return wrong value")
+	FatalIf(t, router.Server() == nil, "server can't be nil")
+	FatalIf(t, router.Trader() != trader, "trader is wrong")
+}
+
 func TestProduceRouter_TradeError(t *testing.T) {
 	want := "some-error"
 	r := NewProduceRouter(
@@ -74,6 +86,25 @@ func TestKibanaRouter_TradeError(t *testing.T) {
 	FatalIf(t, got != want, "wrong body result: %s != %s", got, want)
 }
 
+func TestXtailRouter_TradeError(t *testing.T) {
+	want := "some-error"
+	r := NewXtailRouter(
+		":8083",
+		&DummyTrader{err: fmt.Errorf(want)},
+		&DummyConsulHandler{},
+	)
+
+	req, _ := http.NewRequest("GET", "/", nil)
+	rr := httptest.NewRecorder()
+
+	r.KibanaHandler(rr, req)
+
+	got := rr.Body.String()
+
+	FatalIfWrongHttpCode(t, rr, http.StatusBadGateway)
+	FatalIf(t, got != want, "wrong body result: %s != %s", got, want)
+}
+
 func TestProduceRouter_Trade_NoSecret(t *testing.T) {
 	r := NewProduceRouter(":8080", &DummyTrader{}, &DummyConsulHandler{})
 
@@ -89,6 +120,15 @@ func TestKibanaRouter_Trade_InvalidClusterName(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/", nil)
 
 	rr := HttpRecord(r.KibanaHandler, req)
+	FatalIfWrongHttpCode(t, rr, http.StatusNotFound)
+}
+
+func TestXtailRouter_Trade_InvalidClusterName(t *testing.T) {
+	r := NewXtailRouter(":8083", &DummyTrader{}, &DummyConsulHandler{})
+
+	req, _ := http.NewRequest("GET", "/", nil)
+
+	rr := HttpRecord(r.XtailHandler, req)
 	FatalIfWrongHttpCode(t, rr, http.StatusNotFound)
 }
 
@@ -115,6 +155,17 @@ func TestKibanaRouter_Trade_ConsulError(t *testing.T) {
 	FatalIfWrongHttpCode(t, rr, http.StatusFailedDependency)
 }
 
+func TestXtailRouter_Trade_ConsulError(t *testing.T) {
+	r := NewXtailRouter(":8083",
+		&DummyTrader{profile: &Profile{}},
+		&DummyConsulHandler{err: fmt.Errorf("some-error")})
+
+	req, _ := http.NewRequest("GET", "/", nil)
+
+	rr := HttpRecord(r.XtailHandler, req)
+	FatalIfWrongHttpCode(t, rr, http.StatusFailedDependency)
+}
+
 func TestProduceRouter_Trade_NoProfile(t *testing.T) {
 	r := NewProduceRouter(":8080", &DummyTrader{}, &DummyConsulHandler{})
 
@@ -127,6 +178,15 @@ func TestProduceRouter_Trade_NoProfile(t *testing.T) {
 
 func TestKibanaRouter_Trade_NoProfile(t *testing.T) {
 	r := NewProduceRouter(":8081", &DummyTrader{}, &DummyConsulHandler{})
+
+	req, _ := http.NewRequest("GET", "/", nil)
+
+	rr := HttpRecord(r.KibanaHandler, req)
+	FatalIfWrongHttpCode(t, rr, http.StatusNotFound)
+}
+
+func TestXtailRouter_Trade_NoProfile(t *testing.T) {
+	r := NewXtailRouter(":8083", &DummyTrader{}, &DummyConsulHandler{})
 
 	req, _ := http.NewRequest("GET", "/", nil)
 

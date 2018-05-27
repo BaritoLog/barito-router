@@ -9,6 +9,7 @@ import (
 
 const (
 	EnvRouterAddress       = "BARITO_ROUTER_ADDRESS"
+	EnvXtailRouterAddress  = "BARITO_XTAIL_ROUTER_ADDRESS"
 	EnvKibanaRouterAddress = "BARITO_KIBANA_ROUTER_ADDRESS"
 	EnvBaritoMarketUrl     = "BARITO_ROUTER_MARKET_URL"
 	Version                = "0.1.0"
@@ -25,6 +26,11 @@ func main() {
 		kibanaRouterAddress = ":8082"
 	}
 
+	xtailRouterAddress := os.Getenv(EnvXtailRouterAddress)
+	if xtailRouterAddress == "" {
+		xtailRouterAddress = ":8083"
+	}
+
 	baritoMarketUrl := os.Getenv(EnvBaritoMarketUrl)
 	if baritoMarketUrl == "" {
 		baritoMarketUrl = "http://localhost:3000/api/apps"
@@ -33,6 +39,7 @@ func main() {
 	fmt.Printf(".: Barito Router v%s :.\n\n", Version)
 	fmt.Printf("%s=%s\n", EnvRouterAddress, routerAddress)
 	fmt.Printf("%s=%s\n", EnvKibanaRouterAddress, kibanaRouterAddress)
+	fmt.Printf("%s=%s\n", EnvXtailRouterAddress, xtailRouterAddress)
 	fmt.Printf("%s=%s\n", EnvBaritoMarketUrl, baritoMarketUrl)
 	fmt.Printf("\n")
 
@@ -42,6 +49,11 @@ func main() {
 	go func() {
 		produceRouter := router.NewProduceRouter(routerAddress, trader, consul)
 		produceRouter.Server().ListenAndServe()
+	}()
+
+	go func() {
+		xtailRouter := router.NewXtailRouter(xtailRouterAddress, trader, consul)
+		xtailRouter.Server().ListenAndServe()
 	}()
 
 	kibanaRouter := router.NewKibanaRouter(kibanaRouterAddress, trader, consul)
