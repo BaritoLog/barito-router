@@ -66,7 +66,14 @@ func (k *kafkaPixy) Consume() (message []byte, err error) {
 
 	if err != nil {
 		st, _ := status.FromError(err)
-		return nil, st.Err()
+
+		if st.Code().String() != "NotFound" {
+			return nil, st.Err()
+		} else {
+			message = nil
+			err = nil
+			return
+		}
 	}
 
 	message = result.Message
