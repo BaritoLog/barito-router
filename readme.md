@@ -14,7 +14,7 @@ go build
 ./barito-router
 ```
 
-or 
+or
 
 ```sh
 go get github.com/BaritoLog/barito-router
@@ -27,4 +27,5 @@ $GOPATH/bin/barito-router
 |---|---|---|
 |BARITO_ROUTER_ADDRESS|Address that router listen and serve|:8081|
 |BARITO_KIBANA_ROUTER_ADDRESS|Address that kibana router listen and serve|:8082|
+|BARITO_XTAIL_ROUTER_ADDRESS|Address that xtail router listen and serve|:8083|
 |BARITO_ROUTER_MARKET_URL|URL of market API|http://localhost:3000/api/apps|
