@@ -211,8 +211,10 @@ func (r *router) XtailHandler(w http.ResponseWriter, req *http.Request) {
 			break
 		}
 
-		fmt.Fprintf(w, "%s\n", string(message))
-		w.(http.Flusher).Flush()
+		if message != nil {
+			fmt.Fprintf(w, "%s\n", string(message))
+			w.(http.Flusher).Flush()
+		}
 	}
 
 }
