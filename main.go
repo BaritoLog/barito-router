@@ -12,7 +12,7 @@ const (
 	EnvXtailRouterAddress  = "BARITO_XTAIL_ROUTER_ADDRESS"
 	EnvKibanaRouterAddress = "BARITO_KIBANA_ROUTER_ADDRESS"
 	EnvBaritoMarketUrl     = "BARITO_ROUTER_MARKET_URL"
-	Version                = "0.1.0"
+	Version                = "0.1.1"
 )
 
 func main() {

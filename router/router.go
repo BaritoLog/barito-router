@@ -2,10 +2,12 @@ package router
 
 import (
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 	"golang.org/x/net/http2"
@@ -30,6 +32,17 @@ type router struct {
 	trader Trader
 	consul ConsulHandler
 	server *http.Server
+}
+
+var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+//randSeq
+func randSeq(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }
 
 // NewProduceRouter
@@ -202,7 +215,9 @@ func (r *router) XtailHandler(w http.ResponseWriter, req *http.Request) {
 		kafkaTopic = "barito-log"
 	}
 
-	k := NewKafkaPixy(kafkaPixyHost, kafkaTopic, "barito-log-consumer")
+	rand.Seed(time.Now().UnixNano())
+
+	k := NewKafkaPixy(kafkaPixyHost, kafkaTopic, randSeq(10))
 
 	for {
 		message, err := k.Consume()
