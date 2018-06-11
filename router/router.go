@@ -15,6 +15,8 @@ import (
 
 const (
 	SecretHeaderName = "X-App-Secret"
+	KeyKibana        = "kibana"
+	KeyProducer      = "producer"
 )
 
 // Router
@@ -134,7 +136,8 @@ func (r *router) KibanaHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	srv, err := r.consul.Service(profile.ConsulHost, "kibana")
+	srvName, _ := profile.MetaServiceName(KeyKibana)
+	srv, err := r.consul.Service(profile.ConsulHost, srvName)
 	if err != nil {
 		r.OnConsulError(w, err)
 		return
@@ -173,7 +176,8 @@ func (r *router) ProduceHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	srv, err := r.consul.Service(profile.ConsulHost, "barito-receiver")
+	srvName, _ := profile.MetaServiceName(KeyProducer)
+	srv, err := r.consul.Service(profile.ConsulHost, srvName)
 	if err != nil {
 		r.OnConsulError(w, err)
 		return

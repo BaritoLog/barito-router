@@ -38,3 +38,30 @@ func TestProfile_New_InvalidJson(t *testing.T) {
 	_, err := NewProfileFromBytes([]byte("invalid-json"))
 	FatalIfWrongError(t, err, "invalid character 'i' looking for beginning of value")
 }
+
+func TestProfile_MetaServiceName(t *testing.T) {
+	profile := Profile{
+		Meta: &ProfileMeta{
+			ServiceNames: map[string]string{
+				"service-01": "value-01",
+				"service-02": "value-02",
+			},
+		},
+	}
+
+	val, ok := profile.MetaServiceName("wrong-service-name")
+	FatalIf(t, ok, "want ok false")
+	FatalIf(t, val != "", "want empty val")
+
+	val, ok = profile.MetaServiceName("service-01")
+	FatalIf(t, !ok, "want ok true")
+	FatalIf(t, val != "value-01", "want val is value-01")
+}
+
+func TestProfile_MetaServiceName_NoMeta(t *testing.T) {
+	profile := Profile{}
+	val, ok := profile.MetaServiceName("some-service-name")
+	FatalIf(t, ok, "want ok false")
+	FatalIf(t, val != "", "want empty val")
+
+}
