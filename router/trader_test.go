@@ -59,6 +59,6 @@ func TestTrader_HttpClientError(t *testing.T) {
 	trader := NewTraderBySecret("https://wrong-url")
 
 	_, err := trader.Trade("things")
-	FatalIfWrongError(t, err, "dial tcp: lookup wrong-url: no such host")
+	FatalIfWrongError(t, err, "no such host")
 
 }
