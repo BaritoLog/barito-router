@@ -23,7 +23,7 @@ func main() {
 	xtailRouterAddress := envkit.GetString(EnvXtailRouterAddress, ":8083")
 	baritoMarketUrl := envkit.GetString(EnvBaritoMarketUrl, "http://localhost:3000")
 	profileApiPath := envkit.GetString(EnvBaritoProfileApiPath, "/api/profile")
-	profileApiByClusternamePath := envkit.GetString(EnvBaritoProfileApiPath, "/api/profile_by_cluster_name")
+	profileApiByClusternamePath := envkit.GetString(EnvBaritoProfileApiByClusternamePath, "/api/profile_by_cluster_name")
 
 	fmt.Printf(".: Barito Router v%s :.\n\n", Version)
 	fmt.Printf("%s=%s\n", EnvRouterAddress, routerAddress)
