@@ -134,7 +134,7 @@ func (r *router) KibanaHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	srv, err := r.consul.Service(profile.Consul, "kibana")
+	srv, err := r.consul.Service(profile.ConsulHost, "kibana")
 	if err != nil {
 		r.OnConsulError(w, err)
 		return
@@ -173,7 +173,7 @@ func (r *router) ProduceHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	srv, err := r.consul.Service(profile.Consul, "barito-receiver")
+	srv, err := r.consul.Service(profile.ConsulHost, "barito-receiver")
 	if err != nil {
 		r.OnConsulError(w, err)
 		return
@@ -203,7 +203,7 @@ func (r *router) XtailHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	srv, err := r.consul.Service(profile.Consul, "kafka-pixy")
+	srv, err := r.consul.Service(profile.ConsulHost, "kafka-pixy")
 	if err != nil {
 		r.OnConsulError(w, err)
 		return
