@@ -12,7 +12,7 @@ const (
 	EnvXtailRouterAddress  = "BARITO_XTAIL_ROUTER_ADDRESS"
 	EnvKibanaRouterAddress = "BARITO_KIBANA_ROUTER_ADDRESS"
 	EnvBaritoMarketUrl     = "BARITO_ROUTER_MARKET_URL"
-	Version                = "0.1.1"
+	Version                = "0.1.2"
 )
 
 func main() {
@@ -33,7 +33,7 @@ func main() {
 
 	baritoMarketUrl := os.Getenv(EnvBaritoMarketUrl)
 	if baritoMarketUrl == "" {
-		baritoMarketUrl = "http://localhost:3000/api/apps"
+		baritoMarketUrl = "http://localhost:3000/api/profile"
 	}
 
 	fmt.Printf(".: Barito Router v%s :.\n\n", Version)

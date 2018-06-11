@@ -8,21 +8,30 @@ import (
 )
 
 func TestProfile_New(t *testing.T) {
-	wantId := 1
+	wantClusterName := "some-cluster-name"
 	wantName := "some-name"
-	wantConsul := "some-consul"
+	wantConsulHost := "some-consul-host"
+	wantAppGroup := "some-app-group"
+	wantTpsConfig := "some-tps-config"
+	wantAppStatus := "some-app-status"
 
 	jsonBody := fmt.Sprintf(`{
-		"id": %d,
+		"cluster_name": "%s",
 		"name": "%s",
-		"consul": "%s"
-	}`, wantId, wantName, wantConsul)
+		"consul_host": "%s",
+		"app_group": "%s",
+		"tps_config": "%s",
+		"app_status": "%s"
+	}`, wantClusterName, wantName, wantConsulHost, wantAppGroup, wantTpsConfig, wantAppStatus)
 	profile, err := NewProfileFromBytes([]byte(jsonBody))
 
 	FatalIfError(t, err)
-	FatalIf(t, profile.Id != wantId, "%d != %d", profile.Id, wantId)
+	FatalIf(t, profile.ClusterName != wantClusterName, "%d != %d", profile.ClusterName, wantClusterName)
 	FatalIf(t, profile.Name != wantName, "%s != %s", profile.Name, wantName)
-	FatalIf(t, profile.Consul != wantConsul, "%s != %s", profile.Consul, wantConsul)
+	FatalIf(t, profile.ConsulHost != wantConsulHost, "%s != %s", profile.ConsulHost, wantConsulHost)
+	FatalIf(t, profile.AppGroup != wantAppGroup, "%s != %s", profile.AppGroup, wantAppGroup)
+	FatalIf(t, profile.TpsConfig != wantTpsConfig, "%s != %s", profile.TpsConfig, wantTpsConfig)
+	FatalIf(t, profile.AppStatus != wantAppStatus, "%s != %s", profile.AppStatus, wantAppStatus)
 }
 
 func TestProfile_New_InvalidJson(t *testing.T) {

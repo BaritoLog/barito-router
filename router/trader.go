@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -43,6 +44,11 @@ func (t *trader) TradeSecret(secret string) (profile *Profile, err error) {
 
 	req, _ := http.NewRequest("GET", t.Url(), nil)
 	req.Header.Set("X-App-Secret", secret)
+
+	q := url.Values{}
+	q.Add("token", secret)
+
+	req.URL.RawQuery = q.Encode()
 
 	res, err := t.client.Do(req)
 	if err != nil {
