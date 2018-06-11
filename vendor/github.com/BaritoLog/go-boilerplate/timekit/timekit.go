@@ -30,3 +30,9 @@ func Parse(format, s string) time.Time {
 	t, _ := time.Parse(format, s)
 	return t
 }
+
+func Duration(s string) time.Duration {
+	d, _ := time.ParseDuration(s)
+	return d
+
+}

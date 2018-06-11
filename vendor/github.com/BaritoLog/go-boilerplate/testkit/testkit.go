@@ -19,7 +19,7 @@ func FatalIfWrongError(t *testing.T, err error, message string) {
 		fatal(t, "no expected error", 1)
 	}
 
-	if err.Error() != message {
+	if !strings.Contains(err.Error(), message) {
 		fatal(
 			t,
 			fmt.Sprintf("Wrong error message: %s", err.Error()),

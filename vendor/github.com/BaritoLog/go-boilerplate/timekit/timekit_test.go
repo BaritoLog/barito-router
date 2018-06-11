@@ -3,6 +3,8 @@ package timekit
 import (
 	"testing"
 	"time"
+
+	. "github.com/BaritoLog/go-boilerplate/testkit"
 )
 
 func TestSleep(t *testing.T) {
@@ -59,5 +61,14 @@ func TestEqualString(t *testing.T) {
 				tt.t, tt.s, tt.format, tt.expected)
 		}
 	}
+}
 
+func TestDuration_WrongFormat(t *testing.T) {
+	d := Duration("wrong-formatted")
+	FatalIf(t, d.String() != "0s", "not return 0s")
+}
+
+func TestDuration(t *testing.T) {
+	d := Duration("13s")
+	FatalIf(t, d.String() != "13s", "not return 13s")
 }
