@@ -9,14 +9,6 @@ import (
 	. "github.com/BaritoLog/go-boilerplate/testkit"
 )
 
-func TestTrader_New(t *testing.T) {
-	want := "http://host:port"
-	trader := NewTrader(want)
-
-	got := trader.Url()
-	FatalIf(t, got != want, "%s != %s", got, want)
-}
-
 func TestTrader_TradeSecret_Ok(t *testing.T) {
 	ts := NewHttpTestServer(http.StatusOK, []byte(`{
 			"id": 1,
@@ -25,8 +17,8 @@ func TestTrader_TradeSecret_Ok(t *testing.T) {
 		}`))
 	defer ts.Close()
 
-	trader := NewTrader(ts.URL)
-	profile, err := trader.TradeSecret("secret")
+	trader := NewTraderBySecret(ts.URL)
+	profile, err := trader.Trade("secret")
 
 	FatalIfError(t, err)
 	FatalIf(t, profile == nil, "profile can't be nil")
@@ -52,23 +44,21 @@ func TestTrader_TradeName(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	trader := NewTrader(ts.URL)
-	profile, err := trader.TradeName(name)
+	trader := NewTraderByClusterName(ts.URL)
+	profile, err := trader.Trade(name)
 
 	FatalIfError(t, err)
 	FatalIf(t, profile == nil, "profile can't be nil")
 
-	profile, err = trader.TradeName("wrong-name")
+	profile, err = trader.Trade("wrong-name")
 	FatalIfError(t, err)
 	FatalIf(t, profile != nil, "profile must be nil")
 }
 
 func TestTrader_HttpClientError(t *testing.T) {
-	trader := NewTrader("https://wrong-url")
+	trader := NewTraderBySecret("https://wrong-url")
 
-	_, err := trader.TradeSecret("secret")
+	_, err := trader.Trade("things")
 	FatalIfWrongError(t, err, "dial tcp: lookup wrong-url: no such host")
 
-	_, err = trader.TradeName("secret")
-	FatalIfWrongError(t, err, "dial tcp: lookup wrong-url: no such host")
 }

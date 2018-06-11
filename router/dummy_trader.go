@@ -6,13 +6,7 @@ type DummyTrader struct {
 	err     error
 }
 
-func (t *DummyTrader) TradeSecret(secret string) (profile *Profile, err error) {
-	profile = t.profile
-	err = t.err
-	return
-}
-
-func (t *DummyTrader) TradeName(name string) (profile *Profile, err error) {
+func (t *DummyTrader) Trade(s string) (profile *Profile, err error) {
 	profile = t.profile
 	err = t.err
 	return

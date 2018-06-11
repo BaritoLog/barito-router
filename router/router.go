@@ -125,7 +125,7 @@ func (r *router) KibanaHandler(w http.ResponseWriter, req *http.Request) {
 	host := strings.Split(req.Host, ".")
 	clusterName := host[0]
 
-	profile, err := r.Trader().TradeName(clusterName)
+	profile, err := r.Trader().Trade(clusterName)
 	if err != nil {
 		r.OnTradeError(w, err)
 		return
@@ -165,7 +165,7 @@ func (r *router) ProduceHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	profile, err := r.Trader().TradeSecret(secret)
+	profile, err := r.Trader().Trade(secret)
 	if err != nil {
 		r.OnTradeError(w, err)
 		return
@@ -196,7 +196,7 @@ func (r *router) XtailHandler(w http.ResponseWriter, req *http.Request) {
 	host := strings.Split(req.Host, ".")
 	clusterName := host[0]
 
-	profile, err := r.Trader().TradeName(clusterName)
+	profile, err := r.Trader().Trade(clusterName)
 	if err != nil {
 		r.OnTradeError(w, err)
 		return
