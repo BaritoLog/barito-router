@@ -65,8 +65,13 @@ func (t *trader) TradeSecret(secret string) (profile *Profile, err error) {
 
 // TradeName
 func (t *trader) TradeName(name string) (profile *Profile, err error) {
+
 	req, _ := http.NewRequest("GET", t.Url(), nil)
-	req.Header.Set("X-App-Cluster-Name", name)
+
+	q := url.Values{}
+	q.Add("cluster_name", name)
+
+	req.URL.RawQuery = q.Encode()
 
 	res, err := t.client.Do(req)
 	if err != nil {
