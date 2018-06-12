@@ -14,7 +14,7 @@ const (
 	EnvBaritoMarketUrl                   = "BARITO_MARKET_URL"
 	EnvBaritoProfileApiPath              = "BARITO_PROFILE_API_PATH"
 	EnvBaritoProfileApiByClusternamePath = "BARITO_PROFILE_API_BY_CLUSTERNAME_PATH"
-	Version                              = "0.1.2"
+	Version                              = "0.2.0"
 )
 
 func main() {
