@@ -110,7 +110,7 @@ func TestProduceRouter_Trade_NoSecret(t *testing.T) {
 
 	req, _ := http.NewRequest("GET", "/", nil)
 
-	rr := HttpRecord(r.ProduceHandler, req)
+	rr := RecordResponse(r.ProduceHandler, req)
 	FatalIfWrongHttpCode(t, rr, http.StatusBadRequest)
 }
 
@@ -119,7 +119,7 @@ func TestKibanaRouter_Trade_InvalidClusterName(t *testing.T) {
 
 	req, _ := http.NewRequest("GET", "/", nil)
 
-	rr := HttpRecord(r.KibanaHandler, req)
+	rr := RecordResponse(r.KibanaHandler, req)
 	FatalIfWrongHttpCode(t, rr, http.StatusNotFound)
 }
 
@@ -128,7 +128,7 @@ func TestXtailRouter_Trade_InvalidClusterName(t *testing.T) {
 
 	req, _ := http.NewRequest("GET", "/", nil)
 
-	rr := HttpRecord(r.XtailHandler, req)
+	rr := RecordResponse(r.XtailHandler, req)
 	FatalIfWrongHttpCode(t, rr, http.StatusNotFound)
 }
 
@@ -140,7 +140,7 @@ func TestProduceRouter_Trade_ConsulError(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/", nil)
 	req.Header.Add("X-App-Secret", "abcdefgh")
 
-	rr := HttpRecord(r.ProduceHandler, req)
+	rr := RecordResponse(r.ProduceHandler, req)
 	FatalIfWrongHttpCode(t, rr, http.StatusFailedDependency)
 }
 
@@ -151,7 +151,7 @@ func TestKibanaRouter_Trade_ConsulError(t *testing.T) {
 
 	req, _ := http.NewRequest("GET", "/", nil)
 
-	rr := HttpRecord(r.KibanaHandler, req)
+	rr := RecordResponse(r.KibanaHandler, req)
 	FatalIfWrongHttpCode(t, rr, http.StatusFailedDependency)
 }
 
@@ -162,7 +162,7 @@ func TestXtailRouter_Trade_ConsulError(t *testing.T) {
 
 	req, _ := http.NewRequest("GET", "/", nil)
 
-	rr := HttpRecord(r.XtailHandler, req)
+	rr := RecordResponse(r.XtailHandler, req)
 	FatalIfWrongHttpCode(t, rr, http.StatusFailedDependency)
 }
 
@@ -172,7 +172,7 @@ func TestProduceRouter_Trade_NoProfile(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/", nil)
 	req.Header.Add("X-App-Secret", "abcdefgh")
 
-	rr := HttpRecord(r.ProduceHandler, req)
+	rr := RecordResponse(r.ProduceHandler, req)
 	FatalIfWrongHttpCode(t, rr, http.StatusNotFound)
 }
 
@@ -181,7 +181,7 @@ func TestKibanaRouter_Trade_NoProfile(t *testing.T) {
 
 	req, _ := http.NewRequest("GET", "/", nil)
 
-	rr := HttpRecord(r.KibanaHandler, req)
+	rr := RecordResponse(r.KibanaHandler, req)
 	FatalIfWrongHttpCode(t, rr, http.StatusNotFound)
 }
 
@@ -190,12 +190,12 @@ func TestXtailRouter_Trade_NoProfile(t *testing.T) {
 
 	req, _ := http.NewRequest("GET", "/", nil)
 
-	rr := HttpRecord(r.KibanaHandler, req)
+	rr := RecordResponse(r.KibanaHandler, req)
 	FatalIfWrongHttpCode(t, rr, http.StatusNotFound)
 }
 
 func TestProduceRouter_Ok(t *testing.T) {
-	ts := NewHttpTestServer(http.StatusOK, []byte("hello"))
+	ts := NewTestServer(http.StatusOK, []byte("hello"))
 	defer ts.Close()
 
 	serverHost, serverPort := httpkit.Host(ts.URL)
@@ -212,13 +212,13 @@ func TestProduceRouter_Ok(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/", nil)
 	req.Header.Add("X-App-Secret", "abcdefgh")
 
-	rr := HttpRecord(r.ProduceHandler, req)
+	rr := RecordResponse(r.ProduceHandler, req)
 
 	FatalIfWrongHttpCode(t, rr, http.StatusOK)
 }
 
 func TestKibanaRouter_Ok(t *testing.T) {
-	ts := NewHttpTestServer(http.StatusOK, []byte("hello"))
+	ts := NewTestServer(http.StatusOK, []byte("hello"))
 	defer ts.Close()
 
 	serverHost, serverPort := httpkit.Host(ts.URL)
@@ -234,7 +234,7 @@ func TestKibanaRouter_Ok(t *testing.T) {
 
 	req, _ := http.NewRequest("GET", "/", nil)
 
-	rr := HttpRecord(r.KibanaHandler, req)
+	rr := RecordResponse(r.KibanaHandler, req)
 
 	FatalIfWrongHttpCode(t, rr, http.StatusOK)
 }

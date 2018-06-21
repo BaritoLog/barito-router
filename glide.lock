@@ -1,12 +1,17 @@
 hash: 19de112eaf2c3ca01b2e3165a54603847c17c97856650d3c91cb692a6881ec75
-updated: 2018-06-11T16:43:25.558783+07:00
+updated: 2018-06-20T14:24:01.515488+07:00
 imports:
 - name: github.com/armon/go-metrics
   version: 783273d703149aaeb9897cf58613d5af48861c25
+- name: github.com/BaritoLog/go-boilerplate
+  version: 2c1d41839fcf26efb415dfad2c903e6d4656a368
+  subpackages:
+  - envkit
+  - testkit
 - name: github.com/cssivision/reverseproxy
   version: b27a2af48c77f8b28ea55a3be5ebc4d19704fce4
 - name: github.com/golang/protobuf
-  version: 05f48f4eaf0e05663b562bab533cdd472238ce29
+  version: 9f81198da99b79e14d70ca2c3cc1bbe44c6e69b6
   subpackages:
   - proto
   - ptypes
@@ -48,7 +53,7 @@ imports:
   - internal/timeseries
   - trace
 - name: golang.org/x/text
-  version: 5c1cf69b5978e5a34c5f9ba09a83e56acc4b7877
+  version: 5cec4b58c438bd98288aeb248bab2c1840713d21
   subpackages:
   - secure/bidirule
   - transform
@@ -59,7 +64,7 @@ imports:
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: 39a411827d3b79d942aaeafab095ecf8204f1b0c
+  version: 2ab07fd5cb02cfc44fd49af17dd2356ed1647ed4
   subpackages:
   - balancer
   - balancer/base
@@ -72,6 +77,7 @@ imports:
   - encoding/proto
   - grpclog
   - internal
+  - internal/channelz
   - internal/grpcrand
   - keepalive
   - metadata
@@ -84,9 +90,4 @@ imports:
   - status
   - tap
   - transport
-testImports:
-- name: github.com/BaritoLog/go-boilerplate
-  version: d4d31f934ebb5517573edcd2284cb592e8a91f3b
-  subpackages:
-  - httpkit
-  - testkit
+testImports: []

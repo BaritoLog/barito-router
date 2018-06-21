@@ -20,6 +20,7 @@ package grpclb
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"reflect"
 	"time"
@@ -28,11 +29,11 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/balancer"
-	"google.golang.org/grpc/channelz"
+	lbpb "google.golang.org/grpc/balancer/grpclb/grpc_lb_v1"
 	"google.golang.org/grpc/connectivity"
-	lbpb "google.golang.org/grpc/grpclb/grpc_lb_v1/messages"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/internal"
+	"google.golang.org/grpc/internal/channelz"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/resolver"
 )
@@ -56,7 +57,7 @@ func (lb *lbBalancer) processServerList(l *lbpb.ServerList) {
 	lb.fullServerList = l.Servers
 
 	var backendAddrs []resolver.Address
-	for _, s := range l.Servers {
+	for i, s := range l.Servers {
 		if s.Drop {
 			continue
 		}
@@ -73,7 +74,8 @@ func (lb *lbBalancer) processServerList(l *lbpb.ServerList) {
 			Addr:     fmt.Sprintf("%s:%d", ipStr, s.Port),
 			Metadata: &md,
 		}
-
+		grpclog.Infof("lbBalancer: server list entry[%d]: ipStr:|%s|, port:|%d|, load balancer token:|%v|",
+			i, ipStr, s.Port, s.LoadBalanceToken)
 		backendAddrs = append(backendAddrs, addr)
 	}
 
@@ -145,6 +147,9 @@ func (lb *lbBalancer) readServerList(s *balanceLoadClientStream) error {
 	for {
 		reply, err := s.Recv()
 		if err != nil {
+			if err == io.EOF {
+				return errServerTerminatedConnection
+			}
 			return fmt.Errorf("grpclb: failed to recv server list: %v", err)
 		}
 		if serverList := reply.GetServerList(); serverList != nil {
@@ -178,13 +183,13 @@ func (lb *lbBalancer) sendLoadReport(s *balanceLoadClientStream, interval time.D
 	}
 }
 
-func (lb *lbBalancer) callRemoteBalancer() error {
+func (lb *lbBalancer) callRemoteBalancer() (backoff bool, _ error) {
 	lbClient := &loadBalancerClient{cc: lb.ccRemoteLB}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	stream, err := lbClient.BalanceLoad(ctx, grpc.FailFast(false))
 	if err != nil {
-		return fmt.Errorf("grpclb: failed to perform RPC to the remote balancer %v", err)
+		return true, fmt.Errorf("grpclb: failed to perform RPC to the remote balancer %v", err)
 	}
 
 	// grpclb handshake on the stream.
@@ -196,18 +201,18 @@ func (lb *lbBalancer) callRemoteBalancer() error {
 		},
 	}
 	if err := stream.Send(initReq); err != nil {
-		return fmt.Errorf("grpclb: failed to send init request: %v", err)
+		return true, fmt.Errorf("grpclb: failed to send init request: %v", err)
 	}
 	reply, err := stream.Recv()
 	if err != nil {
-		return fmt.Errorf("grpclb: failed to recv init response: %v", err)
+		return true, fmt.Errorf("grpclb: failed to recv init response: %v", err)
 	}
 	initResp := reply.GetInitialResponse()
 	if initResp == nil {
-		return fmt.Errorf("grpclb: reply from remote balancer did not include initial response")
+		return true, fmt.Errorf("grpclb: reply from remote balancer did not include initial response")
 	}
 	if initResp.LoadBalancerDelegate != "" {
-		return fmt.Errorf("grpclb: Delegation is not supported")
+		return true, fmt.Errorf("grpclb: Delegation is not supported")
 	}
 
 	go func() {
@@ -215,21 +220,40 @@ func (lb *lbBalancer) callRemoteBalancer() error {
 			lb.sendLoadReport(stream, d)
 		}
 	}()
-	return lb.readServerList(stream)
+	// No backoff if init req/resp handshake was successful.
+	return false, lb.readServerList(stream)
 }
 
 func (lb *lbBalancer) watchRemoteBalancer() {
+	var retryCount int
 	for {
-		err := lb.callRemoteBalancer()
+		doBackoff, err := lb.callRemoteBalancer()
 		select {
 		case <-lb.doneCh:
 			return
 		default:
 			if err != nil {
-				grpclog.Error(err)
+				if err == errServerTerminatedConnection {
+					grpclog.Info(err)
+				} else {
+					grpclog.Error(err)
+				}
 			}
 		}
 
+		if !doBackoff {
+			retryCount = 0
+			continue
+		}
+
+		timer := time.NewTimer(lb.backoff.Backoff(retryCount))
+		select {
+		case <-timer.C:
+		case <-lb.doneCh:
+			timer.Stop()
+			return
+		}
+		retryCount++
 	}
 }
 

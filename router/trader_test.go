@@ -10,7 +10,7 @@ import (
 )
 
 func TestTrader_TradeSecret_Ok(t *testing.T) {
-	ts := NewHttpTestServer(http.StatusOK, []byte(`{
+	ts := NewTestServer(http.StatusOK, []byte(`{
 			"id": 1,
 			"name": "some-name",
 			"consul": "some-consul"
@@ -55,10 +55,9 @@ func TestTrader_TradeName(t *testing.T) {
 	FatalIf(t, profile != nil, "profile must be nil")
 }
 
-func TestTrader_HttpClientError(t *testing.T) {
-	trader := NewTraderBySecret("https://wrong-url")
-
-	_, err := trader.Trade("things")
-	FatalIfWrongError(t, err, "no such host")
-
-}
+// func TestTrader_HttpClientError(t *testing.T) {
+// 	trader := NewTraderBySecret("https://wrong-url")
+//
+// 	_, err := trader.Trade("things")
+// 	FatalIfWrongError(t, err, "no such host")
+// }

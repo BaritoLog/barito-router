@@ -16,6 +16,8 @@
  *
  */
 
+//go:generate ./regenerate.sh
+
 // Package grpclb defines a grpclb balancer.
 //
 // To install grpclb balancer, import this package as:
@@ -23,6 +25,7 @@
 package grpclb
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -32,9 +35,10 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/balancer"
+	lbpb "google.golang.org/grpc/balancer/grpclb/grpc_lb_v1"
 	"google.golang.org/grpc/connectivity"
-	lbpb "google.golang.org/grpc/grpclb/grpc_lb_v1/messages"
 	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/internal/backoff"
 	"google.golang.org/grpc/resolver"
 )
 
@@ -42,6 +46,20 @@ const (
 	lbTokeyKey             = "lb-token"
 	defaultFallbackTimeout = 10 * time.Second
 	grpclbName             = "grpclb"
+)
+
+var (
+	// defaultBackoffConfig configures the backoff strategy that's used when the
+	// init handshake in the RPC is unsuccessful. It's not for the clientconn
+	// reconnect backoff.
+	//
+	// It has the same value as the default grpc.DefaultBackoffConfig.
+	//
+	// TODO: make backoff configurable.
+	defaultBackoffConfig = backoff.Exponential{
+		MaxDelay: 120 * time.Second,
+	}
+	errServerTerminatedConnection = fmt.Errorf("grpclb: failed to recv server list: server terminated connection")
 )
 
 func convertDuration(d *durationpb.Duration) time.Duration {
@@ -145,6 +163,7 @@ func (b *lbBuilder) Build(cc balancer.ClientConn, opt balancer.BuildOptions) bal
 		scStates:       make(map[balancer.SubConn]connectivity.State),
 		picker:         &errPicker{err: balancer.ErrNoSubConnAvailable},
 		clientStats:    newRPCStats(),
+		backoff:        defaultBackoffConfig, // TODO: make backoff configurable.
 	}
 
 	return lb
@@ -163,6 +182,8 @@ type lbBalancer struct {
 	manualResolver *lbManualResolver
 	// The ClientConn to talk to the remote balancer.
 	ccRemoteLB *grpc.ClientConn
+	// backoff for calling remote balancer.
+	backoff backoff.Strategy
 
 	// Support client side load reporting. Each picker gets a reference to this,
 	// and will update its content.
