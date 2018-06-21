@@ -127,19 +127,19 @@ func (r *router) KibanaHandler(w http.ResponseWriter, req *http.Request) {
 
 	profile, err := r.Trader().Trade(clusterName)
 	if err != nil {
-		r.OnTradeError(w, err)
+		onTradeError(w, err)
 		return
 	}
 
 	if profile == nil {
-		r.OnNoProfile(w)
+		onNoProfile(w)
 		return
 	}
 
 	srvName, _ := profile.MetaServiceName(KeyKibana)
 	srv, err := r.consul.Service(profile.ConsulHost, srvName)
 	if err != nil {
-		r.OnConsulError(w, err)
+		onConsulError(w, err)
 		return
 	}
 
@@ -161,25 +161,25 @@ func (r *router) KibanaHandler(w http.ResponseWriter, req *http.Request) {
 func (r *router) ProduceHandler(w http.ResponseWriter, req *http.Request) {
 	secret := req.Header.Get(SecretHeaderName)
 	if secret == "" {
-		r.OnNoSecret(w)
+		onNoSecret(w)
 		return
 	}
 
 	profile, err := r.Trader().Trade(secret)
 	if err != nil {
-		r.OnTradeError(w, err)
+		onTradeError(w, err)
 		return
 	}
 
 	if profile == nil {
-		r.OnNoProfile(w)
+		onNoProfile(w)
 		return
 	}
 
 	srvName, _ := profile.MetaServiceName(KeyProducer)
 	srv, err := r.consul.Service(profile.ConsulHost, srvName)
 	if err != nil {
-		r.OnConsulError(w, err)
+		onConsulError(w, err)
 		return
 	}
 
@@ -198,18 +198,18 @@ func (r *router) XtailHandler(w http.ResponseWriter, req *http.Request) {
 
 	profile, err := r.Trader().Trade(clusterName)
 	if err != nil {
-		r.OnTradeError(w, err)
+		onTradeError(w, err)
 		return
 	}
 
 	if profile == nil {
-		r.OnNoProfile(w)
+		onNoProfile(w)
 		return
 	}
 
 	srv, err := r.consul.Service(profile.ConsulHost, "kafka-pixy")
 	if err != nil {
-		r.OnConsulError(w, err)
+		onConsulError(w, err)
 		return
 	}
 
@@ -226,7 +226,7 @@ func (r *router) XtailHandler(w http.ResponseWriter, req *http.Request) {
 	for {
 		message, err := k.Consume()
 		if err != nil {
-			r.OnKafkaPixyError(w, err)
+			onKafkaPixyError(w, err)
 			break
 		}
 
@@ -236,29 +236,4 @@ func (r *router) XtailHandler(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-}
-
-func (r *router) OnTradeError(w http.ResponseWriter, err error) {
-	w.WriteHeader(http.StatusBadGateway)
-	w.Write([]byte(err.Error()))
-}
-
-func (r *router) OnNoProfile(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusNotFound)
-	w.Write([]byte("No Profile"))
-}
-
-func (r *router) OnNoSecret(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusBadRequest)
-	w.Write([]byte("No Secret"))
-}
-
-func (r *router) OnConsulError(w http.ResponseWriter, err error) {
-	w.WriteHeader(http.StatusFailedDependency)
-	w.Write([]byte(err.Error()))
-}
-
-func (r *router) OnKafkaPixyError(w http.ResponseWriter, err error) {
-	w.WriteHeader(http.StatusFailedDependency)
-	w.Write([]byte(err.Error()))
 }
