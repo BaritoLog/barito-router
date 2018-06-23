@@ -1,6 +1,7 @@
 package testkit
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 )
@@ -12,9 +13,14 @@ func NewTestServer(statusCode int, body []byte) *httptest.Server {
 	}))
 }
 
-func RecordResponse(handler func(http.ResponseWriter, *http.Request), req *http.Request) (rr *httptest.ResponseRecorder) {
-	rr = httptest.NewRecorder()
+func NewJsonTestServer(statusCode int, val interface{}) *httptest.Server {
+	body, _ := json.Marshal(val)
+	return NewTestServer(statusCode, body)
+}
+
+func RecordResponse(handler func(http.ResponseWriter, *http.Request), req *http.Request) *http.Response {
+	rr := httptest.NewRecorder()
 	http.HandlerFunc(handler).ServeHTTP(rr, req)
 
-	return
+	return rr.Result()
 }

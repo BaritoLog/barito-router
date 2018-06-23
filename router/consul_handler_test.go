@@ -13,12 +13,13 @@ func TestConsulHandler_New(t *testing.T) {
 	FatalIf(t, consul == nil, "Consul can't be nil")
 }
 
-// func TestConsulHandler_Service_InvalidConsulAddress(t *testing.T) {
-// 	consul := NewConsulHandler()
-// 	_, err := consul.Service("invalid-consul-address", "some-service")
-//
-// 	FatalIfWrongError(t, err, "no such host")
-// }
+func TestConsulHandler_Service_InvalidConsulAddress(t *testing.T) {
+	ts := NewTestServer(http.StatusInternalServerError, []byte(`[]`))
+	consul := NewConsulHandler()
+	_, err := consul.Service(ts.URL, "some-service")
+
+	FatalIfWrongError(t, err, "Unexpected response code")
+}
 
 func TestConsulHandler_Service_NoService(t *testing.T) {
 	ts := NewTestServer(http.StatusOK, []byte(`[]`))

@@ -2,15 +2,20 @@ package router
 
 import (
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/url"
-	"time"
 )
 
+// TODO: depracted. use fetch function instead
 type Trader interface {
 	Trade(s string) (profile *Profile, err error)
 	Url() string
+}
+
+type trader struct {
+	url           string
+	client        *http.Client
+	createRequest func(url, s string) *http.Request
 }
 
 // NewHttpTrader
@@ -28,24 +33,6 @@ func NewTraderByClusterName(url string) Trader {
 		client:        createClient(),
 		createRequest: profileByClusterNameRequest,
 	}
-}
-
-func createClient() *http.Client {
-	return &http.Client{
-		Timeout: time.Second * 60,
-		Transport: &http.Transport{
-			Dial: (&net.Dialer{
-				Timeout: 60 * time.Second,
-			}).Dial,
-			TLSHandshakeTimeout: 60 * time.Second,
-		},
-	}
-}
-
-type trader struct {
-	url           string
-	client        *http.Client
-	createRequest func(url, s string) *http.Request
 }
 
 // Address

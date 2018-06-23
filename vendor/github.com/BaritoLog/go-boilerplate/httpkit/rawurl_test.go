@@ -6,7 +6,7 @@ import (
 
 func TestPathParameter(t *testing.T) {
 	testcases := []struct {
-		path     string
+		rawURL   string
 		key      string
 		expected string
 	}{
@@ -16,7 +16,7 @@ func TestPathParameter(t *testing.T) {
 	}
 
 	for _, tt := range testcases {
-		get := PathParameter(tt.path, tt.key)
+		get := PathParameterOfRawURL(tt.rawURL, tt.key)
 		if get != tt.expected {
 			t.Fatalf("get '%s' instead of '%s'", get, tt.expected)
 		}
@@ -25,7 +25,7 @@ func TestPathParameter(t *testing.T) {
 
 func TestHost(t *testing.T) {
 	testcases := []struct {
-		rawurl string
+		rawURL string
 		host   string
 		port   int
 	}{
@@ -36,7 +36,7 @@ func TestHost(t *testing.T) {
 	}
 
 	for _, tt := range testcases {
-		host, port := Host(tt.rawurl)
+		host, port := HostOfRawURL(tt.rawURL)
 		if host != tt.host {
 			t.Fatalf("wrong host: get '%s' instead of '%s'", host, tt.host)
 		}

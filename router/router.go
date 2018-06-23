@@ -25,7 +25,6 @@ type Router interface {
 	Address() string
 	Trader() Trader
 	ProduceHandler(w http.ResponseWriter, req *http.Request)
-	KibanaHandler(w http.ResponseWriter, req *http.Request)
 	XtailHandler(w http.ResponseWriter, req *http.Request)
 }
 
@@ -66,22 +65,6 @@ func NewProduceRouter(addr string, trader Trader, consul ConsulHandler) Router {
 	return r
 }
 
-// NewKibanaRouter
-func NewKibanaRouter(addr string, trader Trader, consul ConsulHandler) Router {
-
-	r := new(router)
-	r.addr = addr
-	r.trader = trader
-	r.consul = consul
-
-	r.server = &http.Server{
-		Addr:    addr,
-		Handler: http.HandlerFunc(r.KibanaHandler),
-	}
-
-	return r
-}
-
 // NewXtailRouter
 func NewXtailRouter(addr string, trader Trader, consul ConsulHandler) Router {
 	r := new(router)
@@ -114,47 +97,6 @@ func (r *router) Trader() Trader {
 // Start
 func (r *router) Server() *http.Server {
 	return r.server
-}
-
-func (r *router) KibanaHandler(w http.ResponseWriter, req *http.Request) {
-	scheme := "http"
-	if req.TLS != nil {
-		scheme = "https"
-	}
-
-	host := strings.Split(req.Host, ".")
-	clusterName := host[0]
-
-	profile, err := r.Trader().Trade(clusterName)
-	if err != nil {
-		onTradeError(w, err)
-		return
-	}
-
-	if profile == nil {
-		onNoProfile(w)
-		return
-	}
-
-	srvName, _ := profile.MetaServiceName(KeyKibana)
-	srv, err := r.consul.Service(profile.ConsulHost, srvName)
-	if err != nil {
-		onConsulError(w, err)
-		return
-	}
-
-	sourceUrl := &url.URL{
-		Scheme: scheme,
-		Host:   fmt.Sprintf("%s:%s", req.Host, r.Address()),
-	}
-
-	targetUrl := &url.URL{
-		Scheme: scheme,
-		Host:   fmt.Sprintf("%s:%d", srv.ServiceAddress, srv.ServicePort),
-	}
-
-	proxy := NewProxy(sourceUrl.String(), targetUrl.String())
-	proxy.ReverseProxy().ServeHTTP(w, req)
 }
 
 // ProduceHandler

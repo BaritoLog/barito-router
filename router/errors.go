@@ -2,6 +2,7 @@ package router
 
 import "net/http"
 
+// TODO: rename to onFetchError
 func onTradeError(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusBadGateway)
 	w.Write([]byte(err.Error()))
@@ -23,6 +24,7 @@ func onConsulError(w http.ResponseWriter, err error) {
 }
 
 func onKafkaPixyError(w http.ResponseWriter, err error) {
+	// TODO: change status code
 	w.WriteHeader(http.StatusFailedDependency)
 	w.Write([]byte(err.Error()))
 }

@@ -8,17 +8,18 @@ import (
 )
 
 const (
-	EnvRouterAddress                     = "BARITO_PRODUCER_ROUTER"
+	Version = "0.2.0"
+
+	EnvProducerRouterAddress             = "BARITO_PRODUCER_ROUTER"
 	EnvXtailRouterAddress                = "BARITO_XTAIL_ROUTER"
 	EnvKibanaRouterAddress               = "BARITO_KIBANA_ROUTER"
 	EnvBaritoMarketUrl                   = "BARITO_MARKET_URL"
 	EnvBaritoProfileApiPath              = "BARITO_PROFILE_API_PATH"
 	EnvBaritoProfileApiByClusternamePath = "BARITO_PROFILE_API_BY_CLUSTERNAME_PATH"
-	Version                              = "0.2.0"
 )
 
 func main() {
-	routerAddress := envkit.GetString(EnvRouterAddress, ":8081")
+	routerAddress := envkit.GetString(EnvProducerRouterAddress, ":8081")
 	kibanaRouterAddress := envkit.GetString(EnvKibanaRouterAddress, ":8082")
 	xtailRouterAddress := envkit.GetString(EnvXtailRouterAddress, ":8083")
 	baritoMarketUrl := envkit.GetString(EnvBaritoMarketUrl, "http://localhost:3000")
@@ -26,7 +27,7 @@ func main() {
 	profileApiByClusternamePath := envkit.GetString(EnvBaritoProfileApiByClusternamePath, "/api/profile_by_cluster_name")
 
 	fmt.Printf(".: Barito Router v%s :.\n\n", Version)
-	fmt.Printf("%s=%s\n", EnvRouterAddress, routerAddress)
+	fmt.Printf("%s=%s\n", EnvProducerRouterAddress, routerAddress)
 	fmt.Printf("%s=%s\n", EnvKibanaRouterAddress, kibanaRouterAddress)
 	fmt.Printf("%s=%s\n", EnvXtailRouterAddress, xtailRouterAddress)
 	fmt.Printf("%s=%s\n", EnvBaritoMarketUrl, baritoMarketUrl)
@@ -49,7 +50,6 @@ func main() {
 		xtailRouter.Server().ListenAndServe()
 	}()
 
-	trader := router.NewTraderByClusterName(baritoMarketUrl + profileApiByClusternamePath)
-	kibanaRouter := router.NewKibanaRouter(kibanaRouterAddress, trader, consul)
+	kibanaRouter := router.NewKibanaRouter(kibanaRouterAddress, baritoMarketUrl, profileApiByClusternamePath)
 	kibanaRouter.Server().ListenAndServe()
 }

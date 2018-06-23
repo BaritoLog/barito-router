@@ -2,7 +2,8 @@ package testkit
 
 import (
 	"fmt"
-	"net/http/httptest"
+	"io/ioutil"
+	"net/http"
 	"runtime"
 	"strings"
 )
@@ -28,9 +29,18 @@ func FatalIfWrongError(t T, err error, message string) {
 	}
 }
 
-func FatalIfWrongHttpCode(t T, rec *httptest.ResponseRecorder, code int) {
-	if rec.Code != code {
-		message := fmt.Sprintf("wrong http code: %d", rec.Code)
+func FatalIfWrongResponseStatus(t T, resp *http.Response, statusCode int) {
+	if resp.StatusCode != statusCode {
+		message := fmt.Sprintf("wrong response status code: %d", resp.StatusCode)
+		fatal(t, message, 1)
+	}
+}
+
+func FatalIfWrongResponseBody(t T, resp *http.Response, body string) {
+	b, _ := ioutil.ReadAll(resp.Body)
+	s := string(b)
+	if s != body {
+		message := fmt.Sprintf("wrong response body: %s", s)
 		fatal(t, message, 1)
 	}
 }
