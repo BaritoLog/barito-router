@@ -64,6 +64,12 @@ func main() {
 				Action:    CmdKibana,
 			},
 			{
+				Name:      "producer",
+				ShortName: "p",
+				Usage:     "producer router",
+				Action:    CmdProducer,
+			},
+			{
 				Name:      "all",
 				ShortName: "a",
 				Usage:     "all router",

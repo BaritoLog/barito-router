@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"strings"
 	"time"
 
@@ -14,9 +12,8 @@ import (
 )
 
 const (
-	SecretHeaderName = "X-App-Secret"
-	KeyKibana        = "kibana"
-	KeyProducer      = "producer"
+	KeyKibana   = "kibana"
+	KeyProducer = "producer"
 )
 
 // Router
@@ -24,7 +21,6 @@ type Router interface {
 	Server() *http.Server
 	Address() string
 	Trader() Trader
-	ProduceHandler(w http.ResponseWriter, req *http.Request)
 	XtailHandler(w http.ResponseWriter, req *http.Request)
 }
 
@@ -44,25 +40,6 @@ func randSeq(n int) string {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(b)
-}
-
-// NewProduceRouter
-func NewProduceRouter(addr string, trader Trader, consul ConsulHandler) Router {
-
-	r := new(router)
-	r.addr = addr
-	r.trader = trader
-	r.consul = consul
-
-	muxRouter := mux.NewRouter()
-	muxRouter.HandleFunc("/produce", r.ProduceHandler)
-
-	r.server = &http.Server{
-		Addr:    addr,
-		Handler: muxRouter,
-	}
-
-	return r
 }
 
 // NewXtailRouter
@@ -97,40 +74,6 @@ func (r *router) Trader() Trader {
 // Start
 func (r *router) Server() *http.Server {
 	return r.server
-}
-
-// ProduceHandler
-func (r *router) ProduceHandler(w http.ResponseWriter, req *http.Request) {
-	secret := req.Header.Get(SecretHeaderName)
-	if secret == "" {
-		onNoSecret(w)
-		return
-	}
-
-	profile, err := r.Trader().Trade(secret)
-	if err != nil {
-		onTradeError(w, err)
-		return
-	}
-
-	if profile == nil {
-		onNoProfile(w)
-		return
-	}
-
-	srvName, _ := profile.MetaServiceName(KeyProducer)
-	srv, err := r.consul.Service(profile.ConsulHost, srvName)
-	if err != nil {
-		onConsulError(w, err)
-		return
-	}
-
-	url := &url.URL{
-		Scheme: "http",
-		Host:   fmt.Sprintf("%s:%d", srv.ServiceAddress, srv.ServicePort),
-	}
-	proxy := httputil.NewSingleHostReverseProxy(url)
-	proxy.ServeHTTP(w, req)
 }
 
 // XtailHandler

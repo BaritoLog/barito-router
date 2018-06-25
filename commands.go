@@ -17,6 +17,15 @@ func CmdKibana(ctx *cli.Context) {
 	})
 }
 
+func CmdProducer(ctx *cli.Context) {
+	fmt.Println("::: Producer Router :::")
+
+	go RunProducerRouter()
+	srvkit.GracefullShutdown(func() {
+		fmt.Println("Gracefull Shutdown")
+	})
+}
+
 func CmdAll(cli.Context) {
 	go RunProducerRouter()
 	go RunKibanaRouter()
@@ -26,9 +35,7 @@ func CmdAll(cli.Context) {
 }
 
 func RunProducerRouter() {
-	consul := router.NewConsulHandler()
-	trader := router.NewTraderBySecret(baritoMarketUrl + profileApiPath)
-	produceRouter := router.NewProduceRouter(routerAddress, trader, consul)
+	produceRouter := router.NewProducerRouter(routerAddress, baritoMarketUrl, profileApiPath)
 	produceRouter.Server().ListenAndServe()
 
 }
