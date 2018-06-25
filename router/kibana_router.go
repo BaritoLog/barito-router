@@ -3,10 +3,10 @@ package router
 import (
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/BaritoLog/go-boilerplate/httpkit"
+	"github.com/hashicorp/consul/api"
 )
 
 type KibanaRouter interface {
@@ -55,21 +55,10 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	scheme := httpkit.SchemeOfRequest(req)
+	sourceUrl := fmt.Sprintf("%s://%s:%s", httpkit.SchemeOfRequest(req), req.Host, r.addr)
+	targetUrl := fmt.Sprintf("%s://%s:%d", getTargetScheme(srv), srv.ServiceAddress, srv.ServicePort)
 
-	// TODO: change to fmt.Sprintf
-	sourceUrl := &url.URL{
-		Scheme: scheme,
-		Host:   fmt.Sprintf("%s:%s", req.Host, r.addr),
-	}
-
-	// TODO: change to fmt.Sprintf
-	targetUrl := &url.URL{
-		Scheme: scheme,
-		Host:   fmt.Sprintf("%s:%d", srv.ServiceAddress, srv.ServicePort),
-	}
-
-	proxy := NewProxy(sourceUrl.String(), targetUrl.String())
+	proxy := NewProxy(sourceUrl, targetUrl)
 	proxy.ReverseProxy().ServeHTTP(w, req)
 }
 
@@ -83,4 +72,14 @@ func (r *kibanaRouter) Server() *http.Server {
 func KibanaGetClustername(req *http.Request) string {
 	host := strings.Split(req.Host, ".")
 	return host[0]
+}
+
+func getTargetScheme(srv *api.CatalogService) (scheme string) {
+	scheme = srv.NodeMeta["kibana_scheme"]
+
+	if scheme == "" {
+		scheme = "http"
+	}
+
+	return scheme
 }
