@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/BaritoLog/go-boilerplate/httpkit"
 	"github.com/hashicorp/consul/api"
@@ -58,6 +59,22 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	sourceUrl := fmt.Sprintf("%s://%s:%s", httpkit.SchemeOfRequest(req), req.Host, r.addr)
 	targetUrl := fmt.Sprintf("%s://%s:%d", getTargetScheme(srv), srv.ServiceAddress, srv.ServicePort)
 
+	urlPath := strings.Split(req.URL.Path, "/")
+
+	for i, v := range urlPath {
+		if v == clusterName {
+			urlPath = append(urlPath[:i], urlPath[i+1:]...)
+			break
+		}
+	}
+
+	if getCookie(req) != clusterName {
+		expiration := time.Now().Add(365 * 24 * time.Hour)
+		cookie := http.Cookie{Name: "clusterName", Value: clusterName, Expires: expiration}
+		http.SetCookie(w, &cookie)
+	}
+
+	req.URL.Path = strings.Join(urlPath, "/")
 	proxy := NewProxy(sourceUrl, targetUrl)
 	proxy.ReverseProxy().ServeHTTP(w, req)
 }
@@ -70,8 +87,17 @@ func (r *kibanaRouter) Server() *http.Server {
 }
 
 func KibanaGetClustername(req *http.Request) string {
-	host := strings.Split(req.Host, ".")
-	return host[0]
+	cookie := getCookie(req)
+	if cookie != "" {
+		return cookie
+	}
+
+	urlPath := strings.Split(req.URL.Path, "/")
+	if len(urlPath) > 1 {
+		return urlPath[1]
+	}
+
+	return ""
 }
 
 func getTargetScheme(srv *api.CatalogService) (scheme string) {
@@ -82,4 +108,14 @@ func getTargetScheme(srv *api.CatalogService) (scheme string) {
 	}
 
 	return scheme
+}
+
+func getCookie(req *http.Request) string {
+	cookie, _ := req.Cookie("clusterName")
+
+	if cookie != nil {
+		return cookie.Value
+	}
+
+	return ""
 }
