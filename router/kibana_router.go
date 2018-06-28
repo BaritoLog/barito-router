@@ -37,6 +37,12 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// TODO: validate if no clustername
 	clusterName := KibanaGetClustername(req)
+	if isKibanaPath(clusterName) {
+		cookie := getCookie(req)
+		if cookie != "" {
+			clusterName = cookie
+		}
+	}
 
 	profile, err := fetchProfileByClusterName(r.client, r.marketUrl, r.profilePath, clusterName)
 	if err != nil {
@@ -87,11 +93,6 @@ func (r *kibanaRouter) Server() *http.Server {
 }
 
 func KibanaGetClustername(req *http.Request) string {
-	cookie := getCookie(req)
-	if cookie != "" {
-		return cookie
-	}
-
 	urlPath := strings.Split(req.URL.Path, "/")
 	if len(urlPath) > 1 {
 		return urlPath[1]
@@ -118,4 +119,19 @@ func getCookie(req *http.Request) string {
 	}
 
 	return ""
+}
+
+func isKibanaPath(path string) bool {
+	switch path {
+	case
+		"bundles",
+		"api",
+		"ui",
+		"app",
+		"es_admin",
+		"elasticsearch",
+		"plugins":
+		return true
+	}
+	return false
 }

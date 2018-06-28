@@ -82,7 +82,7 @@ func TestGetClustername(t *testing.T) {
 
 func TestGetClustername_WithCookie(t *testing.T) {
 	want := "expected"
-	req, _ := http.NewRequest(http.MethodGet, "http://localhost", strings.NewReader(""))
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost/expected", strings.NewReader(""))
 	req.AddCookie(&http.Cookie{Name: "clusterName", Value: want})
 
 	cluster_name := KibanaGetClustername(req)
@@ -97,4 +97,11 @@ func TestGetCookie(t *testing.T) {
 
 	got := getCookie(req)
 	FatalIf(t, got != want, "%s != %s", got, want)
+}
+
+func TestIsKibanaPath(t *testing.T) {
+	path := "plugins"
+	got := isKibanaPath(path)
+
+	FatalIf(t, got != true, "%s should be a Kibana path")
 }
