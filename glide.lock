@@ -1,5 +1,5 @@
 hash: 19de112eaf2c3ca01b2e3165a54603847c17c97856650d3c91cb692a6881ec75
-updated: 2018-06-20T14:24:01.515488+07:00
+updated: 2018-07-02T14:47:34.64891114+07:00
 imports:
 - name: github.com/armon/go-metrics
   version: 783273d703149aaeb9897cf58613d5af48861c25
@@ -7,9 +7,13 @@ imports:
   version: 4a4dd0ec3cd159d5997a8229872841a5fb61f47d
   subpackages:
   - envkit
+  - httpkit
+  - srvkit
   - testkit
 - name: github.com/cssivision/reverseproxy
   version: b27a2af48c77f8b28ea55a3be5ebc4d19704fce4
+- name: github.com/golang/glog
+  version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
 - name: github.com/golang/protobuf
   version: 9f81198da99b79e14d70ca2c3cc1bbe44c6e69b6
   subpackages:
@@ -42,6 +46,8 @@ imports:
   - coordinate
 - name: github.com/mitchellh/go-homedir
   version: 3864e76763d94a6df2f9960b16a20a33da9f9a66
+- name: github.com/urfave/cli
+  version: cfb38830724cc34fedffe9a2a29fb54fa9169cd1
 - name: golang.org/x/net
   version: 1e491301e022f8f977054da4c2d852decd59571f
   subpackages:
@@ -69,7 +75,6 @@ imports:
   - balancer
   - balancer/base
   - balancer/roundrobin
-  - channelz
   - codes
   - connectivity
   - credentials
@@ -77,6 +82,7 @@ imports:
   - encoding/proto
   - grpclog
   - internal
+  - internal/backoff
   - internal/channelz
   - internal/grpcrand
   - keepalive
@@ -90,4 +96,8 @@ imports:
   - status
   - tap
   - transport
+- name: gopkg.in/cas.v2
+  version: 1b87d011d1fc0430cdbdfe3115c9843ec33d9da6
+- name: gopkg.in/yaml.v2
+  version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
 testImports: []
