@@ -48,6 +48,7 @@ func RunXtailRouter() {
 }
 
 func RunKibanaRouter() {
-	kibanaRouter := router.NewKibanaRouter(kibanaRouterAddress, baritoMarketUrl, profileApiByClusternamePath)
+	kibanaRouter := router.NewKibanaRouter(kibanaRouterAddress, baritoMarketUrl, profileApiByClusternamePath, casAddress)
+
 	kibanaRouter.Server().ListenAndServe()
 }

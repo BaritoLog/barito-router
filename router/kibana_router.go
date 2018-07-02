@@ -3,11 +3,13 @@ package router
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/BaritoLog/go-boilerplate/httpkit"
 	"github.com/hashicorp/consul/api"
+	cas "gopkg.in/cas.v2"
 )
 
 type KibanaRouter interface {
@@ -19,21 +21,35 @@ type kibanaRouter struct {
 	addr        string
 	marketUrl   string
 	profilePath string
+	casAddr     string
 
 	client *http.Client
 }
 
 // NewKibanaRouter
-func NewKibanaRouter(addr, marketUrl, profilePath string) KibanaRouter {
+func NewKibanaRouter(addr, marketUrl, profilePath, casAddr string) KibanaRouter {
 	return &kibanaRouter{
 		addr:        addr,
 		marketUrl:   marketUrl,
 		profilePath: profilePath,
+		casAddr:     casAddr,
 		client:      createClient(),
 	}
 }
 
 func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	if r.isUseCAS() {
+		if !cas.IsAuthenticated(req) {
+			cas.RedirectToLogin(w, req)
+			return
+		}
+
+		if req.URL.Path == "/logout" {
+			cas.RedirectToLogout(w, req)
+			return
+		}
+
+	}
 
 	// TODO: validate if no clustername
 	clusterName := KibanaGetClustername(req)
@@ -86,10 +102,23 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func (r *kibanaRouter) Server() *http.Server {
+	if r.isUseCAS() {
+		casURL := r.casAddr
+		url, _ := url.Parse(casURL)
+		client := cas.NewClient(&cas.Options{
+			URL: url,
+		})
+		return &http.Server{
+			Addr:    r.addr,
+			Handler: client.Handle(r),
+		}
+	}
+
 	return &http.Server{
 		Addr:    r.addr,
 		Handler: r,
 	}
+
 }
 
 func KibanaGetClustername(req *http.Request) string {
@@ -134,4 +163,8 @@ func isKibanaPath(path string) bool {
 		return true
 	}
 	return false
+}
+
+func (r *kibanaRouter) isUseCAS() bool {
+	return r.casAddr != ""
 }

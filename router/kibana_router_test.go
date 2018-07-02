@@ -12,7 +12,7 @@ import (
 )
 
 func TestKibanaRouter_FetchError(t *testing.T) {
-	router := NewKibanaRouter(":65500", "http://wrong-market", "profilePath")
+	router := NewKibanaRouter(":65500", "http://wrong-market", "profilePath", "")
 
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost", strings.NewReader(""))
 	resp := RecordResponse(router.ServeHTTP, req)
@@ -24,7 +24,7 @@ func TestKibanaRouter_NoProfile(t *testing.T) {
 	marketServer := NewTestServer(http.StatusNotFound, []byte(``))
 	defer marketServer.Close()
 
-	router := NewKibanaRouter(":45500", marketServer.URL, "profilePath")
+	router := NewKibanaRouter(":45500", marketServer.URL, "profilePath", "")
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost", strings.NewReader(""))
 	resp := RecordResponse(router.ServeHTTP, req)
 
@@ -37,7 +37,7 @@ func TestKibanaRouter_ConsulError(t *testing.T) {
 	})
 	defer marketServer.Close()
 
-	router := NewKibanaRouter(":45500", marketServer.URL, "profilePath")
+	router := NewKibanaRouter(":45500", marketServer.URL, "profilePath", "")
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost", strings.NewReader(""))
 	resp := RecordResponse(router.ServeHTTP, req)
 
@@ -64,7 +64,7 @@ func TestKibanaRouter(t *testing.T) {
 	})
 	defer marketServer.Close()
 
-	router := NewKibanaRouter(":45500", marketServer.URL, "profilePath")
+	router := NewKibanaRouter(":45500", marketServer.URL, "profilePath", "")
 
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost", strings.NewReader(""))
 
