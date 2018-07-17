@@ -9,6 +9,7 @@ import (
 
 const (
 	SecretHeaderName = "X-App-Secret"
+	KeyProducer      = "producer"
 )
 
 type ProducerRouter interface {

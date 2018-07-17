@@ -40,13 +40,6 @@ func RunProducerRouter() {
 
 }
 
-func RunXtailRouter() {
-	consul := router.NewConsulHandler()
-	trader := router.NewTraderByClusterName(baritoMarketUrl + profileApiByClusternamePath)
-	xtailRouter := router.NewXtailRouter(xtailRouterAddress, trader, consul)
-	xtailRouter.Server().ListenAndServe()
-}
-
 func RunKibanaRouter() {
 	kibanaRouter := router.NewKibanaRouter(kibanaRouterAddress, baritoMarketUrl, profileApiByClusternamePath, casAddress)
 

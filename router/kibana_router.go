@@ -12,6 +12,10 @@ import (
 	cas "gopkg.in/cas.v2"
 )
 
+const (
+	KeyKibana = "kibana"
+)
+
 type KibanaRouter interface {
 	Server() *http.Server
 	ServeHTTP(w http.ResponseWriter, req *http.Request)
