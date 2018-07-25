@@ -11,29 +11,26 @@ import (
 
 const (
 	Name    = "Barito Router"
-	Version = "0.2.0"
+	Version = "0.2.1"
 
 	EnvProducerRouterAddress             = "BARITO_PRODUCER_ROUTER"
-	EnvXtailRouterAddress                = "BARITO_XTAIL_ROUTER"
 	EnvKibanaRouterAddress               = "BARITO_KIBANA_ROUTER"
-	EnvCASAddress                        = "BARITO_CAS_ADDRESS"
 	EnvBaritoMarketUrl                   = "BARITO_MARKET_URL"
 	EnvBaritoProfileApiPath              = "BARITO_PROFILE_API_PATH"
 	EnvBaritoProfileApiByClusternamePath = "BARITO_PROFILE_API_BY_CLUSTERNAME_PATH"
+	EnvCASAddress                        = "BARITO_CAS_ADDRESS"
 
 	DefaultProducerRouterAddress             = ":8081"
-	DefaultXtailRouterAddress                = ":8082"
 	DefaultKibanaRouterAddress               = ":8083"
-	DefaultCASAddress                        = ""
 	DefaultBaritoMarketUrl                   = "http://localhost:3000"
 	DefaultBaritoProfileApiPath              = "/api/profile"
 	DefaultBaritoProfileApiByClusternamePath = "/api/profile_by_cluster_name"
+	DefaultCASAddress                        = ""
 )
 
 var (
 	routerAddress               string
 	kibanaRouterAddress         string
-	xtailRouterAddress          string
 	baritoMarketUrl             string
 	profileApiPath              string
 	profileApiByClusternamePath string
@@ -41,17 +38,31 @@ var (
 )
 
 func main() {
-	routerAddress = envkit.GetString(EnvProducerRouterAddress, DefaultProducerRouterAddress)
-	kibanaRouterAddress = envkit.GetString(EnvKibanaRouterAddress, DefaultXtailRouterAddress)
-	xtailRouterAddress = envkit.GetString(EnvXtailRouterAddress, DefaultKibanaRouterAddress)
-	baritoMarketUrl = envkit.GetString(EnvBaritoMarketUrl, DefaultBaritoMarketUrl)
-	profileApiPath = envkit.GetString(EnvBaritoProfileApiPath, DefaultBaritoProfileApiPath)
-	profileApiByClusternamePath = envkit.GetString(EnvBaritoProfileApiByClusternamePath, DefaultBaritoProfileApiByClusternamePath)
-	casAddress = envkit.GetString(EnvCASAddress, DefaultCASAddress)
+	routerAddress, _ = envkit.GetString(
+		EnvProducerRouterAddress, 
+		DefaultProducerRouterAddress,
+	)
+	kibanaRouterAddress, _ = envkit.GetString(
+		EnvKibanaRouterAddress, 
+		DefaultKibanaRouterAddress,
+	)
+	baritoMarketUrl, _ = envkit.GetString(
+		EnvBaritoMarketUrl, 
+		DefaultBaritoMarketUrl,
+	)
+	profileApiPath, _ = envkit.GetString(
+		EnvBaritoProfileApiPath, 
+		DefaultBaritoProfileApiPath,
+	)
+	profileApiByClusternamePath, _ = envkit.GetString(EnvBaritoProfileApiByClusternamePath, DefaultBaritoProfileApiByClusternamePath,
+	)
+	casAddress, _ = envkit.GetString(
+		EnvCASAddress, 
+		DefaultCASAddress,
+	)
 
 	fmt.Printf("%s=%s\n", EnvProducerRouterAddress, routerAddress)
 	fmt.Printf("%s=%s\n", EnvKibanaRouterAddress, kibanaRouterAddress)
-	fmt.Printf("%s=%s\n", EnvXtailRouterAddress, xtailRouterAddress)
 	fmt.Printf("%s=%s\n", EnvBaritoMarketUrl, baritoMarketUrl)
 	fmt.Printf("%s=%s\n", EnvBaritoProfileApiPath, profileApiPath)
 	fmt.Printf("%s=%s\n\n", EnvBaritoProfileApiByClusternamePath, profileApiByClusternamePath)
