@@ -101,7 +101,7 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	req.URL.Path = strings.Join(urlPath, "/")
-	proxy := NewProxy(sourceUrl, targetUrl)
+	proxy := NewKibanaProxy(sourceUrl, targetUrl)
 	proxy.ReverseProxy().ServeHTTP(w, req)
 }
 
