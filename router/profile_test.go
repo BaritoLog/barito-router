@@ -12,17 +12,17 @@ func TestProfile_New(t *testing.T) {
 	wantName := "some-name"
 	wantConsulHost := "some-consul-host"
 	wantAppGroup := "some-app-group"
-	wantTpsConfig := "some-tps-config"
+	wantMaxTps := 9999
 	wantAppStatus := "some-app-status"
 
 	jsonBody := fmt.Sprintf(`{
 		"cluster_name": "%s",
 		"name": "%s",
 		"consul_host": "%s",
-		"app_group": "%s",
-		"tps_config": "%s",
-		"app_status": "%s"
-	}`, wantClusterName, wantName, wantConsulHost, wantAppGroup, wantTpsConfig, wantAppStatus)
+		"app_group_name": "%s",
+		"max_tps": %d,
+		"status": "%s"
+	}`, wantClusterName, wantName, wantConsulHost, wantAppGroup, wantMaxTps, wantAppStatus)
 	profile, err := NewProfileFromBytes([]byte(jsonBody))
 
 	FatalIfError(t, err)
@@ -30,7 +30,7 @@ func TestProfile_New(t *testing.T) {
 	FatalIf(t, profile.Name != wantName, "%s != %s", profile.Name, wantName)
 	FatalIf(t, profile.ConsulHost != wantConsulHost, "%s != %s", profile.ConsulHost, wantConsulHost)
 	FatalIf(t, profile.AppGroup != wantAppGroup, "%s != %s", profile.AppGroup, wantAppGroup)
-	FatalIf(t, profile.TpsConfig != wantTpsConfig, "%s != %s", profile.TpsConfig, wantTpsConfig)
+	FatalIf(t, profile.MaxTps != wantMaxTps, "%d != %d", profile.MaxTps, wantMaxTps)
 	FatalIf(t, profile.AppStatus != wantAppStatus, "%s != %s", profile.AppStatus, wantAppStatus)
 }
 
