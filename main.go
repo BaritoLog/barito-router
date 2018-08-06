@@ -23,8 +23,8 @@ const (
 	DefaultProducerRouterAddress             = ":8081"
 	DefaultKibanaRouterAddress               = ":8083"
 	DefaultBaritoMarketUrl                   = "http://localhost:3000"
-	DefaultBaritoProfileApiPath              = "/api/profile"
-	DefaultBaritoProfileApiByClusternamePath = "/api/profile_by_cluster_name"
+	DefaultBaritoProfileApiPath              = "api/profile"
+	DefaultBaritoProfileApiByClusternamePath = "api/profile_by_cluster_name"
 	DefaultCASAddress                        = ""
 )
 
