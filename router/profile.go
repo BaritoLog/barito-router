@@ -5,26 +5,26 @@ import (
 )
 
 type Profile struct {
-	ID          string       `json:"id"`
-	Name        string       `json:"name"`
-	AppGroup    string       `json:"app_group_name"`
-	MaxTps      int          `json:"max_tps"`
-	ClusterName string       `json:"cluster_name"`
-	ConsulHost  string       `json:"consul_host"`
-	AppStatus   string       `json:"status"`
-	Meta        *ProfileMeta `json:"meta"`
+	ID          string      `json:"id"`
+	Name        string      `json:"name"`
+	AppGroup    string      `json:"app_group_name"`
+	MaxTps      int         `json:"max_tps"`
+	ClusterName string      `json:"cluster_name"`
+	ConsulHost  string      `json:"consul_host"`
+	AppStatus   string      `json:"status"`
+	Meta        ProfileMeta `json:"meta"`
 }
 
 type ProfileMeta struct {
-	ServiceNames  map[string]string  `json:"service_names"`
-	Kafka         *KafkaMeta         `json:"kafka"`
-	Elasticsearch *ElasticsearchMeta `json:"elasticsearch"`
+	ServiceNames  map[string]string `json:"service_names"`
+	Kafka         KafkaMeta         `json:"kafka"`
+	Elasticsearch ElasticsearchMeta `json:"elasticsearch"`
 }
 
 type KafkaMeta struct {
 	TopicName         string `json:"topic_name"`
-	Partition         string `json:"partition"`
-	ReplicationFactor string `json:"replication_factor"`
+	Partition         int32  `json:"partition"`
+	ReplicationFactor int16  `json:"replication_factor"`
 	ConsumerGroup     string `json:"consumer_group"`
 }
 
@@ -44,11 +44,6 @@ func NewProfileFromBytes(b []byte) (*Profile, error) {
 }
 
 func (p Profile) MetaServiceName(name string) (val string, ok bool) {
-	if p.Meta == nil {
-		ok = false
-		return
-	}
-
 	val, ok = p.Meta.ServiceNames[name]
 	return
 }

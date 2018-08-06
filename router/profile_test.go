@@ -41,7 +41,7 @@ func TestProfile_New_InvalidJson(t *testing.T) {
 
 func TestProfile_MetaServiceName(t *testing.T) {
 	profile := Profile{
-		Meta: &ProfileMeta{
+		Meta: ProfileMeta{
 			ServiceNames: map[string]string{
 				"service-01": "value-01",
 				"service-02": "value-02",
