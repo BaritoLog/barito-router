@@ -34,7 +34,10 @@ func NewProducerRouter(addr, marketUrl, profilePath string) ProducerRouter {
 }
 
 func (p *producerRouter) Server() *http.Server {
-	return nil
+	return &http.Server{
+		Addr:    p.addr,
+		Handler: p,
+	}
 }
 
 func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
