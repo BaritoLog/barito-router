@@ -3,6 +3,7 @@ package router
 import (
 	"fmt"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 )
 
@@ -70,6 +71,9 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		Host:   fmt.Sprintf("%s:%d", srv.ServiceAddress, srv.ServicePort),
 	}
 
-	proxy := NewProducerProxy(url, *profile)
-	proxy.ReverseProxy().ServeHTTP(w, req)
+	h := NewProducerProxyHandler(url, *profile)
+	proxy := &httputil.ReverseProxy{
+		Director: h.Director,
+	}
+	proxy.ServeHTTP(w, req)
 }
