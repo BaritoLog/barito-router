@@ -17,7 +17,7 @@ type producerProxyHandler struct {
 	profile Profile
 }
 
-func NewProducerProxyHandler(targetQuery string, target *url.URL, profile Profile) ProducerProxyHandler {
+func NewProducerProxyHandler(target *url.URL, profile Profile) ProducerProxyHandler {
 	return &producerProxyHandler{
 		target:  target,
 		profile: profile,

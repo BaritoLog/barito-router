@@ -14,14 +14,13 @@ import (
 
 func TestProducerProxyHandler(t *testing.T) {
 
-	targetQuery := ""
 	url := &url.URL{
 		Scheme: "http",
 		Host:   "localhost:12345",
 	}
 
 	profile := Profile{}
-	proxyHandler := NewProducerProxyHandler(targetQuery, url, profile)
+	proxyHandler := NewProducerProxyHandler(url, profile)
 
 	body := strings.NewReader(`
 	{
