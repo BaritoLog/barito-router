@@ -23,8 +23,8 @@ const (
 	DefaultProducerRouterAddress             = ":8081"
 	DefaultKibanaRouterAddress               = ":8083"
 	DefaultBaritoMarketUrl                   = "http://localhost:3000"
-	DefaultBaritoProfileApiPath              = "/api/profile"
-	DefaultBaritoProfileApiByClusternamePath = "/api/profile_by_cluster_name"
+	DefaultBaritoProfileApiPath              = "api/profile"
+	DefaultBaritoProfileApiByClusternamePath = "api/profile_by_cluster_name"
 	DefaultCASAddress                        = ""
 )
 
@@ -39,25 +39,27 @@ var (
 
 func main() {
 	routerAddress, _ = envkit.GetString(
-		EnvProducerRouterAddress, 
+		EnvProducerRouterAddress,
 		DefaultProducerRouterAddress,
 	)
 	kibanaRouterAddress, _ = envkit.GetString(
-		EnvKibanaRouterAddress, 
+		EnvKibanaRouterAddress,
 		DefaultKibanaRouterAddress,
 	)
 	baritoMarketUrl, _ = envkit.GetString(
-		EnvBaritoMarketUrl, 
+		EnvBaritoMarketUrl,
 		DefaultBaritoMarketUrl,
 	)
 	profileApiPath, _ = envkit.GetString(
-		EnvBaritoProfileApiPath, 
+		EnvBaritoProfileApiPath,
 		DefaultBaritoProfileApiPath,
 	)
-	profileApiByClusternamePath, _ = envkit.GetString(EnvBaritoProfileApiByClusternamePath, DefaultBaritoProfileApiByClusternamePath,
+	profileApiByClusternamePath, _ = envkit.GetString(
+		EnvBaritoProfileApiByClusternamePath,
+		DefaultBaritoProfileApiByClusternamePath,
 	)
 	casAddress, _ = envkit.GetString(
-		EnvCASAddress, 
+		EnvCASAddress,
 		DefaultCASAddress,
 	)
 

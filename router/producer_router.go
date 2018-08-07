@@ -35,7 +35,10 @@ func NewProducerRouter(addr, marketUrl, profilePath string) ProducerRouter {
 }
 
 func (p *producerRouter) Server() *http.Server {
-	return nil
+	return &http.Server{
+		Addr:    p.addr,
+		Handler: p,
+	}
 }
 
 func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -67,6 +70,10 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		Scheme: "http",
 		Host:   fmt.Sprintf("%s:%d", srv.ServiceAddress, srv.ServicePort),
 	}
-	proxy := httputil.NewSingleHostReverseProxy(url)
+
+	h := NewProducerProxyHandler(url, *profile)
+	proxy := &httputil.ReverseProxy{
+		Director: h.Director,
+	}
 	proxy.ServeHTTP(w, req)
 }
