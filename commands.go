@@ -26,7 +26,9 @@ func CmdProducer(ctx *cli.Context) {
 	})
 }
 
-func CmdAll(cli.Context) {
+func CmdAll(ctx *cli.Context) {
+	fmt.Println("::: All Router :::")
+
 	go RunProducerRouter()
 	go RunKibanaRouter()
 	srvkit.GracefullShutdown(func() {
@@ -36,8 +38,8 @@ func CmdAll(cli.Context) {
 
 func RunProducerRouter() {
 	produceRouter := router.NewProducerRouter(
-		routerAddress, 
-		baritoMarketUrl, 
+		routerAddress,
+		baritoMarketUrl,
 		profileApiPath,
 	)
 	produceRouter.Server().ListenAndServe()
@@ -46,9 +48,9 @@ func RunProducerRouter() {
 
 func RunKibanaRouter() {
 	kibanaRouter := router.NewKibanaRouter(
-		kibanaRouterAddress, 
-		baritoMarketUrl, 
-		profileApiByClusternamePath, 
+		kibanaRouterAddress,
+		baritoMarketUrl,
+		profileApiByClusternamePath,
 		casAddress,
 	)
 	kibanaRouter.Server().ListenAndServe()
