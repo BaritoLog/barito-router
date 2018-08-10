@@ -82,7 +82,6 @@ func TestProducerRouter(t *testing.T) {
 	testPayload := []byte(`{"hello":"world"}`)
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost", bytes.NewBuffer(testPayload))
 	req.Header.Add("X-App-Secret", "some-secret")
-	req.ContentLength = -1
 
 	router := NewProducerRouter(":45500", marketServer.URL, "profilePath")
 	resp := RecordResponse(router.ServeHTTP, req)

@@ -55,6 +55,7 @@ func (h producerProxyHandler) Director(req *http.Request) {
 	timber["_ctx"] = h.timberContext()
 	b, _ = json.Marshal(timber)
 
+	req.ContentLength = int64(len(b))
 	req.Body = ioutil.NopCloser(bytes.NewReader(b))
 
 }
