@@ -51,6 +51,7 @@ func RunKibanaRouter() {
 		kibanaRouterAddress,
 		baritoMarketUrl,
 		profileApiByClusternamePath,
+		authorizeApiPath,
 		casAddress,
 	)
 	kibanaRouter.Server().ListenAndServe()

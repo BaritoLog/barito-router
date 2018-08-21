@@ -22,22 +22,24 @@ type KibanaRouter interface {
 }
 
 type kibanaRouter struct {
-	addr        string
-	marketUrl   string
-	profilePath string
-	casAddr     string
+	addr          string
+	marketUrl     string
+	profilePath   string
+	authorizePath string
+	casAddr       string
 
 	client *http.Client
 }
 
 // NewKibanaRouter
-func NewKibanaRouter(addr, marketUrl, profilePath, casAddr string) KibanaRouter {
+func NewKibanaRouter(addr, marketUrl, profilePath, authorizePath, casAddr string) KibanaRouter {
 	return &kibanaRouter{
-		addr:        addr,
-		marketUrl:   marketUrl,
-		profilePath: profilePath,
-		casAddr:     casAddr,
-		client:      createClient(),
+		addr:          addr,
+		marketUrl:     marketUrl,
+		profilePath:   profilePath,
+		authorizePath: authorizePath,
+		casAddr:       casAddr,
+		client:        createClient(),
 	}
 }
 
@@ -52,7 +54,6 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			cas.RedirectToLogout(w, req)
 			return
 		}
-
 	}
 
 	// TODO: validate if no clustername
@@ -73,6 +74,18 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if profile == nil {
 		onNoProfile(w)
 		return
+	}
+
+	if r.isUseCAS() {
+		username := cas.Username(req)
+		success, err := r.isUserAuthorized(username, clusterName)
+		if err != nil {
+			return
+		}
+		if !success {
+			onAuthorizeError(w)
+			return
+		}
 	}
 
 	srvName, _ := profile.MetaServiceName(KeyKibana)
@@ -171,4 +184,26 @@ func isKibanaPath(path string) bool {
 
 func (r *kibanaRouter) isUseCAS() bool {
 	return r.casAddr != ""
+}
+
+func (r *kibanaRouter) isUserAuthorized(username string, clusterName string) (success bool, err error) {
+	address := fmt.Sprintf("%s/%s", r.marketUrl, r.authorizePath)
+	q := url.Values{}
+	q.Add("username", username)
+	q.Add("cluster_name", clusterName)
+	success = false
+
+	req, _ := http.NewRequest("GET", address, nil)
+	req.URL.RawQuery = q.Encode()
+
+	res, err := r.client.Do(req)
+	if err != nil {
+		return
+	}
+
+	if res.StatusCode == http.StatusOK {
+		success = true
+	}
+
+	return
 }
