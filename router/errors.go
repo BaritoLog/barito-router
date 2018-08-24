@@ -28,3 +28,8 @@ func onKafkaPixyError(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusFailedDependency)
 	w.Write([]byte(err.Error()))
 }
+
+func onAuthorizeError(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusUnauthorized)
+	w.Write([]byte("Unauthorized"))
+}
