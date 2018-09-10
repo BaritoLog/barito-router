@@ -19,8 +19,9 @@ func TestProducerProxyHandler(t *testing.T) {
 		Host:   "localhost:12345",
 	}
 
+	secret := "some-secret-1234"
 	profile := Profile{}
-	proxyHandler := NewProducerProxyHandler(url, profile)
+	proxyHandler := NewProducerProxyHandler(url, profile, secret)
 
 	body := strings.NewReader(`
 	{
@@ -48,6 +49,7 @@ func TestProducerProxyHandler(t *testing.T) {
 		"kafka_partition":          0,
 		"kafka_replication_factor": 0,
 		"es_document_type":         "",
+		"app_secret":               secret,
 	}
 	bref, _ := json.Marshal(refCtx)
 	FatalIf(t, string(b) != string(bref), "Context not found or invalid context inserted")

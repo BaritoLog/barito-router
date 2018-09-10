@@ -7,4 +7,5 @@ type TimberContext struct {
 	ESIndexPrefix          string `json:"es_index_prefix"`
 	ESDocumentType         string `json:"es_document_type"`
 	AppMaxTPS              int    `json:"app_max_tps"`
+	AppSecret              string `json:"app_secret"`
 }

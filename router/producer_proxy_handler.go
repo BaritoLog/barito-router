@@ -13,14 +13,16 @@ type ProducerProxyHandler interface {
 }
 
 type producerProxyHandler struct {
-	target  *url.URL
-	profile Profile
+	target    *url.URL
+	profile   Profile
+	appSecret string
 }
 
-func NewProducerProxyHandler(target *url.URL, profile Profile) ProducerProxyHandler {
+func NewProducerProxyHandler(target *url.URL, profile Profile, appSecret string) ProducerProxyHandler {
 	return &producerProxyHandler{
-		target:  target,
-		profile: profile,
+		target:    target,
+		profile:   profile,
+		appSecret: appSecret,
 	}
 }
 
@@ -53,6 +55,7 @@ func (h producerProxyHandler) Director(req *http.Request) {
 	}
 
 	timber["_ctx"] = h.timberContext()
+
 	b, _ = json.Marshal(timber)
 
 	req.ContentLength = int64(len(b))
@@ -68,5 +71,6 @@ func (h producerProxyHandler) timberContext() TimberContext {
 		ESIndexPrefix:          h.profile.Meta.Elasticsearch.IndexPrefix,
 		ESDocumentType:         h.profile.Meta.Elasticsearch.DocumentType,
 		AppMaxTPS:              h.profile.MaxTps,
+		AppSecret:              h.appSecret,
 	}
 }
