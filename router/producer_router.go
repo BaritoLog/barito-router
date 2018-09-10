@@ -71,7 +71,7 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		Host:   fmt.Sprintf("%s:%d", srv.ServiceAddress, srv.ServicePort),
 	}
 
-	h := NewProducerProxyHandler(url, *profile)
+	h := NewProducerProxyHandler(url, *profile, secret)
 	proxy := &httputil.ReverseProxy{
 		Director: h.Director,
 	}
