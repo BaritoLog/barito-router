@@ -11,6 +11,17 @@ import (
 	"github.com/hashicorp/consul/api"
 )
 
+func TestKibanaRouter_Ping(t *testing.T) {
+	marketServer := NewTestServer(http.StatusOK, []byte(``))
+	defer marketServer.Close()
+
+	router := NewKibanaRouter(":45500", marketServer.URL, "profilePath", "authorizePath", "")
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost/ping", strings.NewReader(""))
+	resp := RecordResponse(router.ServeHTTP, req)
+
+	FatalIfWrongResponseStatus(t, resp, http.StatusOK)
+}
+
 func TestKibanaRouter_FetchError(t *testing.T) {
 	router := NewKibanaRouter(":65500", "http://wrong-market", "profilePath", "authorizePath", "")
 

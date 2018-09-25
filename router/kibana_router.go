@@ -43,6 +43,11 @@ func NewKibanaRouter(addr, marketUrl, profilePath, authorizePath, casAddr string
 }
 
 func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	if req.URL.Path == "/ping" {
+		onPing(w)
+		return
+	}
+
 	if r.isUseCAS() {
 		if !cas.IsAuthenticated(req) {
 			cas.RedirectToLogin(w, req)

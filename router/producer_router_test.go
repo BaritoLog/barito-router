@@ -11,6 +11,18 @@ import (
 	"github.com/hashicorp/consul/api"
 )
 
+func TestProducerRouter_Ping(t *testing.T) {
+	marketServer := NewTestServer(http.StatusOK, []byte(``))
+	defer marketServer.Close()
+
+	req, _ := http.NewRequest("GET", "/ping", nil)
+
+	router := NewProducerRouter(":45500", marketServer.URL, "profilePath")
+	resp := RecordResponse(router.ServeHTTP, req)
+
+	FatalIfWrongResponseStatus(t, resp, http.StatusOK)
+}
+
 func TestProducerRouter_FetchError(t *testing.T) {
 
 	req, _ := http.NewRequest("GET", "/", nil)
@@ -25,7 +37,7 @@ func TestProducerRouter_FetchError(t *testing.T) {
 func TestProducerRouter_NoSecret(t *testing.T) {
 	router := NewProducerRouter(":65500", "http://wrong-market", "profilePath")
 
-	req := &http.Request{}
+	req, _ := http.NewRequest("GET", "/", nil)
 	resp := RecordResponse(router.ServeHTTP, req)
 
 	FatalIfWrongResponseStatus(t, resp, http.StatusBadRequest)

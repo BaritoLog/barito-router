@@ -42,6 +42,11 @@ func (p *producerRouter) Server() *http.Server {
 }
 
 func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	if req.URL.Path == "/ping" {
+		onPing(w)
+		return
+	}
+
 	secret := req.Header.Get(SecretHeaderName)
 	if secret == "" {
 		onNoSecret(w)
