@@ -13,6 +13,7 @@ type Profile struct {
 	ConsulHost  string      `json:"consul_host"`
 	AppStatus   string      `json:"status"`
 	Meta        ProfileMeta `json:"meta"`
+	AppSecret   string      `json:"app_secret"`
 }
 
 type ProfileMeta struct {

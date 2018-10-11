@@ -20,6 +20,7 @@ const (
 	EnvBaritoAuthorizeApiPath            = "BARITO_AUTHORIZE_API_PATH"
 	EnvBaritoProfileApiByClusternamePath = "BARITO_PROFILE_API_BY_CLUSTERNAME_PATH"
 	EnvCASAddress                        = "BARITO_CAS_ADDRESS"
+	EnvBaritoProfileApiByAppGroupPath    = "BARITO_PROFILE_API_BY_APP_GROUP_PATH"
 
 	DefaultProducerRouterAddress             = ":8081"
 	DefaultKibanaRouterAddress               = ":8083"
@@ -28,6 +29,7 @@ const (
 	DefaultBaritoAuthorizeApiPath            = "api/authorize"
 	DefaultBaritoProfileApiByClusternamePath = "api/profile_by_cluster_name"
 	DefaultCASAddress                        = ""
+	DefaultBaritoProfileApiByAppGroupPath    = "api/profile_by_app_group"
 )
 
 var (
@@ -37,6 +39,7 @@ var (
 	profileApiPath              string
 	authorizeApiPath            string
 	profileApiByClusternamePath string
+	profileApiByAppGroupPath    string
 	casAddress                  string
 )
 
@@ -69,13 +72,18 @@ func main() {
 		EnvCASAddress,
 		DefaultCASAddress,
 	)
+	profileApiByAppGroupPath, _ = envkit.GetString(
+		EnvBaritoProfileApiByAppGroupPath,
+		DefaultBaritoProfileApiByAppGroupPath,
+	)
 
 	fmt.Printf("%s=%s\n", EnvProducerRouterAddress, routerAddress)
 	fmt.Printf("%s=%s\n", EnvKibanaRouterAddress, kibanaRouterAddress)
 	fmt.Printf("%s=%s\n", EnvBaritoMarketUrl, baritoMarketUrl)
 	fmt.Printf("%s=%s\n", EnvBaritoProfileApiPath, profileApiPath)
 	fmt.Printf("%s=%s\n", EnvBaritoAuthorizeApiPath, authorizeApiPath)
-	fmt.Printf("%s=%s\n\n", EnvBaritoProfileApiByClusternamePath, profileApiByClusternamePath)
+	fmt.Printf("%s=%s\n", EnvBaritoProfileApiByClusternamePath, profileApiByClusternamePath)
+	fmt.Printf("%s=%s\n\n", EnvBaritoProfileApiByAppGroupPath, profileApiByAppGroupPath)
 	fmt.Printf("%s=%s\n", EnvCASAddress, casAddress)
 
 	app := cli.App{

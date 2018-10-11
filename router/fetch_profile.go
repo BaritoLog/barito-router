@@ -19,10 +19,22 @@ func fetchProfileByClusterName(client *http.Client, marketUrl, path, clusterName
 	return fetchProfile(client, req)
 }
 
-func fetchProfileBySecretKey(client *http.Client, marketUrl, path, secretKey string) (*Profile, error) {
+func fetchProfileByAppSecretKey(client *http.Client, marketUrl, path, appSecretKey string) (*Profile, error) {
 	address := fmt.Sprintf("%s/%s", marketUrl, path)
 	q := url.Values{}
-	q.Add("token", secretKey)
+	q.Add("app_token", appSecretKey)
+
+	req, _ := http.NewRequest("GET", address, nil)
+	req.URL.RawQuery = q.Encode()
+
+	return fetchProfile(client, req)
+}
+
+func fetchProfileByAppGroupSecretKey(client *http.Client, marketUrl, path, appGroupSecretKey string, appName string) (*Profile, error) {
+	address := fmt.Sprintf("%s/%s", marketUrl, path)
+	q := url.Values{}
+	q.Add("app_group_token", appGroupSecretKey)
+	q.Add("app_name", appName)
 
 	req, _ := http.NewRequest("GET", address, nil)
 	req.URL.RawQuery = q.Encode()
