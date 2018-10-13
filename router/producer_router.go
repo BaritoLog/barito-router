@@ -10,7 +10,7 @@ import (
 const (
 	AppSecretHeaderName      = "X-App-Secret"
 	AppGroupSecretHeaderName = "X-App-Group-Secret"
-	AppNameHeaderName        = "App-Name"
+	AppNameHeaderName        = "X-App-Name"
 	KeyProducer              = "producer"
 )
 
@@ -58,13 +58,13 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if appSecret == "" {
 		if appGroupSecret != "" && appName != "" {
-			profile, err = fetchProfileByAppGroupSecretKey(p.client, p.marketUrl, p.profilePath, appGroupSecret, appName)
+			profile, err = fetchProfileByAppGroupSecret(p.client, p.marketUrl, p.profilePath, appGroupSecret, appName)
 		} else {
 			onNoSecret(w)
 			return
 		}
 	} else {
-		profile, err = fetchProfileByAppSecretKey(p.client, p.marketUrl, p.profilePath, appSecret)
+		profile, err = fetchProfileByAppSecret(p.client, p.marketUrl, p.profilePath, appSecret)
 	}
 	if err != nil {
 		onTradeError(w, err)

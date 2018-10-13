@@ -7,13 +7,13 @@ import (
 type Profile struct {
 	ID          int         `json:"id"`
 	Name        string      `json:"name"`
+	AppSecret   string      `json:"app_secret"`
 	AppGroup    string      `json:"app_group_name"`
 	MaxTps      int         `json:"max_tps"`
 	ClusterName string      `json:"cluster_name"`
 	ConsulHost  string      `json:"consul_host"`
 	AppStatus   string      `json:"status"`
 	Meta        ProfileMeta `json:"meta"`
-	AppSecret   string      `json:"app_secret"`
 }
 
 type ProfileMeta struct {

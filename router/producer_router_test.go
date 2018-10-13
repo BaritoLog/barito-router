@@ -62,7 +62,7 @@ func TestProducerRouter_WithAppGroupSecret_NoProfile(t *testing.T) {
 
 	req, _ := http.NewRequest("GET", "/", nil)
 	req.Header.Add("X-App-Group-Secret", "some-secret")
-	req.Header.Add("App-Name", "some-name")
+	req.Header.Add("X-App-Name", "some-name")
 
 	router := NewProducerRouter(":45500", marketServer.URL, "profilePath")
 	resp := RecordResponse(router.ServeHTTP, req)
@@ -138,7 +138,7 @@ func TestProducerRouter_WithAppGroupSecret(t *testing.T) {
 	testPayload := []byte(`{"hello":"world"}`)
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost", bytes.NewBuffer(testPayload))
 	req.Header.Add("X-App-Group-Secret", "some-secret")
-	req.Header.Add("App-Name", "some-name")
+	req.Header.Add("X-App-Name", "some-name")
 
 	router := NewProducerRouter(":45500", marketServer.URL, "profilePath")
 	resp := RecordResponse(router.ServeHTTP, req)
