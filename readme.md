@@ -29,5 +29,6 @@ $GOPATH/bin/barito-router
 |BARITO_KIBANA_ROUTER|Address that kibana router listen and serve|:8082|
 |BARITO_MARKET_URL|URL of market API| http://localhost:3000 |
 |BARITO_PROFILE_API_PATH|api path to get app profile by secret| /api/profile |
+|BARITO_PROFILE_API_BY_APP_GROUP_PATH|api path to get app profile by app group secret| /api/profile_by_app_group |
 |BARITO_AUTHORIZE_API_PATH|api path to authorization| /api/authorize |
 |BARITO_PROFILE_API_BY_CLUSTERNAME_PATH|api path to get app profile by cluster name| /api/profile_by_cluster_name |

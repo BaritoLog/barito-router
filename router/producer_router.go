@@ -8,8 +8,10 @@ import (
 )
 
 const (
-	SecretHeaderName = "X-App-Secret"
-	KeyProducer      = "producer"
+	AppSecretHeaderName      = "X-App-Secret"
+	AppGroupSecretHeaderName = "X-App-Group-Secret"
+	AppNameHeaderName        = "X-App-Name"
+	KeyProducer              = "producer"
 )
 
 type ProducerRouter interface {
@@ -47,13 +49,23 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	secret := req.Header.Get(SecretHeaderName)
-	if secret == "" {
-		onNoSecret(w)
-		return
-	}
+	appSecret := req.Header.Get(AppSecretHeaderName)
+	appGroupSecret := req.Header.Get(AppGroupSecretHeaderName)
+	appName := req.Header.Get(AppNameHeaderName)
 
-	profile, err := fetchProfileBySecretKey(p.client, p.marketUrl, p.profilePath, secret)
+	var profile *Profile
+	var err error
+
+	if appSecret == "" {
+		if appGroupSecret != "" && appName != "" {
+			profile, err = fetchProfileByAppGroupSecret(p.client, p.marketUrl, p.profilePath, appGroupSecret, appName)
+		} else {
+			onNoSecret(w)
+			return
+		}
+	} else {
+		profile, err = fetchProfileByAppSecret(p.client, p.marketUrl, p.profilePath, appSecret)
+	}
 	if err != nil {
 		onTradeError(w, err)
 		return
@@ -76,7 +88,7 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		Host:   fmt.Sprintf("%s:%d", srv.ServiceAddress, srv.ServicePort),
 	}
 
-	h := NewProducerProxyHandler(url, *profile, secret)
+	h := NewProducerProxyHandler(url, *profile, profile.AppSecret)
 	proxy := &httputil.ReverseProxy{
 		Director: h.Director,
 	}

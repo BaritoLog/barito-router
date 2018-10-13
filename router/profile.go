@@ -7,6 +7,7 @@ import (
 type Profile struct {
 	ID          int         `json:"id"`
 	Name        string      `json:"name"`
+	AppSecret   string      `json:"app_secret"`
 	AppGroup    string      `json:"app_group_name"`
 	MaxTps      int         `json:"max_tps"`
 	ClusterName string      `json:"cluster_name"`

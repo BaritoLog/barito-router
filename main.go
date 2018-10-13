@@ -17,6 +17,7 @@ const (
 	EnvKibanaRouterAddress               = "BARITO_KIBANA_ROUTER"
 	EnvBaritoMarketUrl                   = "BARITO_MARKET_URL"
 	EnvBaritoProfileApiPath              = "BARITO_PROFILE_API_PATH"
+	EnvBaritoProfileApiByAppGroupPath    = "BARITO_PROFILE_API_BY_APP_GROUP_PATH"
 	EnvBaritoAuthorizeApiPath            = "BARITO_AUTHORIZE_API_PATH"
 	EnvBaritoProfileApiByClusternamePath = "BARITO_PROFILE_API_BY_CLUSTERNAME_PATH"
 	EnvCASAddress                        = "BARITO_CAS_ADDRESS"
@@ -25,6 +26,7 @@ const (
 	DefaultKibanaRouterAddress               = ":8083"
 	DefaultBaritoMarketUrl                   = "http://localhost:3000"
 	DefaultBaritoProfileApiPath              = "api/profile"
+	DefaultBaritoProfileApiByAppGroupPath    = "api/profile_by_app_group"
 	DefaultBaritoAuthorizeApiPath            = "api/authorize"
 	DefaultBaritoProfileApiByClusternamePath = "api/profile_by_cluster_name"
 	DefaultCASAddress                        = ""
@@ -35,6 +37,7 @@ var (
 	kibanaRouterAddress         string
 	baritoMarketUrl             string
 	profileApiPath              string
+	profileApiByAppGroupPath    string
 	authorizeApiPath            string
 	profileApiByClusternamePath string
 	casAddress                  string
@@ -57,6 +60,10 @@ func main() {
 		EnvBaritoProfileApiPath,
 		DefaultBaritoProfileApiPath,
 	)
+	profileApiByAppGroupPath, _ = envkit.GetString(
+		EnvBaritoProfileApiByAppGroupPath,
+		DefaultBaritoProfileApiByAppGroupPath,
+	)
 	authorizeApiPath, _ = envkit.GetString(
 		EnvBaritoAuthorizeApiPath,
 		DefaultBaritoAuthorizeApiPath,
@@ -74,6 +81,7 @@ func main() {
 	fmt.Printf("%s=%s\n", EnvKibanaRouterAddress, kibanaRouterAddress)
 	fmt.Printf("%s=%s\n", EnvBaritoMarketUrl, baritoMarketUrl)
 	fmt.Printf("%s=%s\n", EnvBaritoProfileApiPath, profileApiPath)
+	fmt.Printf("%s=%s\n", EnvBaritoProfileApiByAppGroupPath, profileApiByAppGroupPath)
 	fmt.Printf("%s=%s\n", EnvBaritoAuthorizeApiPath, authorizeApiPath)
 	fmt.Printf("%s=%s\n\n", EnvBaritoProfileApiByClusternamePath, profileApiByClusternamePath)
 	fmt.Printf("%s=%s\n", EnvCASAddress, casAddress)
