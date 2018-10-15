@@ -17,7 +17,7 @@ func TestProducerRouter_Ping(t *testing.T) {
 
 	req, _ := http.NewRequest("GET", "/ping", nil)
 
-	router := NewProducerRouter(":45500", marketServer.URL, "profilePath")
+	router := NewProducerRouter(":45500", marketServer.URL, "profilePath", "profileByAppGroupPath")
 	resp := RecordResponse(router.ServeHTTP, req)
 
 	FatalIfWrongResponseStatus(t, resp, http.StatusOK)
@@ -28,14 +28,14 @@ func TestProducerRouter_FetchError(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/", nil)
 	req.Header.Add("X-App-Secret", "some-secret")
 
-	router := NewProducerRouter(":65500", "http://wrong-market", "profilePath")
+	router := NewProducerRouter(":65500", "http://wrong-market", "profilePath", "profileByAppGroupPath")
 	resp := RecordResponse(router.ServeHTTP, req)
 
 	FatalIfWrongResponseStatus(t, resp, http.StatusBadGateway)
 }
 
 func TestProducerRouter_NoSecret(t *testing.T) {
-	router := NewProducerRouter(":65500", "http://wrong-market", "profilePath")
+	router := NewProducerRouter(":65500", "http://wrong-market", "profilePath", "profileByAppGroupPath")
 
 	req, _ := http.NewRequest("GET", "/", nil)
 	resp := RecordResponse(router.ServeHTTP, req)
@@ -50,7 +50,7 @@ func TestProducerRouter_NoProfile(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/", nil)
 	req.Header.Add("X-App-Secret", "some-secret")
 
-	router := NewProducerRouter(":45500", marketServer.URL, "profilePath")
+	router := NewProducerRouter(":45500", marketServer.URL, "profilePath", "profileByAppGroupPath")
 	resp := RecordResponse(router.ServeHTTP, req)
 
 	FatalIfWrongResponseStatus(t, resp, http.StatusNotFound)
@@ -64,7 +64,7 @@ func TestProducerRouter_WithAppGroupSecret_NoProfile(t *testing.T) {
 	req.Header.Add("X-App-Group-Secret", "some-secret")
 	req.Header.Add("X-App-Name", "some-name")
 
-	router := NewProducerRouter(":45500", marketServer.URL, "profilePath")
+	router := NewProducerRouter(":45500", marketServer.URL, "profileByAppGroupPath", "profileByAppGroupPath")
 	resp := RecordResponse(router.ServeHTTP, req)
 
 	FatalIfWrongResponseStatus(t, resp, http.StatusNotFound)
@@ -79,7 +79,7 @@ func TestProducerRouter_ConsulError(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/", nil)
 	req.Header.Add("X-App-Secret", "some-secret")
 
-	router := NewProducerRouter(":45500", marketServer.URL, "profilePath")
+	router := NewProducerRouter(":45500", marketServer.URL, "profilePath", "profileByAppGroupPath")
 	resp := RecordResponse(router.ServeHTTP, req)
 
 	FatalIfWrongResponseStatus(t, resp, http.StatusFailedDependency)
@@ -109,7 +109,7 @@ func TestProducerRouter_WithAppSecret(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost", bytes.NewBuffer(testPayload))
 	req.Header.Add("X-App-Secret", "some-secret")
 
-	router := NewProducerRouter(":45500", marketServer.URL, "profilePath")
+	router := NewProducerRouter(":45500", marketServer.URL, "profilePath", "profileByAppGroupPath")
 	resp := RecordResponse(router.ServeHTTP, req)
 	FatalIfWrongResponseStatus(t, resp, http.StatusTeapot)
 	FatalIfWrongResponseBody(t, resp, "some-target")
@@ -140,7 +140,7 @@ func TestProducerRouter_WithAppGroupSecret(t *testing.T) {
 	req.Header.Add("X-App-Group-Secret", "some-secret")
 	req.Header.Add("X-App-Name", "some-name")
 
-	router := NewProducerRouter(":45500", marketServer.URL, "profilePath")
+	router := NewProducerRouter(":45500", marketServer.URL, "profilePath", "profileByAppGroupPath")
 	resp := RecordResponse(router.ServeHTTP, req)
 
 	FatalIfWrongResponseStatus(t, resp, http.StatusTeapot)
