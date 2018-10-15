@@ -41,6 +41,7 @@ func RunProducerRouter() {
 		routerAddress,
 		baritoMarketUrl,
 		profileApiPath,
+		profileApiByAppGroupPath,
 	)
 	produceRouter.Server().ListenAndServe()
 

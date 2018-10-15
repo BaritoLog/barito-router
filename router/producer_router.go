@@ -20,19 +20,21 @@ type ProducerRouter interface {
 }
 
 type producerRouter struct {
-	addr        string
-	marketUrl   string
-	profilePath string
+	addr                  string
+	marketUrl             string
+	profilePath           string
+	profileByAppGroupPath string
 
 	client *http.Client
 }
 
-func NewProducerRouter(addr, marketUrl, profilePath string) ProducerRouter {
+func NewProducerRouter(addr, marketUrl, profilePath string, profileByAppGroupPath string) ProducerRouter {
 	return &producerRouter{
-		addr:        addr,
-		marketUrl:   marketUrl,
-		profilePath: profilePath,
-		client:      createClient(),
+		addr:                  addr,
+		marketUrl:             marketUrl,
+		profilePath:           profilePath,
+		profileByAppGroupPath: profileByAppGroupPath,
+		client:                createClient(),
 	}
 }
 
@@ -58,7 +60,7 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if appSecret == "" {
 		if appGroupSecret != "" && appName != "" {
-			profile, err = fetchProfileByAppGroupSecret(p.client, p.marketUrl, p.profilePath, appGroupSecret, appName)
+			profile, err = fetchProfileByAppGroupSecret(p.client, p.marketUrl, p.profileByAppGroupPath, appGroupSecret, appName)
 		} else {
 			onNoSecret(w)
 			return
