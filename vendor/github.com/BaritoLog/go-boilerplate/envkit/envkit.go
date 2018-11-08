@@ -6,32 +6,32 @@ import (
 	"strings"
 )
 
-func GetString(key, defaultValue string) (val string, success bool) {
+func GetString(key, defaultValue string) string {
 	s := os.Getenv(key)
 	if len(s) > 0 {
-		return s, true
+		return s
 	}
 
-	return defaultValue, false
+	return defaultValue
 }
 
-func GetInt(key string, defaultValue int) (val int, success bool) {
+func GetInt(key string, defaultValue int) int {
 	s := os.Getenv(key)
 	i, err := strconv.Atoi(s)
 	if err == nil {
-		return i, true
+		return i
 	}
 
-	return defaultValue, false
+	return defaultValue
 }
 
-func GetSlice(key, separator string, defaultSlice []string) (val []string, success bool) {
+func GetSlice(key, separator string, defaultSlice []string) []string {
 	s := os.Getenv(key)
 
 	if len(s) > 0 {
-		return strings.Split(s, separator), true
+		return strings.Split(s, separator)
 	}
 
-	return defaultSlice, false
+	return defaultSlice
 
 }

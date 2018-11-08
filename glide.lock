@@ -1,10 +1,10 @@
-hash: 19de112eaf2c3ca01b2e3165a54603847c17c97856650d3c91cb692a6881ec75
-updated: 2018-07-17T12:28:57.261852+07:00
+hash: 720619aae598d5b7f34915b21f703fca58c8aadee38f8bc7695d2d258869323b
+updated: 2018-11-08T17:10:54.089215+07:00
 imports:
 - name: github.com/armon/go-metrics
   version: 783273d703149aaeb9897cf58613d5af48861c25
 - name: github.com/BaritoLog/go-boilerplate
-  version: 20c4c30023960bc27eb5e4662207a0bcaae04f11
+  version: 4a4dd0ec3cd159d5997a8229872841a5fb61f47d
   subpackages:
   - envkit
   - httpkit
@@ -34,10 +34,20 @@ imports:
   - coordinate
 - name: github.com/mitchellh/go-homedir
   version: 3864e76763d94a6df2f9960b16a20a33da9f9a66
+- name: github.com/sirupsen/logrus
+  version: bcd833dfe83d3cebad139e4a29ed79cb2318bf95
 - name: github.com/urfave/cli
   version: cfb38830724cc34fedffe9a2a29fb54fa9169cd1
+- name: golang.org/x/crypto
+  version: 6318898455d3ac20e7e44d0a080d43f8c3ff120b
+  subpackages:
+  - ssh/terminal
+- name: golang.org/x/sys
+  version: e48874b42435b4347fc52bdee0424a52abc974d7
+  subpackages:
+  - unix
 - name: gopkg.in/cas.v2
   version: 1b87d011d1fc0430cdbdfe3115c9843ec33d9da6
 - name: gopkg.in/yaml.v2
-  version: 5420a8b6744d3b0345ab293f6fcba19c978f1183
+  version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
 testImports: []

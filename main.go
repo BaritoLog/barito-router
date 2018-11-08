@@ -44,35 +44,35 @@ var (
 )
 
 func main() {
-	routerAddress, _ = envkit.GetString(
+	routerAddress = envkit.GetString(
 		EnvProducerRouterAddress,
 		DefaultProducerRouterAddress,
 	)
-	kibanaRouterAddress, _ = envkit.GetString(
+	kibanaRouterAddress = envkit.GetString(
 		EnvKibanaRouterAddress,
 		DefaultKibanaRouterAddress,
 	)
-	baritoMarketUrl, _ = envkit.GetString(
+	baritoMarketUrl = envkit.GetString(
 		EnvBaritoMarketUrl,
 		DefaultBaritoMarketUrl,
 	)
-	profileApiPath, _ = envkit.GetString(
+	profileApiPath = envkit.GetString(
 		EnvBaritoProfileApiPath,
 		DefaultBaritoProfileApiPath,
 	)
-	profileApiByAppGroupPath, _ = envkit.GetString(
+	profileApiByAppGroupPath = envkit.GetString(
 		EnvBaritoProfileApiByAppGroupPath,
 		DefaultBaritoProfileApiByAppGroupPath,
 	)
-	authorizeApiPath, _ = envkit.GetString(
+	authorizeApiPath = envkit.GetString(
 		EnvBaritoAuthorizeApiPath,
 		DefaultBaritoAuthorizeApiPath,
 	)
-	profileApiByClusternamePath, _ = envkit.GetString(
+	profileApiByClusternamePath = envkit.GetString(
 		EnvBaritoProfileApiByClusternamePath,
 		DefaultBaritoProfileApiByClusternamePath,
 	)
-	casAddress, _ = envkit.GetString(
+	casAddress = envkit.GetString(
 		EnvCASAddress,
 		DefaultCASAddress,
 	)
