@@ -26,7 +26,7 @@ func TestProfile_New(t *testing.T) {
 	profile, err := NewProfileFromBytes([]byte(jsonBody))
 
 	FatalIfError(t, err)
-	FatalIf(t, profile.ClusterName != wantClusterName, "%d != %d", profile.ClusterName, wantClusterName)
+	FatalIf(t, profile.ClusterName != wantClusterName, "%s != %s", profile.ClusterName, wantClusterName)
 	FatalIf(t, profile.Name != wantName, "%s != %s", profile.Name, wantName)
 	FatalIf(t, profile.ConsulHost != wantConsulHost, "%s != %s", profile.ConsulHost, wantConsulHost)
 	FatalIf(t, profile.AppGroup != wantAppGroup, "%s != %s", profile.AppGroup, wantAppGroup)

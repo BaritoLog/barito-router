@@ -6,10 +6,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type ProducerProxyHandler interface {
 	Director(req *http.Request)
+	ErrorHandler(rw http.ResponseWriter, req *http.Request, err error)
 }
 
 type producerProxyHandler struct {
@@ -50,7 +53,7 @@ func (h producerProxyHandler) Director(req *http.Request) {
 	err := json.Unmarshal(b, &timber)
 
 	if err != nil {
-		// TODO: give log or something
+		log.Errorf("%s", err.Error())
 		return
 	}
 
@@ -73,4 +76,10 @@ func (h producerProxyHandler) timberContext() TimberContext {
 		AppMaxTPS:              h.profile.MaxTps,
 		AppSecret:              h.appSecret,
 	}
+}
+
+func (h producerProxyHandler) ErrorHandler(rw http.ResponseWriter, req *http.Request, err error) {
+	log.Errorf("%s", err)
+	rw.WriteHeader(http.StatusBadGateway)
+	rw.Write([]byte(err.Error()))
 }
