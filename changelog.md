@@ -1,5 +1,9 @@
 # Changelog
 
+**0.5.2**
+
+- Log unsuccessful request and return the error message back to the requester
+
 **0.5.1**
 
 - Bugfix: Fix proper path for getting Profile based on AppGroup secret
