@@ -1,10 +1,10 @@
 hash: 720619aae598d5b7f34915b21f703fca58c8aadee38f8bc7695d2d258869323b
-updated: 2018-11-08T17:10:54.089215+07:00
+updated: 2018-11-11T18:31:40.636518+07:00
 imports:
 - name: github.com/armon/go-metrics
-  version: 783273d703149aaeb9897cf58613d5af48861c25
+  version: f0300d1749da6fa982027e449ec0c7a145510c3c
 - name: github.com/BaritoLog/go-boilerplate
-  version: 4a4dd0ec3cd159d5997a8229872841a5fb61f47d
+  version: 20c4c30023960bc27eb5e4662207a0bcaae04f11
   subpackages:
   - envkit
   - httpkit
@@ -15,39 +15,44 @@ imports:
 - name: github.com/golang/glog
   version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
 - name: github.com/hashicorp/consul
-  version: 5174058f0d2bda63fa5198ab96c33d9a909c58ed
+  version: 925e9ae26291315550f6c2d6a042f8fea19a718f
   subpackages:
   - api
 - name: github.com/hashicorp/go-cleanhttp
-  version: d5fe4b57a186c716b0e00b8c301cbd9b4182694d
+  version: e8ab9daed8d1ddd2d3c4efba338fe2eeae2e4f18
 - name: github.com/hashicorp/go-immutable-radix
-  version: 7f3cd4390caab3250a57f30efdb2a65dd7649ecf
+  version: 27df80928bb34bb1b0d6d0e01b9e679902e7a6b5
 - name: github.com/hashicorp/go-rootcerts
   version: 6bb64b370b90e7ef1fa532be9e591a81c3493e00
 - name: github.com/hashicorp/golang-lru
-  version: 0fb14efe8c47ae851c0034ed7a448854d3d34cf3
+  version: 20f1fb78b0740ba8c3cb143a61e86ba5c8669768
   subpackages:
   - simplelru
 - name: github.com/hashicorp/serf
-  version: 984a73625de3138f44deb38d00878fab39eb6447
+  version: 75714e08b2cf6cc7409a3f5a49e20293528acf69
   subpackages:
   - coordinate
+- name: github.com/konsorten/go-windows-terminal-sequences
+  version: 5c8c8bd35d3832f5d134ae1e1e375b69a4d25242
 - name: github.com/mitchellh/go-homedir
-  version: 3864e76763d94a6df2f9960b16a20a33da9f9a66
+  version: ae18d6b8b3205b561c79e8e5f69bff09736185f4
+- name: github.com/mitchellh/mapstructure
+  version: 3536a929edddb9a5b34bd6861dc4a9647cb459fe
 - name: github.com/sirupsen/logrus
   version: bcd833dfe83d3cebad139e4a29ed79cb2318bf95
 - name: github.com/urfave/cli
-  version: cfb38830724cc34fedffe9a2a29fb54fa9169cd1
+  version: b67dcf995b6a7b7f14fad5fcb7cc5441b05e814b
 - name: golang.org/x/crypto
-  version: 6318898455d3ac20e7e44d0a080d43f8c3ff120b
+  version: e4dc69e5b2fd71dcaf8bd5d054eb936deb78d1fa
   subpackages:
   - ssh/terminal
 - name: golang.org/x/sys
-  version: e48874b42435b4347fc52bdee0424a52abc974d7
+  version: 66b7b1311ac80bbafcd2daeef9a5e6e2cd1e2399
   subpackages:
   - unix
+  - windows
 - name: gopkg.in/cas.v2
   version: 1b87d011d1fc0430cdbdfe3115c9843ec33d9da6
 - name: gopkg.in/yaml.v2
-  version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
+  version: 5420a8b6744d3b0345ab293f6fcba19c978f1183
 testImports: []

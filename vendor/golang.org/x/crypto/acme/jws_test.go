@@ -5,6 +5,7 @@
 package acme
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
@@ -12,11 +13,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
+	"io"
 	"math/big"
 	"testing"
 )
 
-const testKeyPEM = `
+const (
+	testKeyPEM = `
 -----BEGIN RSA PRIVATE KEY-----
 MIIEowIBAAKCAQEA4xgZ3eRPkwoRvy7qeRUbmMDe0V+xH9eWLdu0iheeLlrmD2mq
 WXfP9IeSKApbn34g8TuAS9g5zhq8ELQ3kmjr+KV86GAMgI6VAcGlq3QrzpTCf/30
@@ -46,10 +50,9 @@ EQeIP6dZtv8IMgtGIb91QX9pXvP0aznzQKwYIA8nZgoENCPfiMTPiEDT9e/0lObO
 -----END RSA PRIVATE KEY-----
 `
 
-// This thumbprint is for the testKey defined above.
-const testKeyThumbprint = "6nicxzh6WETQlrvdchkz-U3e3DOQZ4heJKU63rfqMqQ"
+	// This thumbprint is for the testKey defined above.
+	testKeyThumbprint = "6nicxzh6WETQlrvdchkz-U3e3DOQZ4heJKU63rfqMqQ"
 
-const (
 	// openssl ecparam -name secp256k1 -genkey -noout
 	testKeyECPEM = `
 -----BEGIN EC PRIVATE KEY-----
@@ -58,39 +61,78 @@ AwEHoUQDQgAE5lhEug5xK4xBDZ2nAbaxLtaLiv85bxJ7ePd1dkO23HThqIrvawF5
 QAaS/RNouybCiRhRjI3EaxLkQwgrCw0gqQ==
 -----END EC PRIVATE KEY-----
 `
-	// 1. opnessl ec -in key.pem -noout -text
+	// openssl ecparam -name secp384r1 -genkey -noout
+	testKeyEC384PEM = `
+-----BEGIN EC PRIVATE KEY-----
+MIGkAgEBBDAQ4lNtXRORWr1bgKR1CGysr9AJ9SyEk4jiVnlUWWUChmSNL+i9SLSD
+Oe/naPqXJ6CgBwYFK4EEACKhZANiAAQzKtj+Ms0vHoTX5dzv3/L5YMXOWuI5UKRj
+JigpahYCqXD2BA1j0E/2xt5vlPf+gm0PL+UHSQsCokGnIGuaHCsJAp3ry0gHQEke
+WYXapUUFdvaK1R2/2hn5O+eiQM8YzCg=
+-----END EC PRIVATE KEY-----
+`
+	// openssl ecparam -name secp521r1 -genkey -noout
+	testKeyEC512PEM = `
+-----BEGIN EC PRIVATE KEY-----
+MIHcAgEBBEIBSNZKFcWzXzB/aJClAb305ibalKgtDA7+70eEkdPt28/3LZMM935Z
+KqYHh/COcxuu3Kt8azRAUz3gyr4zZKhlKUSgBwYFK4EEACOhgYkDgYYABAHUNKbx
+7JwC7H6pa2sV0tERWhHhB3JmW+OP6SUgMWryvIKajlx73eS24dy4QPGrWO9/ABsD
+FqcRSkNVTXnIv6+0mAF25knqIBIg5Q8M9BnOu9GGAchcwt3O7RDHmqewnJJDrbjd
+GGnm6rb+NnWR9DIopM0nKNkToWoF/hzopxu4Ae/GsQ==
+-----END EC PRIVATE KEY-----
+`
+	// 1. openssl ec -in key.pem -noout -text
 	// 2. remove first byte, 04 (the header); the rest is X and Y
-	// 3. covert each with: echo <val> | xxd -r -p | base64 | tr -d '=' | tr '/+' '_-'
-	testKeyECPubX = "5lhEug5xK4xBDZ2nAbaxLtaLiv85bxJ7ePd1dkO23HQ"
-	testKeyECPubY = "4aiK72sBeUAGkv0TaLsmwokYUYyNxGsS5EMIKwsNIKk"
+	// 3. convert each with: echo <val> | xxd -r -p | base64 -w 100 | tr -d '=' | tr '/+' '_-'
+	testKeyECPubX    = "5lhEug5xK4xBDZ2nAbaxLtaLiv85bxJ7ePd1dkO23HQ"
+	testKeyECPubY    = "4aiK72sBeUAGkv0TaLsmwokYUYyNxGsS5EMIKwsNIKk"
+	testKeyEC384PubX = "MyrY_jLNLx6E1-Xc79_y-WDFzlriOVCkYyYoKWoWAqlw9gQNY9BP9sbeb5T3_oJt"
+	testKeyEC384PubY = "Dy_lB0kLAqJBpyBrmhwrCQKd68tIB0BJHlmF2qVFBXb2itUdv9oZ-TvnokDPGMwo"
+	testKeyEC512PubX = "AdQ0pvHsnALsfqlraxXS0RFaEeEHcmZb44_pJSAxavK8gpqOXHvd5Lbh3LhA8atY738AGwMWpxFKQ1VNeci_r7SY"
+	testKeyEC512PubY = "AXbmSeogEiDlDwz0Gc670YYByFzC3c7tEMeap7CckkOtuN0Yaebqtv42dZH0MiikzSco2ROhagX-HOinG7gB78ax"
+
 	// echo -n '{"crv":"P-256","kty":"EC","x":"<testKeyECPubX>","y":"<testKeyECPubY>"}' | \
 	// openssl dgst -binary -sha256 | base64 | tr -d '=' | tr '/+' '_-'
 	testKeyECThumbprint = "zedj-Bd1Zshp8KLePv2MB-lJ_Hagp7wAwdkA0NUTniU"
 )
 
 var (
-	testKey   *rsa.PrivateKey
-	testKeyEC *ecdsa.PrivateKey
+	testKey      *rsa.PrivateKey
+	testKeyEC    *ecdsa.PrivateKey
+	testKeyEC384 *ecdsa.PrivateKey
+	testKeyEC512 *ecdsa.PrivateKey
 )
 
 func init() {
-	d, _ := pem.Decode([]byte(testKeyPEM))
-	if d == nil {
-		panic("no block found in testKeyPEM")
-	}
-	var err error
-	testKey, err = x509.ParsePKCS1PrivateKey(d.Bytes)
-	if err != nil {
-		panic(err.Error())
-	}
+	testKey = parseRSA(testKeyPEM, "testKeyPEM")
+	testKeyEC = parseEC(testKeyECPEM, "testKeyECPEM")
+	testKeyEC384 = parseEC(testKeyEC384PEM, "testKeyEC384PEM")
+	testKeyEC512 = parseEC(testKeyEC512PEM, "testKeyEC512PEM")
+}
 
-	if d, _ = pem.Decode([]byte(testKeyECPEM)); d == nil {
-		panic("no block found in testKeyECPEM")
+func decodePEM(s, name string) []byte {
+	d, _ := pem.Decode([]byte(s))
+	if d == nil {
+		panic("no block found in " + name)
 	}
-	testKeyEC, err = x509.ParseECPrivateKey(d.Bytes)
+	return d.Bytes
+}
+
+func parseRSA(s, name string) *rsa.PrivateKey {
+	b := decodePEM(s, name)
+	k, err := x509.ParsePKCS1PrivateKey(b)
 	if err != nil {
-		panic(err.Error())
+		panic(fmt.Sprintf("%s: %v", name, err))
 	}
+	return k
+}
+
+func parseEC(s, name string) *ecdsa.PrivateKey {
+	b := decodePEM(s, name)
+	k, err := x509.ParseECPrivateKey(b)
+	if err != nil {
+		panic(fmt.Sprintf("%s: %v", name, err))
+	}
+	return k
 }
 
 func TestJWSEncodeJSON(t *testing.T) {
@@ -141,50 +183,136 @@ func TestJWSEncodeJSON(t *testing.T) {
 }
 
 func TestJWSEncodeJSONEC(t *testing.T) {
-	claims := struct{ Msg string }{"Hello JWS"}
+	tt := []struct {
+		key      *ecdsa.PrivateKey
+		x, y     string
+		alg, crv string
+	}{
+		{testKeyEC, testKeyECPubX, testKeyECPubY, "ES256", "P-256"},
+		{testKeyEC384, testKeyEC384PubX, testKeyEC384PubY, "ES384", "P-384"},
+		{testKeyEC512, testKeyEC512PubX, testKeyEC512PubY, "ES512", "P-521"},
+	}
+	for i, test := range tt {
+		claims := struct{ Msg string }{"Hello JWS"}
+		b, err := jwsEncodeJSON(claims, test.key, "nonce")
+		if err != nil {
+			t.Errorf("%d: %v", i, err)
+			continue
+		}
+		var jws struct{ Protected, Payload, Signature string }
+		if err := json.Unmarshal(b, &jws); err != nil {
+			t.Errorf("%d: %v", i, err)
+			continue
+		}
 
-	b, err := jwsEncodeJSON(claims, testKeyEC, "nonce")
-	if err != nil {
-		t.Fatal(err)
+		b, err = base64.RawURLEncoding.DecodeString(jws.Protected)
+		if err != nil {
+			t.Errorf("%d: jws.Protected: %v", i, err)
+		}
+		var head struct {
+			Alg   string
+			Nonce string
+			JWK   struct {
+				Crv string
+				Kty string
+				X   string
+				Y   string
+			} `json:"jwk"`
+		}
+		if err := json.Unmarshal(b, &head); err != nil {
+			t.Errorf("%d: jws.Protected: %v", i, err)
+		}
+		if head.Alg != test.alg {
+			t.Errorf("%d: head.Alg = %q; want %q", i, head.Alg, test.alg)
+		}
+		if head.Nonce != "nonce" {
+			t.Errorf("%d: head.Nonce = %q; want nonce", i, head.Nonce)
+		}
+		if head.JWK.Crv != test.crv {
+			t.Errorf("%d: head.JWK.Crv = %q; want %q", i, head.JWK.Crv, test.crv)
+		}
+		if head.JWK.Kty != "EC" {
+			t.Errorf("%d: head.JWK.Kty = %q; want EC", i, head.JWK.Kty)
+		}
+		if head.JWK.X != test.x {
+			t.Errorf("%d: head.JWK.X = %q; want %q", i, head.JWK.X, test.x)
+		}
+		if head.JWK.Y != test.y {
+			t.Errorf("%d: head.JWK.Y = %q; want %q", i, head.JWK.Y, test.y)
+		}
 	}
-	var jws struct{ Protected, Payload, Signature string }
-	if err := json.Unmarshal(b, &jws); err != nil {
-		t.Fatal(err)
-	}
+}
 
-	if b, err = base64.RawURLEncoding.DecodeString(jws.Protected); err != nil {
-		t.Fatalf("jws.Protected: %v", err)
+type customTestSigner struct {
+	sig []byte
+	pub crypto.PublicKey
+}
+
+func (s *customTestSigner) Public() crypto.PublicKey { return s.pub }
+func (s *customTestSigner) Sign(io.Reader, []byte, crypto.SignerOpts) ([]byte, error) {
+	return s.sig, nil
+}
+
+func TestJWSEncodeJSONCustom(t *testing.T) {
+	claims := struct{ Msg string }{"hello"}
+	const (
+		// printf '{"Msg":"hello"}' | base64 | tr -d '=' | tr '/+' '_-'
+		payload = "eyJNc2ciOiJoZWxsbyJ9"
+		// printf 'testsig' | base64 | tr -d '='
+		testsig = "dGVzdHNpZw"
+
+		// printf '{"alg":"ES256","jwk":{"crv":"P-256","kty":"EC","x":<testKeyECPubY>,"y":<testKeyECPubY>,"nonce":"nonce"}' | \
+		// base64 | tr -d '=' | tr '/+' '_-'
+		es256phead = "eyJhbGciOiJFUzI1NiIsImp3ayI6eyJjcnYiOiJQLTI1NiIsImt0eSI6IkVDIiwieCI6IjVsaEV1" +
+			"ZzV4SzR4QkRaMm5BYmF4THRhTGl2ODVieEo3ZVBkMWRrTzIzSFEiLCJ5IjoiNGFpSzcyc0JlVUFH" +
+			"a3YwVGFMc213b2tZVVl5TnhHc1M1RU1JS3dzTklLayJ9LCJub25jZSI6Im5vbmNlIn0"
+
+		// {"alg":"RS256","jwk":{"e":"AQAB","kty":"RSA","n":"..."},"nonce":"nonce"}
+		rs256phead = "eyJhbGciOiJSUzI1NiIsImp3ayI6eyJlIjoiQVFBQiIsImt0eSI6" +
+			"IlJTQSIsIm4iOiI0eGdaM2VSUGt3b1J2eTdxZVJVYm1NRGUwVi14" +
+			"SDllV0xkdTBpaGVlTGxybUQybXFXWGZQOUllU0tBcGJuMzRnOFR1" +
+			"QVM5ZzV6aHE4RUxRM2ttanItS1Y4NkdBTWdJNlZBY0dscTNRcnpw" +
+			"VENmXzMwQWI3LXphd3JmUmFGT05hMUh3RXpQWTFLSG5HVmt4SmM4" +
+			"NWdOa3dZSTlTWTJSSFh0dmxuM3pzNXdJVE5yZG9zcUVYZWFJa1ZZ" +
+			"QkVoYmhOdTU0cHAza3hvNlR1V0xpOWU2cFhlV2V0RXdtbEJ3dFda" +
+			"bFBvaWIyajNUeExCa3NLWmZveUZ5ZWszODBtSGdKQXVtUV9JMmZq" +
+			"ajk4Xzk3bWszaWhPWTRBZ1ZkQ0RqMXpfR0NvWmtHNVJxN25iQ0d5" +
+			"b3N5S1d5RFgwMFpzLW5OcVZob0xlSXZYQzRubldkSk1aNnJvZ3h5" +
+			"UVEifSwibm9uY2UiOiJub25jZSJ9"
+	)
+
+	tt := []struct {
+		alg, phead string
+		pub        crypto.PublicKey
+	}{
+		{"RS256", rs256phead, testKey.Public()},
+		{"ES256", es256phead, testKeyEC.Public()},
 	}
-	var head struct {
-		Alg   string
-		Nonce string
-		JWK   struct {
-			Crv string
-			Kty string
-			X   string
-			Y   string
-		} `json:"jwk"`
-	}
-	if err := json.Unmarshal(b, &head); err != nil {
-		t.Fatalf("jws.Protected: %v", err)
-	}
-	if head.Alg != "ES256" {
-		t.Errorf("head.Alg = %q; want ES256", head.Alg)
-	}
-	if head.Nonce != "nonce" {
-		t.Errorf("head.Nonce = %q; want nonce", head.Nonce)
-	}
-	if head.JWK.Crv != "P-256" {
-		t.Errorf("head.JWK.Crv = %q; want P-256", head.JWK.Crv)
-	}
-	if head.JWK.Kty != "EC" {
-		t.Errorf("head.JWK.Kty = %q; want EC", head.JWK.Kty)
-	}
-	if head.JWK.X != testKeyECPubX {
-		t.Errorf("head.JWK.X = %q; want %q", head.JWK.X, testKeyECPubX)
-	}
-	if head.JWK.Y != testKeyECPubY {
-		t.Errorf("head.JWK.Y = %q; want %q", head.JWK.Y, testKeyECPubY)
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.alg, func(t *testing.T) {
+			signer := &customTestSigner{
+				sig: []byte("testsig"),
+				pub: tc.pub,
+			}
+			b, err := jwsEncodeJSON(claims, signer, "nonce")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var j struct{ Protected, Payload, Signature string }
+			if err := json.Unmarshal(b, &j); err != nil {
+				t.Fatal(err)
+			}
+			if j.Protected != tc.phead {
+				t.Errorf("j.Protected = %q\nwant %q", j.Protected, tc.phead)
+			}
+			if j.Payload != payload {
+				t.Errorf("j.Payload = %q\nwant %q", j.Payload, payload)
+			}
+			if j.Signature != testsig {
+				t.Errorf("j.Signature = %q\nwant %q", j.Signature, testsig)
+			}
+		})
 	}
 }
 
