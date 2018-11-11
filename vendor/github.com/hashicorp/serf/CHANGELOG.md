@@ -2,7 +2,7 @@
 
 FEATURES:
 
-IMRPOVEMENTS:
+IMPROVEMENTS:
 
 * agent: Fixed a missing case where gossip would stop flowing to dead nodes for a short while. [GH-451]
 * agent: Uses the go-sockaddr library to look for private IP addresses, which prefers non-loopback private addresses over loopback ones when trying to automatically determine the advertise address. [GH-451]
@@ -11,8 +11,11 @@ IMRPOVEMENTS:
 * agent: Improved address comparison during conflict resolution. [GH-433]
 * agent: Updated memberlist to latest to pull several cleanups and fixes. [GH-491]
 * agent: Improved handling of leave intent messages to make sure they propagate and are processed correctly. [GH-510]
+* agent: Added CLI option to disable compression for debugging messages. [GH-529]
 * library: Moved close of shutdown channel until after network resorces are released. [GH-453]
 * library: Fixed several race conditions with QueryResponse [GH-460]
+* library: Made snapshot writing asyncronous and will less aggressive compaction on large clusters to avoid blocking message handler on disk IO [GH-524][GH-525]
+
 
 BUG FIXES:
 

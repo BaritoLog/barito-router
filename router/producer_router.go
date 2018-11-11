@@ -92,7 +92,8 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	h := NewProducerProxyHandler(url, *profile, profile.AppSecret)
 	proxy := &httputil.ReverseProxy{
-		Director: h.Director,
+		Director:     h.Director,
+		ErrorHandler: h.ErrorHandler,
 	}
 	proxy.ServeHTTP(w, req)
 }
