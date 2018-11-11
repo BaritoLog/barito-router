@@ -79,7 +79,7 @@ func (h producerProxyHandler) timberContext() TimberContext {
 }
 
 func (h producerProxyHandler) ErrorHandler(rw http.ResponseWriter, req *http.Request, err error) {
-	log.Errorf("%s", err)
+	log.Errorf("%s", err.Error())
 	rw.WriteHeader(http.StatusBadGateway)
 	rw.Write([]byte(err.Error()))
 }
