@@ -7,6 +7,6 @@ securing http frontends in golang.
 
 ## Examples and Documentation
 
-Documentation is available at: http://godoc.org/gopkg.in/cas.v1
+Documentation is available at: http://godoc.org/gopkg.in/cas.v2
 Examples are included in the documentation but are also available in the
 `_examples` directory.

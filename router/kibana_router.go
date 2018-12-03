@@ -8,7 +8,8 @@ import (
 
 	"github.com/BaritoLog/go-boilerplate/httpkit"
 	"github.com/hashicorp/consul/api"
-	cas "gopkg.in/cas.v2"
+
+	cas "github.com/BaritoLog/cas"
 )
 
 const (
@@ -103,7 +104,8 @@ func (r *kibanaRouter) Server() *http.Server {
 		casURL := r.casAddr
 		url, _ := url.Parse(casURL)
 		client := cas.NewClient(&cas.Options{
-			URL: url,
+			URL:        url,
+			CookiePath: "/",
 		})
 		return &http.Server{
 			Addr:    r.addr,

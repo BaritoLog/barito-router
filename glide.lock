@@ -1,8 +1,10 @@
-hash: 720619aae598d5b7f34915b21f703fca58c8aadee38f8bc7695d2d258869323b
-updated: 2018-11-11T18:31:40.636518+07:00
+hash: 6784151f18aae13aa07bd126dcb67ac73e9124c3eccf23c39f4ed1d7e26d613b
+updated: 2018-12-03T16:04:25.05162+07:00
 imports:
 - name: github.com/armon/go-metrics
   version: f0300d1749da6fa982027e449ec0c7a145510c3c
+- name: github.com/BaritoLog/cas
+  version: 10550f52ff85a9926188978e45e0d2fb0bb9eab3
 - name: github.com/BaritoLog/go-boilerplate
   version: 20c4c30023960bc27eb5e4662207a0bcaae04f11
   subpackages:
@@ -51,8 +53,6 @@ imports:
   subpackages:
   - unix
   - windows
-- name: gopkg.in/cas.v2
-  version: 1b87d011d1fc0430cdbdfe3115c9843ec33d9da6
 - name: gopkg.in/yaml.v2
   version: 5420a8b6744d3b0345ab293f6fcba19c978f1183
 testImports: []

@@ -5,6 +5,8 @@ import:
   - api
 - package: github.com/sirupsen/logrus
   version: v1.2.0
+- package: github.com/BaritoLog/cas
+  version: v2.1.1
 testImport:
 - package: github.com/BaritoLog/go-boilerplate
   subpackages:
