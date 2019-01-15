@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"github.com/BaritoLog/barito-router/appcontext"
 )
 
 const (
@@ -26,15 +27,17 @@ type producerRouter struct {
 	profileByAppGroupPath string
 
 	client *http.Client
+	appCtx *appcontext.AppContext
 }
 
-func NewProducerRouter(addr, marketUrl, profilePath string, profileByAppGroupPath string) ProducerRouter {
+func NewProducerRouter(addr, marketUrl, profilePath string, profileByAppGroupPath string, appCtx *appcontext.AppContext) ProducerRouter {
 	return &producerRouter{
 		addr:                  addr,
 		marketUrl:             marketUrl,
 		profilePath:           profilePath,
 		profileByAppGroupPath: profileByAppGroupPath,
 		client:                createClient(),
+		appCtx: 			   appCtx,
 	}
 }
 
@@ -61,13 +64,19 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if appSecret == "" {
 		if appGroupSecret != "" && appName != "" {
 			profile, err = fetchProfileByAppGroupSecret(p.client, p.marketUrl, p.profileByAppGroupPath, appGroupSecret, appName)
+			newRelicApp := p.appCtx.NewrelicApp()
+			txn := newRelicApp.StartTransaction(fmt.Sprintf("/%s", p.profileByAppGroupPath), w, req)
+			defer txn.End()
 		} else {
 			onNoSecret(w)
 			return
 		}
 	} else {
 		profile, err = fetchProfileByAppSecret(p.client, p.marketUrl, p.profilePath, appSecret)
-	}
+		newRelicApp := p.appCtx.NewrelicApp()
+		txn := newRelicApp.StartTransaction(fmt.Sprintf("/%s", p.profilePath), w, req)
+		defer txn.End()
+	}	
 	if err != nil {
 		onTradeError(w, err)
 		return

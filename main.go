@@ -7,6 +7,8 @@ import (
 
 	"github.com/BaritoLog/go-boilerplate/envkit"
 	"github.com/urfave/cli"
+	"github.com/newrelic/go-agent"
+	"github.com/BaritoLog/barito-router/appcontext"
 )
 
 const (
@@ -21,6 +23,8 @@ const (
 	EnvBaritoAuthorizeApiPath            = "BARITO_AUTHORIZE_API_PATH"
 	EnvBaritoProfileApiByClusternamePath = "BARITO_PROFILE_API_BY_CLUSTERNAME_PATH"
 	EnvCASAddress                        = "BARITO_CAS_ADDRESS"
+	EnvNewRelicAppName					 = "BARITO_NEW_RELIC_APP_NAME"
+	EnvNewRelicLicenseKey				 = "BARITO_NEW_RELIC_LICENSE_KEY"
 
 	DefaultProducerRouterAddress             = ":8081"
 	DefaultKibanaRouterAddress               = ":8083"
@@ -30,6 +34,8 @@ const (
 	DefaultBaritoAuthorizeApiPath            = "api/authorize"
 	DefaultBaritoProfileApiByClusternamePath = "api/profile_by_cluster_name"
 	DefaultCASAddress                        = ""
+	DefaultNewRelicAppName					 = "barito_router"
+	DefaultNewRelicLicenseKey				 = ""
 )
 
 var (
@@ -41,6 +47,8 @@ var (
 	authorizeApiPath            string
 	profileApiByClusternamePath string
 	casAddress                  string
+	newRelicAppName				string
+	newRelicLicenseKey			string
 )
 
 func main() {
@@ -76,6 +84,15 @@ func main() {
 		EnvCASAddress,
 		DefaultCASAddress,
 	)
+	newRelicAppName, _ = envkit.GetString(
+		EnvNewRelicAppName,
+		DefaultNewRelicAppName,
+	)
+	newRelicLicenseKey, _ = envkit.GetString(
+		EnvNewRelicLicenseKey,
+		DefaultNewRelicLicenseKey,
+	)
+	
 
 	fmt.Printf("%s=%s\n", EnvProducerRouterAddress, routerAddress)
 	fmt.Printf("%s=%s\n", EnvKibanaRouterAddress, kibanaRouterAddress)
@@ -85,6 +102,9 @@ func main() {
 	fmt.Printf("%s=%s\n", EnvBaritoAuthorizeApiPath, authorizeApiPath)
 	fmt.Printf("%s=%s\n\n", EnvBaritoProfileApiByClusternamePath, profileApiByClusternamePath)
 	fmt.Printf("%s=%s\n", EnvCASAddress, casAddress)
+
+	config := newrelic.NewConfig(newRelicAppName, newRelicLicenseKey)
+	appCtx := appcontext.NewAppContext(config)
 
 	app := cli.App{
 		Name:    Name,
@@ -101,13 +121,19 @@ func main() {
 				Name:      "producer",
 				ShortName: "p",
 				Usage:     "producer router",
-				Action:    CmdProducer,
+				Action:    func(c *cli.Context) error {
+					CmdProducer(appCtx)
+					return nil
+				},
 			},
 			{
 				Name:      "all",
 				ShortName: "a",
 				Usage:     "all router",
-				Action:    CmdAll,
+				Action:    func(c *cli.Context) error {
+					CmdAll(appCtx)
+					return nil
+				},
 			},
 		},
 	}
