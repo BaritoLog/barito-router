@@ -1,5 +1,5 @@
-hash: 720619aae598d5b7f34915b21f703fca58c8aadee38f8bc7695d2d258869323b
-updated: 2018-11-11T18:31:40.636518+07:00
+hash: e0ddd7364e93a457ce20c43f1bf852d35edfa5d518bee9c3c29841ec6df545a7
+updated: 2019-01-16T14:41:20.341025+07:00
 imports:
 - name: github.com/armon/go-metrics
   version: f0300d1749da6fa982027e449ec0c7a145510c3c
@@ -38,6 +38,15 @@ imports:
   version: ae18d6b8b3205b561c79e8e5f69bff09736185f4
 - name: github.com/mitchellh/mapstructure
   version: 3536a929edddb9a5b34bd6861dc4a9647cb459fe
+- name: github.com/newrelic/go-agent
+  version: a138039206f5b43233e37885306a4dfbdd20e5ce
+  subpackages:
+  - internal
+  - internal/cat
+  - internal/jsonx
+  - internal/logger
+  - internal/sysinfo
+  - internal/utilization
 - name: github.com/sirupsen/logrus
   version: bcd833dfe83d3cebad139e4a29ed79cb2318bf95
 - name: github.com/urfave/cli
