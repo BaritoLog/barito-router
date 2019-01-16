@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/instrumentation"
 )
@@ -14,8 +15,8 @@ const (
 	AppGroupSecretHeaderName = "X-App-Group-Secret"
 	AppNameHeaderName        = "X-App-Name"
 	KeyProducer              = "producer"
-	AppNoProfilePath		 = "api/no_profile"
-	AppNoSecretPath			 = "api/no_secret"
+	AppNoProfilePath         = "api/producer_no_profile"
+	AppNoSecretPath          = "api/no_secret"
 )
 
 type ProducerRouter interface {
@@ -40,7 +41,7 @@ func NewProducerRouter(addr, marketUrl, profilePath string, profileByAppGroupPat
 		profilePath:           profilePath,
 		profileByAppGroupPath: profileByAppGroupPath,
 		client:                createClient(),
-		appCtx: 			   appCtx,
+		appCtx:                appCtx,
 	}
 }
 
@@ -80,7 +81,7 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if profile != nil {
 			instrumentation.RunTransaction(p.appCtx.NewrelicApp(), p.profilePath, w, req)
 		}
-	}	
+	}
 	if err != nil {
 		onTradeError(w, err)
 		return

@@ -3,16 +3,15 @@ package main
 import (
 	"fmt"
 
+	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/router"
 	"github.com/BaritoLog/go-boilerplate/srvkit"
-	"github.com/urfave/cli"
-	"github.com/BaritoLog/barito-router/appcontext"
 )
 
-func CmdKibana(ctx *cli.Context) {
+func CmdKibana(appCtx *appcontext.AppContext) {
 	fmt.Println("::: Kibana Router :::")
 
-	go RunKibanaRouter()
+	go RunKibanaRouter(appCtx)
 	srvkit.GracefullShutdown(func() {
 		fmt.Println("Graceful Shutdown")
 	})
@@ -27,11 +26,11 @@ func CmdProducer(appCtx *appcontext.AppContext) {
 	})
 }
 
-func CmdAll(appCtx *appcontext.AppContext ) {
+func CmdAll(appCtx *appcontext.AppContext) {
 	fmt.Println("::: All Router :::")
 
 	go RunProducerRouter(appCtx)
-	go RunKibanaRouter()
+	go RunKibanaRouter(appCtx)
 	srvkit.GracefullShutdown(func() {
 		fmt.Println("Graceful Shutdown")
 	})
@@ -49,13 +48,14 @@ func RunProducerRouter(appCtx *appcontext.AppContext) {
 
 }
 
-func RunKibanaRouter() {
+func RunKibanaRouter(appCtx *appcontext.AppContext) {
 	kibanaRouter := router.NewKibanaRouter(
 		kibanaRouterAddress,
 		baritoMarketUrl,
 		profileApiByClusternamePath,
 		authorizeApiPath,
 		casAddress,
+		appCtx,
 	)
 	kibanaRouter.Server().ListenAndServe()
 }

@@ -122,7 +122,10 @@ func main() {
 				Name:      "kibana",
 				ShortName: "k",
 				Usage:     "kibana router",
-				Action:    CmdKibana,
+				Action: func(c *cli.Context) error {
+					CmdKibana(appCtx)
+					return nil
+				},
 			},
 			{
 				Name:      "producer",

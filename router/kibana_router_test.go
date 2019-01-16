@@ -6,16 +6,22 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/go-boilerplate/httpkit"
 	. "github.com/BaritoLog/go-boilerplate/testkit"
 	"github.com/hashicorp/consul/api"
+	newrelic "github.com/newrelic/go-agent"
 )
 
 func TestKibanaRouter_Ping(t *testing.T) {
 	marketServer := NewTestServer(http.StatusOK, []byte(``))
 	defer marketServer.Close()
 
-	router := NewKibanaRouter(":45500", marketServer.URL, "profilePath", "authorizePath", "")
+	config := newrelic.NewConfig("barito-router", "")
+	config.Enabled = false
+	appCtx := appcontext.NewAppContext(config)
+
+	router := NewKibanaRouter(":45500", marketServer.URL, "profilePath", "authorizePath", "", appCtx)
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost/ping", strings.NewReader(""))
 	resp := RecordResponse(router.ServeHTTP, req)
 
@@ -23,7 +29,11 @@ func TestKibanaRouter_Ping(t *testing.T) {
 }
 
 func TestKibanaRouter_FetchError(t *testing.T) {
-	router := NewKibanaRouter(":65500", "http://wrong-market", "profilePath", "authorizePath", "")
+	config := newrelic.NewConfig("barito-router", "")
+	config.Enabled = false
+	appCtx := appcontext.NewAppContext(config)
+
+	router := NewKibanaRouter(":65500", "http://wrong-market", "profilePath", "authorizePath", "", appCtx)
 
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost", strings.NewReader(""))
 	resp := RecordResponse(router.ServeHTTP, req)
@@ -35,7 +45,11 @@ func TestKibanaRouter_NoProfile(t *testing.T) {
 	marketServer := NewTestServer(http.StatusNotFound, []byte(``))
 	defer marketServer.Close()
 
-	router := NewKibanaRouter(":45500", marketServer.URL, "profilePath", "authorizePath", "")
+	config := newrelic.NewConfig("barito-router", "")
+	config.Enabled = false
+	appCtx := appcontext.NewAppContext(config)
+
+	router := NewKibanaRouter(":45500", marketServer.URL, "profilePath", "authorizePath", "", appCtx)
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost", strings.NewReader(""))
 	resp := RecordResponse(router.ServeHTTP, req)
 
@@ -48,7 +62,11 @@ func TestKibanaRouter_ConsulError(t *testing.T) {
 	})
 	defer marketServer.Close()
 
-	router := NewKibanaRouter(":45500", marketServer.URL, "profilePath", "authorizePath", "")
+	config := newrelic.NewConfig("barito-router", "")
+	config.Enabled = false
+	appCtx := appcontext.NewAppContext(config)
+
+	router := NewKibanaRouter(":45500", marketServer.URL, "profilePath", "authorizePath", "", appCtx)
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost", strings.NewReader(""))
 	resp := RecordResponse(router.ServeHTTP, req)
 
@@ -75,7 +93,11 @@ func TestKibanaRouter(t *testing.T) {
 	})
 	defer marketServer.Close()
 
-	router := NewKibanaRouter(":45500", marketServer.URL, "profilePath", "authorizePath", "")
+	config := newrelic.NewConfig("barito-router", "")
+	config.Enabled = false
+	appCtx := appcontext.NewAppContext(config)
+
+	router := NewKibanaRouter(":45500", marketServer.URL, "profilePath", "authorizePath", "", appCtx)
 
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost", strings.NewReader(""))
 
