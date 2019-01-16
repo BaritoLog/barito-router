@@ -25,6 +25,7 @@ const (
 	EnvCASAddress                        = "BARITO_CAS_ADDRESS"
 	EnvNewRelicAppName					 = "BARITO_NEW_RELIC_APP_NAME"
 	EnvNewRelicLicenseKey				 = "BARITO_NEW_RELIC_LICENSE_KEY"
+	EnvNewRelicEnabled				 	 = "BARITO_NEW_RELIC_ENABLED"
 
 	DefaultProducerRouterAddress             = ":8081"
 	DefaultKibanaRouterAddress               = ":8083"
@@ -36,6 +37,7 @@ const (
 	DefaultCASAddress                        = ""
 	DefaultNewRelicAppName					 = "barito_router"
 	DefaultNewRelicLicenseKey				 = ""
+	DefaultNewRelicEnabled				 	 = false
 )
 
 var (
@@ -49,6 +51,7 @@ var (
 	casAddress                  string
 	newRelicAppName				string
 	newRelicLicenseKey			string
+	newRelicEnabled 			bool
 )
 
 func main() {
@@ -92,6 +95,10 @@ func main() {
 		EnvNewRelicLicenseKey,
 		DefaultNewRelicLicenseKey,
 	)
+	newRelicEnabled, _ = envkit.GetBool(
+		EnvNewRelicEnabled,
+		DefaultNewRelicEnabled,
+	)
 	
 
 	fmt.Printf("%s=%s\n", EnvProducerRouterAddress, routerAddress)
@@ -104,6 +111,7 @@ func main() {
 	fmt.Printf("%s=%s\n", EnvCASAddress, casAddress)
 
 	config := newrelic.NewConfig(newRelicAppName, newRelicLicenseKey)
+	config.Enabled = newRelicEnabled
 	appCtx := appcontext.NewAppContext(config)
 
 	app := cli.App{
