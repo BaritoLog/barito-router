@@ -84,7 +84,7 @@ func testServerConfig(t *testing.T) (string, *Config) {
 	config.ServerHealthInterval = 50 * time.Millisecond
 	config.AutopilotInterval = 100 * time.Millisecond
 
-	config.Build = "0.8.0"
+	config.Build = "1.4.0"
 
 	config.CoordinateUpdatePeriod = 100 * time.Millisecond
 	config.LeaveDrainTime = 1 * time.Millisecond
@@ -506,6 +506,7 @@ func TestServer_JoinLAN_TLS(t *testing.T) {
 	}
 	defer os.RemoveAll(dir1)
 	defer s1.Shutdown()
+	testrpc.WaitForTestAgent(t, s1.RPC, "dc1")
 
 	dir2, conf2 := testServerConfig(t)
 	conf2.Bootstrap = false
@@ -521,6 +522,7 @@ func TestServer_JoinLAN_TLS(t *testing.T) {
 
 	// Try to join
 	joinLAN(t, s2, s1)
+	testrpc.WaitForTestAgent(t, s2.RPC, "dc1")
 
 	// Verify Raft has established a peer
 	retry.Run(t, func(r *retry.R) {

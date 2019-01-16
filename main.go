@@ -5,10 +5,10 @@ import (
 	"log"
 	"os"
 
-	"github.com/BaritoLog/go-boilerplate/envkit"
-	"github.com/urfave/cli"
-	"github.com/newrelic/go-agent"
 	"github.com/BaritoLog/barito-router/appcontext"
+	"github.com/BaritoLog/go-boilerplate/envkit"
+	newrelic "github.com/newrelic/go-agent"
+	"github.com/urfave/cli"
 )
 
 const (
@@ -23,9 +23,9 @@ const (
 	EnvBaritoAuthorizeApiPath            = "BARITO_AUTHORIZE_API_PATH"
 	EnvBaritoProfileApiByClusternamePath = "BARITO_PROFILE_API_BY_CLUSTERNAME_PATH"
 	EnvCASAddress                        = "BARITO_CAS_ADDRESS"
-	EnvNewRelicAppName					 = "BARITO_NEW_RELIC_APP_NAME"
-	EnvNewRelicLicenseKey				 = "BARITO_NEW_RELIC_LICENSE_KEY"
-	EnvNewRelicEnabled				 	 = "BARITO_NEW_RELIC_ENABLED"
+	EnvNewRelicAppName                   = "BARITO_NEW_RELIC_APP_NAME"
+	EnvNewRelicLicenseKey                = "BARITO_NEW_RELIC_LICENSE_KEY"
+	EnvNewRelicEnabled                   = "BARITO_NEW_RELIC_ENABLED"
 
 	DefaultProducerRouterAddress             = ":8081"
 	DefaultKibanaRouterAddress               = ":8083"
@@ -35,9 +35,9 @@ const (
 	DefaultBaritoAuthorizeApiPath            = "api/authorize"
 	DefaultBaritoProfileApiByClusternamePath = "api/profile_by_cluster_name"
 	DefaultCASAddress                        = ""
-	DefaultNewRelicAppName					 = "barito_router"
-	DefaultNewRelicLicenseKey				 = ""
-	DefaultNewRelicEnabled				 	 = false
+	DefaultNewRelicAppName                   = "barito_router"
+	DefaultNewRelicLicenseKey                = ""
+	DefaultNewRelicEnabled                   = false
 )
 
 var (
@@ -49,9 +49,9 @@ var (
 	authorizeApiPath            string
 	profileApiByClusternamePath string
 	casAddress                  string
-	newRelicAppName				string
-	newRelicLicenseKey			string
-	newRelicEnabled 			bool
+	newRelicAppName             string
+	newRelicLicenseKey          string
+	newRelicEnabled             bool
 )
 
 func main() {
@@ -99,7 +99,6 @@ func main() {
 		EnvNewRelicEnabled,
 		DefaultNewRelicEnabled,
 	)
-	
 
 	fmt.Printf("%s=%s\n", EnvProducerRouterAddress, routerAddress)
 	fmt.Printf("%s=%s\n", EnvKibanaRouterAddress, kibanaRouterAddress)
@@ -129,7 +128,7 @@ func main() {
 				Name:      "producer",
 				ShortName: "p",
 				Usage:     "producer router",
-				Action:    func(c *cli.Context) error {
+				Action: func(c *cli.Context) error {
 					CmdProducer(appCtx)
 					return nil
 				},
@@ -138,7 +137,7 @@ func main() {
 				Name:      "all",
 				ShortName: "a",
 				Usage:     "all router",
-				Action:    func(c *cli.Context) error {
+				Action: func(c *cli.Context) error {
 					CmdAll(appCtx)
 					return nil
 				},

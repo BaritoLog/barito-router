@@ -933,6 +933,7 @@ func TestCatalog_ListNodes_StaleRead(t *testing.T) {
 	defer s1.Shutdown()
 	codec1 := rpcClient(t, s1)
 	defer codec1.Close()
+	testrpc.WaitForTestAgent(t, s1.RPC, "dc1")
 
 	dir2, s2 := testServerDCBootstrap(t, "dc1", false)
 	defer os.RemoveAll(dir2)
@@ -980,7 +981,7 @@ func TestCatalog_ListNodes_StaleRead(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Fatalf("failed to find foo")
+		t.Fatalf("failed to find foo in %#v", out.Nodes)
 	}
 
 	if out.QueryMeta.LastContact == 0 {
@@ -1634,6 +1635,85 @@ func TestCatalog_ListServiceNodes(t *testing.T) {
 	}
 }
 
+// TestCatalog_ListServiceNodes_ServiceTags_V1_2_3Compat asserts the compatibility between <=v1.2.3 agents and >=v1.3.0 servers
+// see https://github.com/hashicorp/consul/issues/4922
+func TestCatalog_ListServiceNodes_ServiceTags_V1_2_3Compat(t *testing.T) {
+	t.Parallel()
+	dir1, s1 := testServer(t)
+	defer os.RemoveAll(dir1)
+	defer s1.Shutdown()
+	codec := rpcClient(t, s1)
+	defer codec.Close()
+
+	testrpc.WaitForTestAgent(t, s1.RPC, "dc1")
+
+	err := s1.fsm.State().EnsureNode(1, &structs.Node{Node: "foo", Address: "127.0.0.1"})
+	require.NoError(t, err)
+
+	// register two service instances with different tags
+	err = s1.fsm.State().EnsureService(2, "foo", &structs.NodeService{ID: "db1", Service: "db", Tags: []string{"primary"}, Address: "127.0.0.1", Port: 5000})
+	require.NoError(t, err)
+	err = s1.fsm.State().EnsureService(2, "foo", &structs.NodeService{ID: "db2", Service: "db", Tags: []string{"secondary"}, Address: "127.0.0.1", Port: 5001})
+	require.NoError(t, err)
+
+	// DEPRECATED (singular-service-tag) - remove this when backwards RPC compat
+	// with 1.2.x is not required.
+	// make a request with the <=1.2.3 ServiceTag tag field (vs ServiceTags)
+	args := structs.ServiceSpecificRequest{
+		Datacenter:  "dc1",
+		ServiceName: "db",
+		ServiceTag:  "primary",
+		TagFilter:   true,
+	}
+	var out structs.IndexedServiceNodes
+	err = msgpackrpc.CallWithCodec(codec, "Catalog.ServiceNodes", &args, &out)
+	require.NoError(t, err)
+
+	// nodes should be filtered, even when using the old ServiceTag field
+	require.Equal(t, 1, len(out.ServiceNodes))
+	require.Equal(t, "db1", out.ServiceNodes[0].ServiceID)
+
+	// DEPRECATED (singular-service-tag) - remove this when backwards RPC compat
+	// with 1.2.x is not required.
+	// test with the other tag
+	args = structs.ServiceSpecificRequest{
+		Datacenter:  "dc1",
+		ServiceName: "db",
+		ServiceTag:  "secondary",
+		TagFilter:   true,
+	}
+	out = structs.IndexedServiceNodes{}
+	err = msgpackrpc.CallWithCodec(codec, "Catalog.ServiceNodes", &args, &out)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(out.ServiceNodes))
+	require.Equal(t, "db2", out.ServiceNodes[0].ServiceID)
+
+	// no tag, both instances
+	args = structs.ServiceSpecificRequest{
+		Datacenter:  "dc1",
+		ServiceName: "db",
+	}
+	out = structs.IndexedServiceNodes{}
+	err = msgpackrpc.CallWithCodec(codec, "Catalog.ServiceNodes", &args, &out)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(out.ServiceNodes))
+
+	// DEPRECATED (singular-service-tag) - remove this when backwards RPC compat
+	// with 1.2.x is not required.
+	// when both ServiceTag and ServiceTags fields are populated, use ServiceTag
+	args = structs.ServiceSpecificRequest{
+		Datacenter:  "dc1",
+		ServiceName: "db",
+		ServiceTag:  "primary",
+		ServiceTags: []string{"secondary"},
+		TagFilter:   true,
+	}
+	out = structs.IndexedServiceNodes{}
+	err = msgpackrpc.CallWithCodec(codec, "Catalog.ServiceNodes", &args, &out)
+	require.NoError(t, err)
+	require.Equal(t, "db1", out.ServiceNodes[0].ServiceID)
+}
+
 func TestCatalog_ListServiceNodes_NodeMetaFilter(t *testing.T) {
 	t.Parallel()
 	dir1, s1 := testServer(t)
@@ -2081,6 +2161,7 @@ func TestCatalog_NodeServices(t *testing.T) {
 	defer s1.Shutdown()
 	codec := rpcClient(t, s1)
 	defer codec.Close()
+	testrpc.WaitForTestAgent(t, s1.RPC, "dc1")
 
 	args := structs.NodeSpecificRequest{
 		Datacenter: "dc1",
@@ -2134,7 +2215,7 @@ func TestCatalog_NodeServices_ConnectProxy(t *testing.T) {
 	codec := rpcClient(t, s1)
 	defer codec.Close()
 
-	testrpc.WaitForLeader(t, s1.RPC, "dc1")
+	testrpc.WaitForTestAgent(t, s1.RPC, "dc1")
 
 	// Register the service
 	args := structs.TestRegisterRequestProxy(t)
@@ -2165,7 +2246,7 @@ func TestCatalog_NodeServices_ConnectNative(t *testing.T) {
 	codec := rpcClient(t, s1)
 	defer codec.Close()
 
-	testrpc.WaitForLeader(t, s1.RPC, "dc1")
+	testrpc.WaitForTestAgent(t, s1.RPC, "dc1")
 
 	// Register the service
 	args := structs.TestRegisterRequest(t)
@@ -2313,6 +2394,7 @@ func TestCatalog_ListServices_FilterACL(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer srv.Shutdown()
 	defer codec.Close()
+	testrpc.WaitForTestAgent(t, srv.RPC, "dc1")
 
 	opt := structs.DCSpecificRequest{
 		Datacenter:   "dc1",
@@ -2394,7 +2476,7 @@ func TestCatalog_NodeServices_ACLDeny(t *testing.T) {
 	codec := rpcClient(t, s1)
 	defer codec.Close()
 
-	testrpc.WaitForLeader(t, s1.RPC, "dc1")
+	testrpc.WaitForTestAgent(t, s1.RPC, "dc1")
 
 	// Prior to version 8, the node policy should be ignored.
 	args := structs.NodeSpecificRequest{
@@ -2463,6 +2545,7 @@ func TestCatalog_NodeServices_FilterACL(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer srv.Shutdown()
 	defer codec.Close()
+	testrpc.WaitForTestAgent(t, srv.RPC, "dc1")
 
 	opt := structs.NodeSpecificRequest{
 		Datacenter:   "dc1",
