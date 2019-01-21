@@ -1,5 +1,9 @@
 # Changelog
 
+**0.5.3**
+
+- Add support for newrelic
+
 **0.5.2**
 
 - Log unsuccessful request and return the error message back to the requester
