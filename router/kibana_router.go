@@ -6,13 +6,16 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/BaritoLog/barito-router/appcontext"
+	"github.com/BaritoLog/barito-router/instrumentation"
 	"github.com/BaritoLog/go-boilerplate/httpkit"
 	"github.com/hashicorp/consul/api"
 	cas "gopkg.in/cas.v2"
 )
 
 const (
-	KeyKibana = "kibana"
+	KeyKibana              = "kibana"
+	AppKibanaNoProfilePath = "api/kibana_no_profile"
 )
 
 type KibanaRouter interface {
@@ -28,10 +31,11 @@ type kibanaRouter struct {
 	casAddr       string
 
 	client *http.Client
+	appCtx *appcontext.AppContext
 }
 
 // NewKibanaRouter
-func NewKibanaRouter(addr, marketUrl, profilePath, authorizePath, casAddr string) KibanaRouter {
+func NewKibanaRouter(addr, marketUrl, profilePath, authorizePath, casAddr string, appCtx *appcontext.AppContext) KibanaRouter {
 	return &kibanaRouter{
 		addr:          addr,
 		marketUrl:     marketUrl,
@@ -39,6 +43,7 @@ func NewKibanaRouter(addr, marketUrl, profilePath, authorizePath, casAddr string
 		authorizePath: authorizePath,
 		casAddr:       casAddr,
 		client:        createClient(),
+		appCtx:        appCtx,
 	}
 }
 
@@ -62,6 +67,9 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	clusterName := KibanaGetClustername(req)
 	profile, err := fetchProfileByClusterName(r.client, r.marketUrl, r.profilePath, clusterName)
+	if profile != nil {
+		instrumentation.RunTransaction(r.appCtx.NewRelicApp(), r.profilePath, w, req)
+	}
 	if err != nil {
 		onTradeError(w, err)
 		return
@@ -69,6 +77,7 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if profile == nil {
 		onNoProfile(w)
+		instrumentation.RunTransaction(r.appCtx.NewRelicApp(), AppKibanaNoProfilePath, w, req)
 		return
 	}
 

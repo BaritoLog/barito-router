@@ -198,15 +198,21 @@ will exit with an error at startup.
   in the "consul." domain. This flag can be used to change that domain. All queries in this domain
   are assumed to be handled by Consul and will not be recursively resolved.
 
-* <a name="_enable_script_checks"></a><a href="#_enable_script_checks">`-enable-script-checks`</a> This
-  controls whether [health checks that execute scripts](/docs/agent/checks.html) are enabled on
-  this agent, and defaults to `false` so operators must opt-in to allowing these. If enabled, it is recommended
-  to [enable ACLs](/docs/guides/acl.html) as well to control which users are allowed to register new checks to
-  execute scripts. This was added in Consul 0.9.0.
+* <a name="_enable_script_checks"></a><a
+  href="#_enable_script_checks">`-enable-script-checks`</a> This controls
+  whether [health checks that execute scripts](/docs/agent/checks.html) are
+  enabled on this agent, and defaults to `false` so operators must opt-in to
+  allowing these. This was added in Consul 0.9.0.
+
+    ~> **Security Warning:** Enabling script checks in some configurations may
+  introduce a remote execution vulnerability which is known to be targeted by
+  malware. We strongly recommend `-enable-local-script-checks` instead. See [this
+  blog post](https://www.hashicorp.com/blog/protecting-consul-from-rce-risk-in-specific-configurations)
+  for more details.
 
 * <a name="_enable_local_script_checks"></a><a href="#_enable_local_script_checks">`-enable-local-script-checks`</a>
   Like [`enable_script_checks`](#_enable_script_checks), but only enable them when they are defined in the local
-  config files. Script checks defined in HTTP API registratrions will still not be allowed.
+  configuration files. Script checks defined in HTTP API registrations will still not be allowed.
 
 * <a name="_encrypt"></a><a href="#_encrypt">`-encrypt`</a> - Specifies the secret key to
   use for encryption of Consul
@@ -590,8 +596,10 @@ default will automatically work with some tooling.
         The ACL token used to authorize secondary datacenters with the primary datacenter for replication
         operations. This token is required for servers outside the [`primary_datacenter`](#primary_datacenter) when
         ACLs are enabled. This token may be provided later using the [agent token API](/api/agent.html#update-acl-tokens)
-        on each server. If the `replication` token is set in the config. This token must have at least "read" permissions
-        on ACL data but if ACL token replication is enabled then it must have "write" permissions.
+        on each server. This token must have at least "read" permissions on ACL data but if ACL
+        token replication is enabled then it must have "write" permissions. This also enables
+        Connect replication in Consul Enterprise, for which the token will require both operator
+        "write" and intention "read" permissions for replicating CA and Intention data.
 
 * <a name="acl_datacenter"></a><a href="#acl_datacenter">`acl_datacenter`</a> - **This field is
   deprecated in Consul 1.4.0. See the [`primary_datacenter`](#primary_datacenter) field instead.**
@@ -865,8 +873,6 @@ default will automatically work with some tooling.
 
     * <a name="connect_proxy_defaults"></a><a href="#connect_proxy_defaults">`proxy_defaults`</a> [**Deprecated**](/docs/connect/proxies/managed-deprecated.html) This object configures the default proxy settings for service definitions with [managed proxies](/docs/connect/proxies/managed-deprecated.html) (now deprecated). It accepts the fields `exec_mode`, `daemon_command`, and `config`. These are used as default values for the respective fields in the service definition.
 
-    * <a name="replication_token"></a><a href="#replication_token">`replication_token`</a> When provided, this will enable Connect replication using this token to retrieve and replicate the Intentions to the non-authoritative local datacenter.
-
 * <a name="datacenter"></a><a href="#datacenter">`datacenter`</a> Equivalent to the
   [`-datacenter` command-line flag](#_datacenter).
 
@@ -1026,7 +1032,7 @@ default will automatically work with some tooling.
 
 * <a name="enable_agent_tls_for_checks"></a><a href="#enable_agent_tls_for_checks">`enable_agent_tls_for_checks`</a>
   When set, uses a subset of the agent's TLS configuration (`key_file`, `cert_file`, `ca_file`, `ca_path`, and
-  `server_name`) to set up the HTTP client for HTTP health checks. This allows services requiring 2-way TLS to
+  `server_name`) to set up the client for HTTP or gRPC health checks. This allows services requiring 2-way TLS to
   be checked using the agent's credentials. This was added in Consul 1.0.1 and defaults to false.
 
 * <a name="enable_debug"></a><a href="#enable_debug">`enable_debug`</a> When set, enables some
@@ -1035,6 +1041,15 @@ default will automatically work with some tooling.
 
 * <a name="enable_script_checks"></a><a href="#enable_script_checks">`enable_script_checks`</a> Equivalent to the
   [`-enable-script-checks` command-line flag](#_enable_script_checks).
+
+    ~> **Security Warning:** Enabling script checks in some configurations may
+  introduce a remote execution vulnerability which is known to be targeted by
+  malware. We strongly recommend `enable_local_script_checks` instead. See [this
+  blog post](https://www.hashicorp.com/blog/protecting-consul-from-rce-risk-in-specific-configurations)
+  for more details.
+
+* <a name="enable_local_script_checks"></a><a href="#enable_local_script_checks">`enable_local_script_checks`</a> Equivalent to the
+  [`-enable-local-script-checks` command-line flag](#_enable_local_script_checks).
 
 * <a name="enable_syslog"></a><a href="#enable_syslog">`enable_syslog`</a> Equivalent to
   the [`-syslog` command-line flag](#_syslog).
@@ -1164,6 +1179,14 @@ default will automatically work with some tooling.
               }
             }
           ```
+    * <a name="allow_write_http_from"></a><a href="#allow_write_http_from">`allow_write_http_from`</a>
+      This object is a list of networks in CIDR notation (eg "127.0.0.0/8") that are allowed
+      to call the agent write endpoints. It defaults to an empty list, which means all networks
+      are allowed.
+      This is used to make the agent read-only, except for select ip ranges.
+      * To block write calls from anywhere, use `[ "255.255.255.255/32" ]`.
+      * To only allow write calls from localhost, use `[ "127.0.0.0/8" ]`
+      * To only allow specific IPs, use `[ "10.0.0.1/32", "10.0.0.2/32" ]`
 
 * <a name="leave_on_terminate"></a><a href="#leave_on_terminate">`leave_on_terminate`</a> If
   enabled, when the agent receives a TERM signal, it will send a `Leave` message to the rest
@@ -1580,19 +1603,35 @@ default will automatically work with some tooling.
   default, HTTPS is disabled.
 
 * <a name="verify_outgoing"></a><a href="#verify_outgoing">`verify_outgoing`</a> - If set to
-  true, Consul requires that all outgoing connections
+  true, Consul requires that all outgoing connections from this agent
   make use of TLS and that the server provides a certificate that is signed by
   a Certificate Authority from the [`ca_file`](#ca_file) or [`ca_path`](#ca_path). By default,
   this is false, and Consul will not make use of TLS for outgoing connections. This applies to clients
   and servers as both will make outgoing connections.
 
-* <a name="verify_server_hostname"></a><a href="#verify_server_hostname">`verify_server_hostname`</a> - If set to
-  true, Consul verifies for all outgoing connections that the TLS certificate presented by the servers
-  matches "server.&lt;datacenter&gt;.&lt;domain&gt;" hostname. This implies `verify_outgoing`.
-  By default, this is false, and Consul does not verify the hostname of the certificate, only
-  that it is signed by a trusted CA. This setting is important to prevent a compromised
-  client from being restarted as a server, and thus being able to perform a MITM attack
-  or to be added as a Raft peer. This is new in 0.5.1.
+    ~> **Security Note:** Note that servers that specify `verify_outgoing =
+    true` will always talk to other servers over TLS, but they still _accept_
+    non-TLS connections to allow for a transition of all clients to TLS.
+    Currently the only way to enforce that no client can communicate with a
+    server unencrypted is to also enable `verify_incoming` which requires client
+    certificates too.
+
+* <a name="verify_server_hostname"></a><a
+  href="#verify_server_hostname">`verify_server_hostname`</a> - If set to true,
+  Consul verifies for all outgoing TLS connections that the TLS certificate
+  presented by the servers matches "server.&lt;datacenter&gt;.&lt;domain&gt;"
+  hostname. By default, this is false, and Consul does not verify the hostname
+  of the certificate, only that it is signed by a trusted CA. This setting is
+  _critical_ to prevent a compromised client from being restarted as a server
+  and having all cluster state _including all ACL tokens and Connect CA root keys_
+  replicated to it. This is new in 0.5.1.
+
+    ~> **Security Note:** From versions 0.5.1 to 1.4.0, due to a bug, setting
+  this flag alone _does not_ imply `verify_outgoing` and leaves client to server
+  and server to server RPCs unencrypted despite the documentation stating otherwise. See
+  [CVE-2018-19653](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-19653)
+  for more details. For those versions you **must also set `verify_outgoing =
+  true`** to ensure encrypted RPC connections.
 
 * <a name="watches"></a><a href="#watches">`watches`</a> - Watches is a list of watch
   specifications which allow an external process to be automatically invoked when a

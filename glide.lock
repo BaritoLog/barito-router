@@ -1,10 +1,10 @@
-hash: 720619aae598d5b7f34915b21f703fca58c8aadee38f8bc7695d2d258869323b
-updated: 2018-11-11T18:31:40.636518+07:00
+hash: e0ddd7364e93a457ce20c43f1bf852d35edfa5d518bee9c3c29841ec6df545a7
+updated: 2019-01-16T15:17:35.773282+07:00
 imports:
 - name: github.com/armon/go-metrics
   version: f0300d1749da6fa982027e449ec0c7a145510c3c
 - name: github.com/BaritoLog/go-boilerplate
-  version: 20c4c30023960bc27eb5e4662207a0bcaae04f11
+  version: b95aeda121e9f68aa8c81c7adcb98d82e6ced7a5
   subpackages:
   - envkit
   - httpkit
@@ -15,7 +15,7 @@ imports:
 - name: github.com/golang/glog
   version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
 - name: github.com/hashicorp/consul
-  version: 925e9ae26291315550f6c2d6a042f8fea19a718f
+  version: 59c010eb3b9249c7e303166d7189c6b4ff1e7d52
   subpackages:
   - api
 - name: github.com/hashicorp/go-cleanhttp
@@ -29,7 +29,7 @@ imports:
   subpackages:
   - simplelru
 - name: github.com/hashicorp/serf
-  version: 75714e08b2cf6cc7409a3f5a49e20293528acf69
+  version: 239fdb9f44a485dc18bdf99ae26a3e7548bc4a04
   subpackages:
   - coordinate
 - name: github.com/konsorten/go-windows-terminal-sequences
@@ -38,21 +38,30 @@ imports:
   version: ae18d6b8b3205b561c79e8e5f69bff09736185f4
 - name: github.com/mitchellh/mapstructure
   version: 3536a929edddb9a5b34bd6861dc4a9647cb459fe
+- name: github.com/newrelic/go-agent
+  version: a138039206f5b43233e37885306a4dfbdd20e5ce
+  subpackages:
+  - internal
+  - internal/cat
+  - internal/jsonx
+  - internal/logger
+  - internal/sysinfo
+  - internal/utilization
 - name: github.com/sirupsen/logrus
   version: bcd833dfe83d3cebad139e4a29ed79cb2318bf95
 - name: github.com/urfave/cli
   version: b67dcf995b6a7b7f14fad5fcb7cc5441b05e814b
 - name: golang.org/x/crypto
-  version: e4dc69e5b2fd71dcaf8bd5d054eb936deb78d1fa
+  version: ff983b9c42bc9fbf91556e191cc8efb585c16908
   subpackages:
   - ssh/terminal
 - name: golang.org/x/sys
-  version: 66b7b1311ac80bbafcd2daeef9a5e6e2cd1e2399
+  version: a457fd036447854c0c02e89ea439481bdcf941a2
   subpackages:
   - unix
   - windows
 - name: gopkg.in/cas.v2
   version: 1b87d011d1fc0430cdbdfe3115c9843ec33d9da6
 - name: gopkg.in/yaml.v2
-  version: 5420a8b6744d3b0345ab293f6fcba19c978f1183
+  version: 51d6538a90f86fe93ac480b35f37b2be17fef232
 testImports: []

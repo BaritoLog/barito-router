@@ -267,18 +267,19 @@ func (s *snapshot) persistPreparedQueries(sink raft.SnapshotSink,
 
 func (s *snapshot) persistAutopilot(sink raft.SnapshotSink,
 	encoder *codec.Encoder) error {
-	autopilot, err := s.state.Autopilot()
+	config, err := s.state.Autopilot()
 	if err != nil {
 		return err
 	}
-	if autopilot == nil {
+	// Make sure we don't write a nil config out to a snapshot.
+	if config == nil {
 		return nil
 	}
 
 	if _, err := sink.Write([]byte{byte(structs.AutopilotRequestType)}); err != nil {
 		return err
 	}
-	if err := encoder.Encode(autopilot); err != nil {
+	if err := encoder.Encode(config); err != nil {
 		return err
 	}
 	return nil
@@ -308,6 +309,10 @@ func (s *snapshot) persistConnectCAConfig(sink raft.SnapshotSink,
 	config, err := s.state.CAConfig()
 	if err != nil {
 		return err
+	}
+	// Make sure we don't write a nil config out to a snapshot.
+	if config == nil {
+		return nil
 	}
 
 	if _, err := sink.Write([]byte{byte(structs.ConnectCAConfigType)}); err != nil {
@@ -541,6 +546,15 @@ func restoreToken(header *snapshotHeader, restore *state.Restore, decoder *codec
 	if err := decoder.Decode(&req); err != nil {
 		return err
 	}
+
+	// DEPRECATED (ACL-Legacy-Compat)
+	if req.Rules != "" {
+		// When we restore a snapshot we may have to correct old HCL in legacy
+		// tokens to prevent the in-memory representation from using an older
+		// syntax.
+		structs.SanitizeLegacyACLToken(&req)
+	}
+
 	return restore.ACLToken(&req)
 }
 
