@@ -69,17 +69,17 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if appGroupSecret != "" && appName != "" {
 			profile, err = fetchProfileByAppGroupSecret(p.client, p.marketUrl, p.profileByAppGroupPath, appGroupSecret, appName)
 			if profile != nil {
-				instrumentation.RunTransaction(p.appCtx.NewrelicApp(), p.profileByAppGroupPath, w, req)
+				instrumentation.RunTransaction(p.appCtx.NewRelicApp(), p.profileByAppGroupPath, w, req)
 			}
 		} else {
 			onNoSecret(w)
-			instrumentation.RunTransaction(p.appCtx.NewrelicApp(), AppNoSecretPath, w, req)
+			instrumentation.RunTransaction(p.appCtx.NewRelicApp(), AppNoSecretPath, w, req)
 			return
 		}
 	} else {
 		profile, err = fetchProfileByAppSecret(p.client, p.marketUrl, p.profilePath, appSecret)
 		if profile != nil {
-			instrumentation.RunTransaction(p.appCtx.NewrelicApp(), p.profilePath, w, req)
+			instrumentation.RunTransaction(p.appCtx.NewRelicApp(), p.profilePath, w, req)
 		}
 	}
 	if err != nil {
@@ -89,7 +89,7 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if profile == nil {
 		onNoProfile(w)
-		instrumentation.RunTransaction(p.appCtx.NewrelicApp(), AppNoProfilePath, w, req)
+		instrumentation.RunTransaction(p.appCtx.NewRelicApp(), AppNoProfilePath, w, req)
 
 		return
 	}

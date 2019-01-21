@@ -7,8 +7,8 @@ import (
 )
 
 type AppContext struct {
-	newrelicApp newrelic.Application
-	config      newrelic.Config
+	newRelicApp    newrelic.Application
+	newRelicConfig newrelic.Config
 }
 
 type appContextError struct {
@@ -21,15 +21,15 @@ func panicIfError(err error, werr error) {
 	}
 }
 
-func NewAppContext(config newrelic.Config) *AppContext {
-	newrelicApp, err := newrelic.NewApplication(config)
+func NewAppContext(newRelicConfig newrelic.Config) *AppContext {
+	newRelicApp, err := newrelic.NewApplication(newRelicConfig)
 	panicIfError(err, fmt.Errorf("Unable to initiate NewRelic: %v", err))
 	return &AppContext{
-		newrelicApp: newrelicApp,
-		config:      config,
+		newRelicApp:    newRelicApp,
+		newRelicConfig: newRelicConfig,
 	}
 }
 
-func (s *AppContext) NewrelicApp() newrelic.Application {
-	return s.newrelicApp
+func (s *AppContext) NewRelicApp() newrelic.Application {
+	return s.newRelicApp
 }

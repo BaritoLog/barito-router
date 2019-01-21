@@ -109,9 +109,9 @@ func main() {
 	fmt.Printf("%s=%s\n\n", EnvBaritoProfileApiByClusternamePath, profileApiByClusternamePath)
 	fmt.Printf("%s=%s\n", EnvCASAddress, casAddress)
 
-	config := newrelic.NewConfig(newRelicAppName, newRelicLicenseKey)
-	config.Enabled = newRelicEnabled
-	appCtx := appcontext.NewAppContext(config)
+	newRelicConfig := newrelic.NewConfig(newRelicAppName, newRelicLicenseKey)
+	newRelicConfig.Enabled = newRelicEnabled
+	appCtx := appcontext.NewAppContext(newRelicConfig)
 
 	app := cli.App{
 		Name:    Name,

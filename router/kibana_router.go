@@ -68,7 +68,7 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	clusterName := KibanaGetClustername(req)
 	profile, err := fetchProfileByClusterName(r.client, r.marketUrl, r.profilePath, clusterName)
 	if profile != nil {
-		instrumentation.RunTransaction(r.appCtx.NewrelicApp(), r.profilePath, w, req)
+		instrumentation.RunTransaction(r.appCtx.NewRelicApp(), r.profilePath, w, req)
 	}
 	if err != nil {
 		onTradeError(w, err)
@@ -77,7 +77,7 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if profile == nil {
 		onNoProfile(w)
-		instrumentation.RunTransaction(r.appCtx.NewrelicApp(), AppKibanaNoProfilePath, w, req)
+		instrumentation.RunTransaction(r.appCtx.NewRelicApp(), AppKibanaNoProfilePath, w, req)
 		return
 	}
 
