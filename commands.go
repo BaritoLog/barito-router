@@ -52,6 +52,7 @@ func RunKibanaRouter(appCtx *appcontext.AppContext) {
 	kibanaRouter := router.NewKibanaRouter(
 		kibanaRouterAddress,
 		baritoMarketUrl,
+		baritoMarketAccessToken,
 		profileApiByClusternamePath,
 		authorizeApiPath,
 		casAddress,

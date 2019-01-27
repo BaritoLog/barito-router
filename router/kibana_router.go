@@ -14,7 +14,10 @@ import (
 )
 
 const (
-	KeyKibana              = "kibana"
+	// KeyKibana is meta service name of kibana
+	KeyKibana = "kibana"
+
+	// AppKibanaNoProfilePath is path to register when server returned no profile
 	AppKibanaNoProfilePath = "api/kibana_no_profile"
 )
 
@@ -26,6 +29,7 @@ type KibanaRouter interface {
 type kibanaRouter struct {
 	addr          string
 	marketUrl     string
+	accessToken   string
 	profilePath   string
 	authorizePath string
 	casAddr       string
@@ -34,11 +38,12 @@ type kibanaRouter struct {
 	appCtx *appcontext.AppContext
 }
 
-// NewKibanaRouter
-func NewKibanaRouter(addr, marketUrl, profilePath, authorizePath, casAddr string, appCtx *appcontext.AppContext) KibanaRouter {
+// NewKibanaRouter is a function for creating new kibana router
+func NewKibanaRouter(addr, marketUrl, accessToken, profilePath, authorizePath, casAddr string, appCtx *appcontext.AppContext) KibanaRouter {
 	return &kibanaRouter{
 		addr:          addr,
 		marketUrl:     marketUrl,
+		accessToken:   accessToken,
 		profilePath:   profilePath,
 		authorizePath: authorizePath,
 		casAddr:       casAddr,
@@ -66,7 +71,7 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	clusterName := KibanaGetClustername(req)
-	profile, err := fetchProfileByClusterName(r.client, r.marketUrl, r.profilePath, clusterName)
+	profile, err := fetchProfileByClusterName(r.client, r.marketUrl, r.accessToken, r.profilePath, clusterName)
 	if profile != nil {
 		instrumentation.RunTransaction(r.appCtx.NewRelicApp(), r.profilePath, w, req)
 	}

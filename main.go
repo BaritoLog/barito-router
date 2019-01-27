@@ -18,6 +18,7 @@ const (
 	EnvProducerRouterAddress             = "BARITO_PRODUCER_ROUTER"
 	EnvKibanaRouterAddress               = "BARITO_KIBANA_ROUTER"
 	EnvBaritoMarketUrl                   = "BARITO_MARKET_URL"
+	EnvBaritoMarketAccessToken           = "BARITO_MARKET_ACCESS_TOKEN"
 	EnvBaritoProfileApiPath              = "BARITO_PROFILE_API_PATH"
 	EnvBaritoProfileApiByAppGroupPath    = "BARITO_PROFILE_API_BY_APP_GROUP_PATH"
 	EnvBaritoAuthorizeApiPath            = "BARITO_AUTHORIZE_API_PATH"
@@ -30,6 +31,7 @@ const (
 	DefaultProducerRouterAddress             = ":8081"
 	DefaultKibanaRouterAddress               = ":8083"
 	DefaultBaritoMarketUrl                   = "http://localhost:3000"
+	DefaultBaritoMarketAccessToken           = ""
 	DefaultBaritoProfileApiPath              = "api/profile"
 	DefaultBaritoProfileApiByAppGroupPath    = "api/profile_by_app_group"
 	DefaultBaritoAuthorizeApiPath            = "api/authorize"
@@ -44,6 +46,7 @@ var (
 	routerAddress               string
 	kibanaRouterAddress         string
 	baritoMarketUrl             string
+	baritoMarketAccessToken     string
 	profileApiPath              string
 	profileApiByAppGroupPath    string
 	authorizeApiPath            string
@@ -66,6 +69,10 @@ func main() {
 	baritoMarketUrl, _ = envkit.GetString(
 		EnvBaritoMarketUrl,
 		DefaultBaritoMarketUrl,
+	)
+	baritoMarketAccessToken, _ = envkit.GetString(
+		EnvBaritoMarketAccessToken,
+		DefaultBaritoMarketAccessToken,
 	)
 	profileApiPath, _ = envkit.GetString(
 		EnvBaritoProfileApiPath,
@@ -103,6 +110,7 @@ func main() {
 	fmt.Printf("%s=%s\n", EnvProducerRouterAddress, routerAddress)
 	fmt.Printf("%s=%s\n", EnvKibanaRouterAddress, kibanaRouterAddress)
 	fmt.Printf("%s=%s\n", EnvBaritoMarketUrl, baritoMarketUrl)
+	fmt.Printf("%s=%s\n", EnvBaritoMarketAccessToken, baritoMarketAccessToken)
 	fmt.Printf("%s=%s\n", EnvBaritoProfileApiPath, profileApiPath)
 	fmt.Printf("%s=%s\n", EnvBaritoProfileApiByAppGroupPath, profileApiByAppGroupPath)
 	fmt.Printf("%s=%s\n", EnvBaritoAuthorizeApiPath, authorizeApiPath)
