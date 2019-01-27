@@ -35,7 +35,7 @@ const (
 	DefaultBaritoProfileApiPath              = "api/profile"
 	DefaultBaritoProfileApiByAppGroupPath    = "api/profile_by_app_group"
 	DefaultBaritoAuthorizeApiPath            = "api/authorize"
-	DefaultBaritoProfileApiByClusternamePath = "api/profile_by_cluster_name"
+	DefaultBaritoProfileApiByClusternamePath = "api/v2/profile_by_cluster_name"
 	DefaultCASAddress                        = ""
 	DefaultNewRelicAppName                   = "barito_router"
 	DefaultNewRelicLicenseKey                = ""

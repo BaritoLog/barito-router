@@ -32,4 +32,4 @@ $GOPATH/bin/barito-router
 |BARITO_PROFILE_API_PATH|api path to get app profile by secret| /api/profile |
 |BARITO_PROFILE_API_BY_APP_GROUP_PATH|api path to get app profile by app group secret| /api/profile_by_app_group |
 |BARITO_AUTHORIZE_API_PATH|api path to authorization| /api/authorize |
-|BARITO_PROFILE_API_BY_CLUSTERNAME_PATH|api path to get app profile by cluster name| /api/profile_by_cluster_name |
+|BARITO_PROFILE_API_BY_CLUSTERNAME_PATH|api path to get app profile by cluster name| /api/v2/profile_by_cluster_name |
