@@ -1,5 +1,10 @@
 # Changelog
 
+**0.5.4**
+
+- add new param: barito market access token and send it to market when calling fetch profile by cluster name
+- use v2 API when fetching profile by cluster name from market
+
 **0.5.3**
 
 - Add support for newrelic
