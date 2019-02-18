@@ -1,5 +1,9 @@
 # Changelog
 
+**0.5.5**
+
+- set CAS cookie path as root
+
 **0.5.4**
 
 - add new param: barito market access token and send it to market when calling fetch profile by cluster name
