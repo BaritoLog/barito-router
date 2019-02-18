@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/BaritoLog/barito-router/appcontext"
+	"github.com/BaritoLog/barito-router/instrumentation"
 	"github.com/BaritoLog/go-boilerplate/httpkit"
 	"github.com/hashicorp/consul/api"
 
@@ -13,7 +15,11 @@ import (
 )
 
 const (
+	// KeyKibana is meta service name of kibana
 	KeyKibana = "kibana"
+
+	// AppKibanaNoProfilePath is path to register when server returned no profile
+	AppKibanaNoProfilePath = "api/kibana_no_profile"
 )
 
 type KibanaRouter interface {
@@ -24,22 +30,26 @@ type KibanaRouter interface {
 type kibanaRouter struct {
 	addr          string
 	marketUrl     string
+	accessToken   string
 	profilePath   string
 	authorizePath string
 	casAddr       string
 
 	client *http.Client
+	appCtx *appcontext.AppContext
 }
 
-// NewKibanaRouter
-func NewKibanaRouter(addr, marketUrl, profilePath, authorizePath, casAddr string) KibanaRouter {
+// NewKibanaRouter is a function for creating new kibana router
+func NewKibanaRouter(addr, marketUrl, accessToken, profilePath, authorizePath, casAddr string, appCtx *appcontext.AppContext) KibanaRouter {
 	return &kibanaRouter{
 		addr:          addr,
 		marketUrl:     marketUrl,
+		accessToken:   accessToken,
 		profilePath:   profilePath,
 		authorizePath: authorizePath,
 		casAddr:       casAddr,
 		client:        createClient(),
+		appCtx:        appCtx,
 	}
 }
 
@@ -62,7 +72,10 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	clusterName := KibanaGetClustername(req)
-	profile, err := fetchProfileByClusterName(r.client, r.marketUrl, r.profilePath, clusterName)
+	profile, err := fetchProfileByClusterName(r.client, r.marketUrl, r.accessToken, r.profilePath, clusterName)
+	if profile != nil {
+		instrumentation.RunTransaction(r.appCtx.NewRelicApp(), r.profilePath, w, req)
+	}
 	if err != nil {
 		onTradeError(w, err)
 		return
@@ -70,6 +83,7 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if profile == nil {
 		onNoProfile(w)
+		instrumentation.RunTransaction(r.appCtx.NewRelicApp(), AppKibanaNoProfilePath, w, req)
 		return
 	}
 

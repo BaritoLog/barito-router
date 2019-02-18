@@ -7,10 +7,11 @@ import (
 	"net/url"
 )
 
-func fetchProfileByClusterName(client *http.Client, marketUrl, path, clusterName string) (*Profile, error) {
+func fetchProfileByClusterName(client *http.Client, marketUrl, accessToken, path, clusterName string) (*Profile, error) {
 
 	address := fmt.Sprintf("%s/%s", marketUrl, path)
 	q := url.Values{}
+	q.Add("access_token", accessToken)
 	q.Add("cluster_name", clusterName)
 
 	req, _ := http.NewRequest("GET", address, nil)
