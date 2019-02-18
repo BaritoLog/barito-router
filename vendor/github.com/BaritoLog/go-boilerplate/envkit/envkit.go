@@ -33,5 +33,14 @@ func GetSlice(key, separator string, defaultSlice []string) (val []string, succe
 	}
 
 	return defaultSlice, false
+}
 
+func GetBool(key string, defaultValue bool) (val bool, success bool) {
+	s := os.Getenv(key)
+	b, err := strconv.ParseBool(s)
+	if err == nil {
+		return b, true
+	}
+
+	return defaultValue, false
 }

@@ -1,12 +1,12 @@
-hash: 6784151f18aae13aa07bd126dcb67ac73e9124c3eccf23c39f4ed1d7e26d613b
-updated: 2018-12-03T16:04:25.05162+07:00
+hash: b3cbdc4d8e101c74d3fcc0dab9213a1c6eea6b731bee74b3896eab7228372cef
+updated: 2019-02-18T09:56:34.438083+07:00
 imports:
 - name: github.com/armon/go-metrics
   version: f0300d1749da6fa982027e449ec0c7a145510c3c
 - name: github.com/BaritoLog/cas
-  version: 10550f52ff85a9926188978e45e0d2fb0bb9eab3
+  version: 1d0220aa6e84e3c1762b07404c3e020f4e55dc0d
 - name: github.com/BaritoLog/go-boilerplate
-  version: 20c4c30023960bc27eb5e4662207a0bcaae04f11
+  version: b95aeda121e9f68aa8c81c7adcb98d82e6ced7a5
   subpackages:
   - envkit
   - httpkit
@@ -17,7 +17,7 @@ imports:
 - name: github.com/golang/glog
   version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
 - name: github.com/hashicorp/consul
-  version: 925e9ae26291315550f6c2d6a042f8fea19a718f
+  version: 59c010eb3b9249c7e303166d7189c6b4ff1e7d52
   subpackages:
   - api
 - name: github.com/hashicorp/go-cleanhttp
@@ -31,7 +31,7 @@ imports:
   subpackages:
   - simplelru
 - name: github.com/hashicorp/serf
-  version: 75714e08b2cf6cc7409a3f5a49e20293528acf69
+  version: 239fdb9f44a485dc18bdf99ae26a3e7548bc4a04
   subpackages:
   - coordinate
 - name: github.com/konsorten/go-windows-terminal-sequences
@@ -45,14 +45,14 @@ imports:
 - name: github.com/urfave/cli
   version: b67dcf995b6a7b7f14fad5fcb7cc5441b05e814b
 - name: golang.org/x/crypto
-  version: e4dc69e5b2fd71dcaf8bd5d054eb936deb78d1fa
+  version: ff983b9c42bc9fbf91556e191cc8efb585c16908
   subpackages:
   - ssh/terminal
 - name: golang.org/x/sys
-  version: 66b7b1311ac80bbafcd2daeef9a5e6e2cd1e2399
+  version: a457fd036447854c0c02e89ea439481bdcf941a2
   subpackages:
   - unix
   - windows
 - name: gopkg.in/yaml.v2
-  version: 5420a8b6744d3b0345ab293f6fcba19c978f1183
+  version: 51d6538a90f86fe93ac480b35f37b2be17fef232
 testImports: []

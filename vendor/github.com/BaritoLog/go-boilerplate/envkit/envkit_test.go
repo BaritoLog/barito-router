@@ -52,3 +52,17 @@ func TestGetSlice(t *testing.T) {
 	FatalIf(t, !reflect.DeepEqual(slice, []string{"3", "4", "5"}) || !success, "return wrong")
 
 }
+
+func TestGetBool(t *testing.T) {
+	os.Setenv("some-key", "t")
+	i, success := GetBool("some-key", true)
+
+	FatalIf(t, i != true || !success, "wrong return")
+}
+
+func TestGetBool_WrongKey(t *testing.T) {
+	os.Setenv("some-key", "x")
+	i, success := GetBool("some-key", true)
+
+	FatalIf(t, i != true || success, "wrong return")
+}

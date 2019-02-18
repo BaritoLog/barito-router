@@ -6,7 +6,7 @@ import:
 - package: github.com/sirupsen/logrus
   version: v1.2.0
 - package: github.com/BaritoLog/cas
-  version: v2.1.1
+  version: cookie-config
 testImport:
 - package: github.com/BaritoLog/go-boilerplate
   subpackages:
