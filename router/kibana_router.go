@@ -103,9 +103,17 @@ func (r *kibanaRouter) Server() *http.Server {
 	if r.isUseCAS() {
 		casURL := r.casAddr
 		url, _ := url.Parse(casURL)
+
+		cookie := &http.Cookie{
+			MaxAge:   86400,
+			HttpOnly: false,
+			Secure:   false,
+			Path:     "/",
+		}
+
 		client := cas.NewClient(&cas.Options{
-			URL:        url,
-			CookiePath: "/",
+			URL:    url,
+			Cookie: cookie,
 		})
 		return &http.Server{
 			Addr:    r.addr,
