@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/go-boilerplate/httpkit"
 	. "github.com/BaritoLog/go-boilerplate/testkit"
 	"github.com/hashicorp/consul/api"
 	"github.com/newrelic/go-agent"
-	"github.com/BaritoLog/barito-router/appcontext"
 )
 
 func TestProducerRouter_Ping(t *testing.T) {
