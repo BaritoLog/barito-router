@@ -1,13 +1,14 @@
 package router
 
 import (
+	"context"
 	"fmt"
+	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/instrumentation"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -32,6 +33,8 @@ type producerRouter struct {
 
 	client *http.Client
 	appCtx *appcontext.AppContext
+
+	producerStore ProducerStore
 }
 
 func NewProducerRouter(addr, marketUrl, profilePath string, profileByAppGroupPath string, appCtx *appcontext.AppContext) ProducerRouter {
@@ -42,6 +45,7 @@ func NewProducerRouter(addr, marketUrl, profilePath string, profileByAppGroupPat
 		profileByAppGroupPath: profileByAppGroupPath,
 		client:                createClient(),
 		appCtx:                appCtx,
+		producerStore:         NewProducerStore(),
 	}
 }
 
@@ -101,15 +105,54 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	url := &url.URL{
-		Scheme: "http",
-		Host:   fmt.Sprintf("%s:%d", srv.ServiceAddress, srv.ServicePort),
+	pAttr := producerAttributes{
+		consulAddr:   profile.ConsulHost,
+		producerAddr: fmt.Sprintf("%s:%d", srv.ServiceAddress, srv.ServicePort),
+		producerName: srvName,
+		appSecret:    profile.AppSecret,
 	}
 
-	h := NewProducerProxyHandler(url, *profile, profile.AppSecret)
-	proxy := &httputil.ReverseProxy{
-		Director:     h.Director,
-		ErrorHandler: h.ErrorHandler,
+	producerClient := p.producerStore.GetClient(pAttr)
+	ctx := context.Background()
+	b, _ := ioutil.ReadAll(req.Body)
+
+	switch req.URL.Path {
+	case "/produce":
+		timberContext := TimberContextFromProfile(profile)
+		timber, err := ConvertBytesToTimber(b, timberContext)
+		if err != nil {
+			log.Errorf("%s", err.Error())
+			return
+		}
+
+		result, err := producerClient.Produce(ctx, &timber)
+		if err != nil {
+			msg := onRpcError(w, err)
+			log.Errorf("%s", msg)
+			return
+		}
+
+		if result != nil {
+			onRpcSuccess(w, result.Topic)
+		}
+
+	case "/produce_batch":
+		timberContext := TimberContextFromProfile(profile)
+		timberCollection, err := ConvertBytesToTimberCollection(b, timberContext)
+		if err != nil {
+			log.Errorf("%s", err.Error())
+			return
+		}
+
+		result, err := producerClient.ProduceBatch(ctx, &timberCollection)
+		if err != nil {
+			msg := onRpcError(w, err)
+			log.Errorf("%s", msg)
+			return
+		}
+
+		if result != nil {
+			onRpcSuccess(w, result.Topic)
+		}
 	}
-	proxy.ServeHTTP(w, req)
 }

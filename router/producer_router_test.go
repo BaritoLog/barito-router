@@ -7,8 +7,10 @@ import (
 	"testing"
 
 	"github.com/BaritoLog/barito-router/appcontext"
+	"github.com/BaritoLog/barito-router/mock"
 	"github.com/BaritoLog/go-boilerplate/httpkit"
 	. "github.com/BaritoLog/go-boilerplate/testkit"
+	"github.com/golang/mock/gomock"
 	"github.com/hashicorp/consul/api"
 	"github.com/newrelic/go-agent"
 )
@@ -113,7 +115,10 @@ func TestProducerRouter_ConsulError(t *testing.T) {
 
 func TestProducerRouter_WithAppSecret(t *testing.T) {
 
-	targetServer := NewTestServer(http.StatusTeapot, []byte("some-target"))
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	targetServer := NewTestServer(http.StatusOK, []byte(""))
 	defer targetServer.Close()
 	host, port := httpkit.HostOfRawURL(targetServer.URL)
 
@@ -131,23 +136,31 @@ func TestProducerRouter_WithAppSecret(t *testing.T) {
 	})
 	defer marketServer.Close()
 
-	testPayload := []byte(`{"hello":"world"}`)
-	req, _ := http.NewRequest(http.MethodGet, "http://localhost", bytes.NewBuffer(testPayload))
+	router := NewTestSuccessfulProducer(ctrl, marketServer.URL, host, port)
+
+	testPayload := sampleRawTimber()
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost/produce", bytes.NewBuffer(testPayload))
 	req.Header.Add("X-App-Secret", "some-secret")
-
-	config := newrelic.NewConfig("barito-router", "")
-	config.Enabled = false
-	appCtx := appcontext.NewAppContext(config)
-
-	router := NewProducerRouter(":45500", marketServer.URL, "profilePath", "profileByAppGroupPath", appCtx)
 	resp := RecordResponse(router.ServeHTTP, req)
-	FatalIfWrongResponseStatus(t, resp, http.StatusTeapot)
-	FatalIfWrongResponseBody(t, resp, "some-target")
+
+	FatalIfWrongResponseStatus(t, resp, http.StatusOK)
+	FatalIfWrongResponseBody(t, resp, "")
+
+	testPayload = sampleRawTimberCollection()
+	req, _ = http.NewRequest(http.MethodGet, "http://localhost/produce_batch", bytes.NewBuffer(testPayload))
+	req.Header.Add("X-App-Secret", "some-secret")
+	resp = RecordResponse(router.ServeHTTP, req)
+
+	FatalIfWrongResponseStatus(t, resp, http.StatusOK)
+	FatalIfWrongResponseBody(t, resp, "")
 }
 
 func TestProducerRouter_WithAppGroupSecret(t *testing.T) {
 
-	targetServer := NewTestServer(http.StatusTeapot, []byte("some-target"))
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	targetServer := NewTestServer(http.StatusOK, []byte(""))
 	defer targetServer.Close()
 	host, port := httpkit.HostOfRawURL(targetServer.URL)
 
@@ -165,18 +178,53 @@ func TestProducerRouter_WithAppGroupSecret(t *testing.T) {
 	})
 	defer marketServer.Close()
 
-	testPayload := []byte(`{"hello":"world"}`)
-	req, _ := http.NewRequest(http.MethodGet, "http://localhost", bytes.NewBuffer(testPayload))
+	router := NewTestSuccessfulProducer(ctrl, marketServer.URL, host, port)
+
+	testPayload := sampleRawTimber()
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost/produce", bytes.NewBuffer(testPayload))
 	req.Header.Add("X-App-Group-Secret", "some-secret")
 	req.Header.Add("X-App-Name", "some-name")
+	resp := RecordResponse(router.ServeHTTP, req)
 
+	FatalIfWrongResponseStatus(t, resp, http.StatusOK)
+	FatalIfWrongResponseBody(t, resp, "")
+
+	testPayload = sampleRawTimberCollection()
+	req, _ = http.NewRequest(http.MethodGet, "http://localhost/produce_batch", bytes.NewBuffer(testPayload))
+	req.Header.Add("X-App-Secret", "some-secret")
+	resp = RecordResponse(router.ServeHTTP, req)
+
+	FatalIfWrongResponseStatus(t, resp, http.StatusOK)
+	FatalIfWrongResponseBody(t, resp, "")
+}
+
+func NewTestSuccessfulProducer(ctrl *gomock.Controller, marketUrl string, host string, port int) ProducerRouter {
 	config := newrelic.NewConfig("barito-router", "")
 	config.Enabled = false
 	appCtx := appcontext.NewAppContext(config)
 
-	router := NewProducerRouter(":45500", marketServer.URL, "profilePath", "profileByAppGroupPath", appCtx)
-	resp := RecordResponse(router.ServeHTTP, req)
+	router := &producerRouter{
+		addr:                  ":45500",
+		marketUrl:             marketUrl,
+		profilePath:           "profilePath",
+		profileByAppGroupPath: "profileByAppGroupPath",
+		client:                createClient(),
+		appCtx:                appCtx,
+		producerStore:         NewProducerStore(),
+	}
 
-	FatalIfWrongResponseStatus(t, resp, http.StatusTeapot)
-	FatalIfWrongResponseBody(t, resp, "some-target")
+	pClient := mock.NewMockProducerClient(ctrl)
+	pClient.EXPECT().Produce(gomock.Any(), sampleContextlessTimber())
+	pClient.EXPECT().ProduceBatch(gomock.Any(), sampleContextlessTimberCollection())
+
+	pAttr := producerAttributes{
+		consulAddr:   fmt.Sprintf("%s:%d", host, port),
+		producerAddr: fmt.Sprintf("%s:%d", host, port-1),
+	}
+
+	router.producerStore[pAttr] = &grpcParts{
+		client: pClient,
+	}
+
+	return router
 }

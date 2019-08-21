@@ -8,7 +8,7 @@ require (
 	github.com/cssivision/reverseproxy v0.0.0-20180306122129-b27a2af48c77
 	github.com/golang/mock v1.1.1
 	github.com/golang/protobuf v1.3.2
-	github.com/grpc-ecosystem/grpc-gateway v1.9.6 // indirect
+	github.com/grpc-ecosystem/grpc-gateway v1.9.6
 	github.com/hashicorp/consul v0.0.0-20190115205717-59c010eb3b92
 	github.com/hashicorp/go-cleanhttp v0.5.0 // indirect
 	github.com/hashicorp/go-msgpack v0.5.5 // indirect
