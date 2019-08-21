@@ -6,7 +6,8 @@ require (
 	github.com/BaritoLog/cas v0.0.0-20190218025122-1d0220aa6e84
 	github.com/BaritoLog/go-boilerplate v0.0.0-20190116075340-b95aeda121e9
 	github.com/cssivision/reverseproxy v0.0.0-20180306122129-b27a2af48c77
-	github.com/golang/protobuf v1.3.2 // indirect
+	github.com/golang/mock v1.1.1
+	github.com/golang/protobuf v1.3.2
 	github.com/grpc-ecosystem/grpc-gateway v1.9.6 // indirect
 	github.com/hashicorp/consul v0.0.0-20190115205717-59c010eb3b92
 	github.com/hashicorp/go-cleanhttp v0.5.0 // indirect
