@@ -9,6 +9,7 @@ import (
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/instrumentation"
 	log "github.com/sirupsen/logrus"
+	pb "github.com/vwidjaya/barito-proto/producer"
 )
 
 const (
@@ -116,43 +117,35 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	ctx := context.Background()
 	b, _ := ioutil.ReadAll(req.Body)
 
-	switch req.URL.Path {
-	case "/produce":
-		timberContext := TimberContextFromProfile(profile)
-		timber, err := ConvertBytesToTimber(b, timberContext)
-		if err != nil {
-			log.Errorf("%s", err.Error())
-			return
-		}
+	timberContext := TimberContextFromProfile(profile)
+	var result *pb.ProduceResult
 
-		result, err := producerClient.Produce(ctx, &timber)
-		if err != nil {
-			msg := onRpcError(w, err)
-			log.Errorf("%s", msg)
-			return
-		}
-
-		if result != nil {
-			onRpcSuccess(w, result.Topic)
-		}
-
-	case "/produce_batch":
-		timberContext := TimberContextFromProfile(profile)
+	if req.URL.Path == "/produce_batch" {
 		timberCollection, err := ConvertBytesToTimberCollection(b, timberContext)
 		if err != nil {
 			log.Errorf("%s", err.Error())
 			return
 		}
 
-		result, err := producerClient.ProduceBatch(ctx, &timberCollection)
+		result, err = producerClient.ProduceBatch(ctx, &timberCollection)
+
+	} else {
+		timber, err := ConvertBytesToTimber(b, timberContext)
 		if err != nil {
-			msg := onRpcError(w, err)
-			log.Errorf("%s", msg)
+			log.Errorf("%s", err.Error())
 			return
 		}
 
-		if result != nil {
-			onRpcSuccess(w, result.Topic)
-		}
+		result, err = producerClient.Produce(ctx, &timber)
+	}
+
+	if err != nil {
+		msg := onRpcError(w, err)
+		log.Errorf("%s", msg)
+		return
+	}
+
+	if result != nil {
+		onRpcSuccess(w, result.Topic)
 	}
 }
