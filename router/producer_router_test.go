@@ -214,8 +214,8 @@ func NewTestSuccessfulProducer(ctrl *gomock.Controller, marketUrl string, host s
 	}
 
 	pClient := mock.NewMockProducerClient(ctrl)
-	pClient.EXPECT().Produce(gomock.Any(), sampleContextlessTimber())
-	pClient.EXPECT().ProduceBatch(gomock.Any(), sampleContextlessTimberCollection())
+	pClient.EXPECT().Produce(gomock.Any(), gomock.Any())
+	pClient.EXPECT().ProduceBatch(gomock.Any(), gomock.Any())
 
 	pAttr := producerAttributes{
 		consulAddr:   fmt.Sprintf("%s:%d", host, port),
