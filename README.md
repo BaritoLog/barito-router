@@ -1,7 +1,18 @@
 # Barito Router
 ![alt](https://travis-ci.org/BaritoLog/barito-router.svg?branch=master)
 
-Route incoming request from outside to Barito world.
+Route incoming request from outside to Barito world. Configurable to use gRPC and REST API.
+The REST API is run automatically by calling grpc-gateway which is set in barito-flow.
+
+Barito router consists of 2 routers; producer router and Kibana router.
+
+producer router is responsible to retract profile from barito market based on request header,
+to be used as basic information to call the right barito flow client, so timber can arrive to 
+the right app group. Keep note that the incoming request to barito router producer is REST and 
+will be converted to protobuf just before calling barito flow produce API.
+
+Kibana router responsible to create Kibana reserve proxy to serve the request.
+For now, Kibana router still uses REST fully as barito market have not yet converged to gRPC.
 
 ## Setup Development
 
@@ -33,3 +44,32 @@ $GOPATH/bin/barito-router
 |BARITO_PROFILE_API_BY_APP_GROUP_PATH|api path to get app profile by app group secret| /api/profile_by_app_group |
 |BARITO_AUTHORIZE_API_PATH|api path to authorization| /api/authorize |
 |BARITO_PROFILE_API_BY_CLUSTERNAME_PATH|api path to get app profile by cluster name| /api/v2/profile_by_cluster_name |
+|BARITO_CAS_ADDRESS|Address for authentication and authorisation kibana router| - |
+|BARITO_NEW_RELIC_APP_NAME|Current app name|barito_router|
+|BARITO_NEW_RELIC_LICENSE_KEY|License key for kibana router| - |
+|BARITO_NEW_RELIC_ENABLED|Enabled controls whether the agent will communicate with the New Relic servers and spawn goroutines|false|
+
+
+### API Producer Router
+
+- `POST /ping`
+
+  For sending ping to the server
+- `POST /produce_batch`
+
+  For sending log entries to be produced on batch by calling barito-flow ProduceBatch API
+- `POST /`
+
+  For sending log entries to be produced individually by calling barito-flow Produce API
+
+### API Kibana Router
+
+- `POST /ping`
+
+  For sending ping to the server
+- `POST /logout`
+
+  for logging out kibana server
+- `POST /`
+
+  create reverse proxy and serve request
