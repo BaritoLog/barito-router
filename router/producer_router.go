@@ -1,13 +1,15 @@
 package router
 
 import (
+	"context"
 	"fmt"
+	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/instrumentation"
+	log "github.com/sirupsen/logrus"
+	pb "github.com/vwidjaya/barito-proto/producer"
 )
 
 const (
@@ -32,6 +34,8 @@ type producerRouter struct {
 
 	client *http.Client
 	appCtx *appcontext.AppContext
+
+	producerStore ProducerStore
 }
 
 func NewProducerRouter(addr, marketUrl, profilePath string, profileByAppGroupPath string, appCtx *appcontext.AppContext) ProducerRouter {
@@ -42,6 +46,7 @@ func NewProducerRouter(addr, marketUrl, profilePath string, profileByAppGroupPat
 		profileByAppGroupPath: profileByAppGroupPath,
 		client:                createClient(),
 		appCtx:                appCtx,
+		producerStore:         NewProducerStore(),
 	}
 }
 
@@ -101,15 +106,46 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	url := &url.URL{
-		Scheme: "http",
-		Host:   fmt.Sprintf("%s:%d", srv.ServiceAddress, srv.ServicePort),
+	pAttr := producerAttributes{
+		consulAddr:   profile.ConsulHost,
+		producerAddr: fmt.Sprintf("%s:%d", srv.ServiceAddress, srv.ServicePort),
+		producerName: srvName,
+		appSecret:    profile.AppSecret,
 	}
 
-	h := NewProducerProxyHandler(url, *profile, profile.AppSecret)
-	proxy := &httputil.ReverseProxy{
-		Director:     h.Director,
-		ErrorHandler: h.ErrorHandler,
+	producerClient := p.producerStore.GetClient(pAttr)
+	ctx := context.Background()
+	b, _ := ioutil.ReadAll(req.Body)
+
+	timberContext := TimberContextFromProfile(profile)
+	var result *pb.ProduceResult
+
+	if req.URL.Path == "/produce_batch" {
+		timberCollection, err := ConvertBytesToTimberCollection(b, timberContext)
+		if err != nil {
+			log.Errorf("%s", err.Error())
+			return
+		}
+
+		result, err = producerClient.ProduceBatch(ctx, &timberCollection)
+
+	} else {
+		timber, err := ConvertBytesToTimber(b, timberContext)
+		if err != nil {
+			log.Errorf("%s", err.Error())
+			return
+		}
+
+		result, err = producerClient.Produce(ctx, &timber)
 	}
-	proxy.ServeHTTP(w, req)
+
+	if err != nil {
+		msg := onRpcError(w, err)
+		log.Errorf("%s", msg)
+		return
+	}
+
+	if result != nil {
+		onRpcSuccess(w, result.Topic)
+	}
 }

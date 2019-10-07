@@ -1,8 +1,8 @@
 package instrumentation
 
 import (
-	"net/http"
 	"fmt"
+	"net/http"
 
 	"github.com/newrelic/go-agent"
 )
