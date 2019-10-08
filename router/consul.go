@@ -2,16 +2,15 @@ package router
 
 import (
 	"fmt"
-	"github.com/patrickmn/go-cache"
-	"time"
-
+	"github.com/BaritoLog/barito-router/config"
 	"github.com/hashicorp/consul/api"
+	"github.com/patrickmn/go-cache"
 )
 
 const ConsulServiceBackupCachePrefix = "consul_backup_cache_"
 
 func consulService(consulAddr, serviceName string, cacheBag *cache.Cache) (srv *api.CatalogService, err error) {
-	return fetchProducerUsingCache(cacheBag, consulAddr + "_" + serviceName, func() (srv *api.CatalogService, err error) {
+	return fetchProducerUsingCache(cacheBag, consulAddr+"_"+serviceName, func() (srv *api.CatalogService, err error) {
 		consulClient, _ := api.NewClient(&api.Config{
 			Address: consulAddr,
 		})
@@ -41,8 +40,8 @@ func fetchProducerUsingCache(cacheBag *cache.Cache, key string, function func() 
 
 	if err == nil {
 		// push to cache
-		cacheBag.Set(key, srv, 1*time.Minute)
-		cacheBag.Set(ConsulServiceBackupCachePrefix+key, srv, 48*time.Hour)
+		cacheBag.Set(key, srv, config.CacheExpirationTimeSeconds)
+		cacheBag.Set(ConsulServiceBackupCachePrefix+key, srv, config.BackupCacheExpirationTimeHours)
 	} else {
 		// if call is fail, check if still in backup cache
 		if cacheValue, found := cacheBag.Get(ConsulServiceBackupCachePrefix + key); found {

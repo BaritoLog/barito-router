@@ -2,18 +2,17 @@ package router
 
 import (
 	"fmt"
+	"github.com/BaritoLog/barito-router/appcontext"
+	"github.com/BaritoLog/barito-router/config"
+	"github.com/BaritoLog/barito-router/instrumentation"
+	"github.com/BaritoLog/go-boilerplate/httpkit"
+	"github.com/hashicorp/consul/api"
 	"github.com/patrickmn/go-cache"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
-	"github.com/BaritoLog/barito-router/appcontext"
-	"github.com/BaritoLog/barito-router/instrumentation"
-	"github.com/BaritoLog/go-boilerplate/httpkit"
-	"github.com/hashicorp/consul/api"
-
-	cas "github.com/BaritoLog/cas"
+	"github.com/BaritoLog/cas"
 )
 
 const (
@@ -52,7 +51,7 @@ func NewKibanaRouter(addr, marketUrl, accessToken, profilePath, authorizePath, c
 		profilePath:   profilePath,
 		authorizePath: authorizePath,
 		casAddr:       casAddr,
-		cacheBag:      cache.New(1*time.Minute, 10*time.Minute),
+		cacheBag:      cache.New(config.CacheExpirationTimeSeconds, 2*config.CacheExpirationTimeSeconds),
 		client:        createClient(),
 		appCtx:        appCtx,
 	}

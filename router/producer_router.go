@@ -3,16 +3,15 @@ package router
 import (
 	"context"
 	"fmt"
+	"github.com/BaritoLog/barito-router/config"
 	"io/ioutil"
 	"net/http"
-
-	log "github.com/sirupsen/logrus"
-	pb "github.com/vwidjaya/barito-proto/producer"
-	"time"
 
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/instrumentation"
 	"github.com/patrickmn/go-cache"
+	log "github.com/sirupsen/logrus"
+	pb "github.com/vwidjaya/barito-proto/producer"
 )
 
 const (
@@ -49,7 +48,7 @@ func NewProducerRouter(addr, marketUrl, profilePath string, profileByAppGroupPat
 		marketUrl:             marketUrl,
 		profilePath:           profilePath,
 		profileByAppGroupPath: profileByAppGroupPath,
-		cacheBag:              cache.New(1*time.Minute, 10*time.Minute),
+		cacheBag:              cache.New(config.CacheExpirationTimeSeconds, 2*config.CacheExpirationTimeSeconds),
 		client:                createClient(),
 		appCtx:                appCtx,
 		producerStore:         NewProducerStore(),

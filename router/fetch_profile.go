@@ -2,11 +2,11 @@ package router
 
 import (
 	"fmt"
+	"github.com/BaritoLog/barito-router/config"
 	"github.com/patrickmn/go-cache"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"time"
 )
 
 const ProfileBackupCachePrefix = "profile_backup_cache_"
@@ -75,8 +75,8 @@ func fetchUsingCache(cacheBag *cache.Cache, key string, function func() (*Profil
 
 	if err == nil {
 		// push to cache
-		cacheBag.Set(key, profile, 1*time.Minute)
-		cacheBag.Set(ProfileBackupCachePrefix+key, profile, 48*time.Hour)
+		cacheBag.Set(key, profile, config.CacheExpirationTimeSeconds)
+		cacheBag.Set(ProfileBackupCachePrefix+key, profile, config.BackupCacheExpirationTimeHours)
 	} else {
 		// if call is fail, check if still in backup cache
 		if cacheValue, found := cacheBag.Get(ProfileBackupCachePrefix + key); found {
