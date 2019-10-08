@@ -120,23 +120,23 @@ func TestProducerRouter_WithAppSecret(t *testing.T) {
 
 	targetServer := NewTestServer(http.StatusOK, []byte(""))
 	defer targetServer.Close()
-	host, port := httpkit.HostOfRawURL(targetServer.URL)
+	host, producerPort := httpkit.HostOfRawURL(targetServer.URL)
 
 	consulServer := NewJsonTestServer(http.StatusOK, []api.CatalogService{
 		api.CatalogService{
 			ServiceAddress: host,
-			ServicePort:    port,
+			ServicePort:    producerPort,
 		},
 	})
 	defer consulServer.Close()
 
-	host, port = httpkit.HostOfRawURL(consulServer.URL)
+	host, consulPort := httpkit.HostOfRawURL(consulServer.URL)
 	marketServer := NewJsonTestServer(http.StatusOK, Profile{
-		ConsulHost: fmt.Sprintf("%s:%d", host, port),
+		ConsulHost: fmt.Sprintf("%s:%d", host, consulPort),
 	})
 	defer marketServer.Close()
 
-	router := NewTestSuccessfulProducer(ctrl, marketServer.URL, host, port)
+	router := NewTestSuccessfulProducer(ctrl, marketServer.URL, host, producerPort, consulPort)
 
 	testPayload := sampleRawTimber()
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost/produce", bytes.NewBuffer(testPayload))
@@ -162,23 +162,23 @@ func TestProducerRouter_WithAppGroupSecret(t *testing.T) {
 
 	targetServer := NewTestServer(http.StatusOK, []byte(""))
 	defer targetServer.Close()
-	host, port := httpkit.HostOfRawURL(targetServer.URL)
+	host, producerPort := httpkit.HostOfRawURL(targetServer.URL)
 
 	consulServer := NewJsonTestServer(http.StatusOK, []api.CatalogService{
 		api.CatalogService{
 			ServiceAddress: host,
-			ServicePort:    port,
+			ServicePort:    producerPort,
 		},
 	})
 	defer consulServer.Close()
 
-	host, port = httpkit.HostOfRawURL(consulServer.URL)
+	host, consulPort := httpkit.HostOfRawURL(consulServer.URL)
 	marketServer := NewJsonTestServer(http.StatusOK, Profile{
-		ConsulHost: fmt.Sprintf("%s:%d", host, port),
+		ConsulHost: fmt.Sprintf("%s:%d", host, consulPort),
 	})
 	defer marketServer.Close()
 
-	router := NewTestSuccessfulProducer(ctrl, marketServer.URL, host, port)
+	router := NewTestSuccessfulProducer(ctrl, marketServer.URL, host, producerPort, consulPort)
 
 	testPayload := sampleRawTimber()
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost/produce", bytes.NewBuffer(testPayload))
@@ -198,7 +198,7 @@ func TestProducerRouter_WithAppGroupSecret(t *testing.T) {
 	FatalIfWrongResponseBody(t, resp, "")
 }
 
-func NewTestSuccessfulProducer(ctrl *gomock.Controller, marketUrl string, host string, port int) ProducerRouter {
+func NewTestSuccessfulProducer(ctrl *gomock.Controller, marketUrl string, host string, producerPort int, consulPort int) ProducerRouter {
 	config := newrelic.NewConfig("barito-router", "")
 	config.Enabled = false
 	appCtx := appcontext.NewAppContext(config)
@@ -218,8 +218,8 @@ func NewTestSuccessfulProducer(ctrl *gomock.Controller, marketUrl string, host s
 	pClient.EXPECT().ProduceBatch(gomock.Any(), gomock.Any())
 
 	pAttr := producerAttributes{
-		consulAddr:   fmt.Sprintf("%s:%d", host, port),
-		producerAddr: fmt.Sprintf("%s:%d", host, port-1),
+		consulAddr:   fmt.Sprintf("%s:%d", host, consulPort),
+		producerAddr: fmt.Sprintf("%s:%d", host, producerPort),
 	}
 
 	router.producerStore[pAttr] = &grpcParts{
