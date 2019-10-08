@@ -3,8 +3,10 @@ package router
 import (
 	"bytes"
 	"fmt"
+	"github.com/patrickmn/go-cache"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/mock"
@@ -209,6 +211,7 @@ func NewTestSuccessfulProducer(ctrl *gomock.Controller, marketUrl string, host s
 		profilePath:           "profilePath",
 		profileByAppGroupPath: "profileByAppGroupPath",
 		client:                createClient(),
+		cacheBag:              cache.New(1*time.Minute, 10*time.Minute),
 		appCtx:                appCtx,
 		producerStore:         NewProducerStore(),
 	}

@@ -2,45 +2,53 @@ package router
 
 import (
 	"fmt"
+	"github.com/patrickmn/go-cache"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"time"
 )
 
-func fetchProfileByClusterName(client *http.Client, marketUrl, accessToken, path, clusterName string) (*Profile, error) {
+const ProfileBackupCachePrefix = "profile_backup_cache_"
 
-	address := fmt.Sprintf("%s/%s", marketUrl, path)
-	q := url.Values{}
-	q.Add("access_token", accessToken)
-	q.Add("cluster_name", clusterName)
+func fetchProfileByClusterName(client *http.Client, cacheBag *cache.Cache, marketUrl, accessToken, path, clusterName string) (*Profile, error) {
+	return fetchUsingCache(cacheBag, accessToken+"_"+clusterName, func() (profile *Profile, err error) {
+		address := fmt.Sprintf("%s/%s", marketUrl, path)
+		q := url.Values{}
+		q.Add("access_token", accessToken)
+		q.Add("cluster_name", clusterName)
 
-	req, _ := http.NewRequest("GET", address, nil)
-	req.URL.RawQuery = q.Encode()
+		req, _ := http.NewRequest("GET", address, nil)
+		req.URL.RawQuery = q.Encode()
 
-	return fetchProfile(client, req)
+		return fetchProfile(client, req)
+	})
 }
 
-func fetchProfileByAppSecret(client *http.Client, marketUrl, path, appSecret string) (*Profile, error) {
-	address := fmt.Sprintf("%s/%s", marketUrl, path)
-	q := url.Values{}
-	q.Add("app_secret", appSecret)
+func fetchProfileByAppSecret(client *http.Client, cacheBag *cache.Cache, marketUrl, path, appSecret string) (*Profile, error) {
+	return fetchUsingCache(cacheBag, appSecret, func() (profile *Profile, err error) {
+		address := fmt.Sprintf("%s/%s", marketUrl, path)
+		q := url.Values{}
+		q.Add("app_secret", appSecret)
 
-	req, _ := http.NewRequest("GET", address, nil)
-	req.URL.RawQuery = q.Encode()
+		req, _ := http.NewRequest("GET", address, nil)
+		req.URL.RawQuery = q.Encode()
 
-	return fetchProfile(client, req)
+		return fetchProfile(client, req)
+	})
 }
 
-func fetchProfileByAppGroupSecret(client *http.Client, marketUrl, path, appGroupSecret string, appName string) (*Profile, error) {
-	address := fmt.Sprintf("%s/%s", marketUrl, path)
-	q := url.Values{}
-	q.Add("app_group_secret", appGroupSecret)
-	q.Add("app_name", appName)
+func fetchProfileByAppGroupSecret(client *http.Client, cacheBag *cache.Cache, marketUrl, path, appGroupSecret string, appName string) (*Profile, error) {
+	return fetchUsingCache(cacheBag, appGroupSecret, func() (profile *Profile, err error) {
+		address := fmt.Sprintf("%s/%s", marketUrl, path)
+		q := url.Values{}
+		q.Add("app_group_secret", appGroupSecret)
+		q.Add("app_name", appName)
+		req, _ := http.NewRequest("GET", address, nil)
+		req.URL.RawQuery = q.Encode()
 
-	req, _ := http.NewRequest("GET", address, nil)
-	req.URL.RawQuery = q.Encode()
-
-	return fetchProfile(client, req)
+		return fetchProfile(client, req)
+	})
 }
 
 func fetchProfile(client *http.Client, req *http.Request) (profile *Profile, err error) {
@@ -52,6 +60,28 @@ func fetchProfile(client *http.Client, req *http.Request) (profile *Profile, err
 	if res.StatusCode == http.StatusOK {
 		body, _ := ioutil.ReadAll(res.Body)
 		profile, err = NewProfileFromBytes(body)
+	}
+
+	return
+}
+
+func fetchUsingCache(cacheBag *cache.Cache, key string, function func() (*Profile, error)) (profile *Profile, err error) {
+	// check if still in cache
+	if cacheValue, found := cacheBag.Get(key); found {
+		profile = cacheValue.(*Profile)
+		return
+	}
+	profile, err = function()
+
+	if err == nil {
+		// push to cache
+		cacheBag.Set(key, profile, 1*time.Minute)
+		cacheBag.Set(ProfileBackupCachePrefix+key, profile, 48*time.Hour)
+	} else {
+		// if call is fail, check if still in backup cache
+		if cacheValue, found := cacheBag.Get(ProfileBackupCachePrefix + key); found {
+			profile = cacheValue.(*Profile)
+		}
 	}
 
 	return
