@@ -2,16 +2,17 @@ package router
 
 import (
 	"fmt"
+	"github.com/BaritoLog/barito-router/appcontext"
+	"github.com/BaritoLog/barito-router/config"
+	"github.com/BaritoLog/barito-router/instrumentation"
+	"github.com/BaritoLog/go-boilerplate/httpkit"
+	"github.com/hashicorp/consul/api"
+	"github.com/patrickmn/go-cache"
 	"net/http"
 	"net/url"
 	"strings"
 
-	"github.com/BaritoLog/barito-router/appcontext"
-	"github.com/BaritoLog/barito-router/instrumentation"
-	"github.com/BaritoLog/go-boilerplate/httpkit"
-	"github.com/hashicorp/consul/api"
-
-	cas "github.com/BaritoLog/cas"
+	"github.com/BaritoLog/cas"
 )
 
 const (
@@ -35,6 +36,8 @@ type kibanaRouter struct {
 	authorizePath string
 	casAddr       string
 
+	cacheBag *cache.Cache
+
 	client *http.Client
 	appCtx *appcontext.AppContext
 }
@@ -48,6 +51,7 @@ func NewKibanaRouter(addr, marketUrl, accessToken, profilePath, authorizePath, c
 		profilePath:   profilePath,
 		authorizePath: authorizePath,
 		casAddr:       casAddr,
+		cacheBag:      cache.New(config.CacheExpirationTimeSeconds, 2*config.CacheExpirationTimeSeconds),
 		client:        createClient(),
 		appCtx:        appCtx,
 	}
@@ -72,7 +76,7 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	clusterName := KibanaGetClustername(req)
-	profile, err := fetchProfileByClusterName(r.client, r.marketUrl, r.accessToken, r.profilePath, clusterName)
+	profile, err := fetchProfileByClusterName(r.client, r.cacheBag, r.marketUrl, r.accessToken, r.profilePath, clusterName)
 	if profile != nil {
 		instrumentation.RunTransaction(r.appCtx.NewRelicApp(), r.profilePath, w, req)
 	}
@@ -100,7 +104,7 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	srvName, _ := profile.MetaServiceName(KeyKibana)
-	srv, err := consulService(profile.ConsulHost, srvName)
+	srv, err := consulService(profile.ConsulHost, srvName, r.cacheBag)
 	if err != nil {
 		onConsulError(w, err)
 		return

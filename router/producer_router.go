@@ -3,11 +3,13 @@ package router
 import (
 	"context"
 	"fmt"
+	"github.com/BaritoLog/barito-router/config"
 	"io/ioutil"
 	"net/http"
 
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/instrumentation"
+	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
 	pb "github.com/vwidjaya/barito-proto/producer"
 )
@@ -32,6 +34,8 @@ type producerRouter struct {
 	profilePath           string
 	profileByAppGroupPath string
 
+	cacheBag *cache.Cache
+
 	client *http.Client
 	appCtx *appcontext.AppContext
 
@@ -44,6 +48,7 @@ func NewProducerRouter(addr, marketUrl, profilePath string, profileByAppGroupPat
 		marketUrl:             marketUrl,
 		profilePath:           profilePath,
 		profileByAppGroupPath: profileByAppGroupPath,
+		cacheBag:              cache.New(config.CacheExpirationTimeSeconds, 2*config.CacheExpirationTimeSeconds),
 		client:                createClient(),
 		appCtx:                appCtx,
 		producerStore:         NewProducerStore(),
@@ -72,7 +77,7 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if appSecret == "" {
 		if appGroupSecret != "" && appName != "" {
-			profile, err = fetchProfileByAppGroupSecret(p.client, p.marketUrl, p.profileByAppGroupPath, appGroupSecret, appName)
+			profile, err = fetchProfileByAppGroupSecret(p.client, p.cacheBag, p.marketUrl, p.profileByAppGroupPath, appGroupSecret, appName)
 			if profile != nil {
 				instrumentation.RunTransaction(p.appCtx.NewRelicApp(), p.profileByAppGroupPath, w, req)
 			}
@@ -82,7 +87,7 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 	} else {
-		profile, err = fetchProfileByAppSecret(p.client, p.marketUrl, p.profilePath, appSecret)
+		profile, err = fetchProfileByAppSecret(p.client, p.cacheBag, p.marketUrl, p.profilePath, appSecret)
 		if profile != nil {
 			instrumentation.RunTransaction(p.appCtx.NewRelicApp(), p.profilePath, w, req)
 		}
@@ -100,7 +105,7 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	srvName, _ := profile.MetaServiceName(KeyProducer)
-	srv, err := consulService(profile.ConsulHost, srvName)
+	srv, err := consulService(profile.ConsulHost, srvName, p.cacheBag)
 	if err != nil {
 		onConsulError(w, err)
 		return

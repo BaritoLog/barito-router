@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/BaritoLog/barito-router/config"
 
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/router"
@@ -38,10 +39,10 @@ func CmdAll(appCtx *appcontext.AppContext) {
 
 func RunProducerRouter(appCtx *appcontext.AppContext) {
 	produceRouter := router.NewProducerRouter(
-		routerAddress,
-		baritoMarketUrl,
-		profileApiPath,
-		profileApiByAppGroupPath,
+		config.RouterAddress,
+		config.BaritoMarketUrl,
+		config.ProfileApiPath,
+		config.ProfileApiByAppGroupPath,
 		appCtx,
 	)
 	produceRouter.Server().ListenAndServe()
@@ -50,12 +51,12 @@ func RunProducerRouter(appCtx *appcontext.AppContext) {
 
 func RunKibanaRouter(appCtx *appcontext.AppContext) {
 	kibanaRouter := router.NewKibanaRouter(
-		kibanaRouterAddress,
-		baritoMarketUrl,
-		baritoMarketAccessToken,
-		profileApiByClusternamePath,
-		authorizeApiPath,
-		casAddress,
+		config.KibanaRouterAddress,
+		config.BaritoMarketUrl,
+		config.BaritoMarketAccessToken,
+		config.ProfileApiByClusternamePath,
+		config.AuthorizeApiPath,
+		config.CasAddress,
 		appCtx,
 	)
 	kibanaRouter.Server().ListenAndServe()
