@@ -1,5 +1,10 @@
 # Changelog
 
+**0.6.0**
+
+- Support GRPC
+- Enable caching fetch profile from baritoMarket and consulAddrs Producer & Kibana
+
 **0.5.5**
 
 - set CAS cookie path as root
