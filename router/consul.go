@@ -38,7 +38,7 @@ func fetchProducerUsingCache(cacheBag *cache.Cache, key string, function func() 
 	}
 	srv, err = function()
 
-	if err == nil {
+	if (err == nil) && (srv != nil) {
 		// push to cache
 		cacheBag.Set(key, srv, config.CacheExpirationTimeSeconds)
 		cacheBag.Set(ConsulServiceBackupCachePrefix+key, srv, config.BackupCacheExpirationTimeHours)
