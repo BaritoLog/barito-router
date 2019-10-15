@@ -73,7 +73,7 @@ func fetchUsingCache(cacheBag *cache.Cache, key string, function func() (*Profil
 	}
 	profile, err = function()
 
-	if err == nil {
+	if (err == nil) && (profile != nil) {
 		// push to cache
 		cacheBag.Set(key, profile, config.CacheExpirationTimeSeconds)
 		cacheBag.Set(ProfileBackupCachePrefix+key, profile, config.BackupCacheExpirationTimeHours)
