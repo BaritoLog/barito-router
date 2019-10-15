@@ -1,5 +1,9 @@
 # Changelog
 
+**0.6.2**
+
+- Fix cache key (add appName as cache key) on fetchProfileByAppGroupSecret
+
 **0.6.1**
 
 - Hot-fix cache implementation
