@@ -32,7 +32,7 @@ func TestFetchProfileWithCache(t *testing.T) {
 	client := createClient()
 
 	cacheBag := cache.New(1*time.Minute, 10*time.Minute)
-	cacheBag.Set("app-group-secret", &p, cache.DefaultExpiration)
+	cacheBag.Set("app-group-secret_appname", &p, cache.DefaultExpiration)
 
 	profile, _ := fetchProfileByAppGroupSecret(
 		client,
@@ -56,7 +56,7 @@ func TestFetchProfileWithExpiredCacheShouldCallToBaritoMarket(t *testing.T) {
 	p := Profile{Name: "cached-name", AppGroup: "some-app-group"}
 
 	cacheBag := cache.New(1*time.Minute, 10*time.Minute)
-	cacheBag.Set("app-group-secret", &p, 1*time.Second)
+	cacheBag.Set("app-group-secret_appname", &p, 1*time.Second)
 	time.Sleep(2 * time.Second)
 
 	client := createClient()
@@ -83,7 +83,7 @@ func TestFetchProfileWhenBaritoMarketDownShouldReturnBackupCachedProfile(t *test
 	p := Profile{Name: "long-term-cached-name", AppGroup: "some-app-group"}
 
 	cacheBag := cache.New(1*time.Minute, 10*time.Minute)
-	cacheBag.Set(ProfileBackupCachePrefix+"app-group-secret", &p, 48*time.Hour)
+	cacheBag.Set(ProfileBackupCachePrefix+"app-group-secret_appname", &p, 48*time.Hour)
 
 	client := createClient()
 	client.Transport = roundTripFunc(func(r *http.Request) (*http.Response, error) {
