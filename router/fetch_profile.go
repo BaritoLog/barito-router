@@ -39,7 +39,7 @@ func fetchProfileByAppSecret(client *http.Client, cacheBag *cache.Cache, marketU
 }
 
 func fetchProfileByAppGroupSecret(client *http.Client, cacheBag *cache.Cache, marketUrl, path, appGroupSecret string, appName string) (*Profile, error) {
-	return fetchUsingCache(cacheBag, appGroupSecret, func() (profile *Profile, err error) {
+	return fetchUsingCache(cacheBag, appGroupSecret+"_"+appName, func() (profile *Profile, err error) {
 		address := fmt.Sprintf("%s/%s", marketUrl, path)
 		q := url.Values{}
 		q.Add("app_group_secret", appGroupSecret)
