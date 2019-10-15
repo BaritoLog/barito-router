@@ -1,5 +1,9 @@
 # Changelog
 
+**0.6.1**
+
+- Hot-fix cache implementation
+
 **0.6.0**
 
 - Support GRPC
