@@ -6,6 +6,7 @@ import (
 	"github.com/BaritoLog/barito-router/config"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/instrumentation"
@@ -109,6 +110,13 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		onConsulError(w, err)
 		return
+	}
+
+	if config.ProducerPort != "" {
+		port, err := strconv.Atoi(config.ProducerPort)
+		if err == nil {
+			srv.ServicePort = port
+		}
 	}
 
 	pAttr := producerAttributes{
