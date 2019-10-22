@@ -11,6 +11,7 @@ const (
 
 	EnvProducerRouterAddress             = "BARITO_PRODUCER_ROUTER"
 	EnvKibanaRouterAddress               = "BARITO_KIBANA_ROUTER"
+	EnvProducerPort                      = "BARITO_PRODUCER_PORT"
 	EnvBaritoMarketUrl                   = "BARITO_MARKET_URL"
 	EnvBaritoMarketAccessToken           = "BARITO_MARKET_ACCESS_TOKEN"
 	EnvBaritoProfileApiPath              = "BARITO_PROFILE_API_PATH"
@@ -26,6 +27,7 @@ const (
 
 	DefaultProducerRouterAddress             = ":8081"
 	DefaultKibanaRouterAddress               = ":8083"
+	DefaultProducerPort                      = ""
 	DefaultBaritoMarketUrl                   = "http://localhost:3000"
 	DefaultBaritoMarketAccessToken           = ""
 	DefaultBaritoProfileApiPath              = "api/profile"
@@ -42,6 +44,7 @@ const (
 
 var (
 	RouterAddress                  string
+	ProducerPort                   string
 	KibanaRouterAddress            string
 	BaritoMarketUrl                string
 	BaritoMarketAccessToken        string
@@ -65,6 +68,10 @@ func init() {
 	KibanaRouterAddress, _ = envkit.GetString(
 		EnvKibanaRouterAddress,
 		DefaultKibanaRouterAddress,
+	)
+	ProducerPort, _ = envkit.GetString(
+		EnvProducerPort,
+		DefaultProducerPort,
 	)
 	BaritoMarketUrl, _ = envkit.GetString(
 		EnvBaritoMarketUrl,
