@@ -1,5 +1,9 @@
 # Changelog
 
+**0.6.3**
+
+- Add EnvProducerPort variable
+
 **0.6.2**
 
 - Fix cache key (add appName as cache key) on fetchProfileByAppGroupSecret
