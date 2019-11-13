@@ -3,11 +3,11 @@ package router
 import (
 	"context"
 	"fmt"
-	"github.com/BaritoLog/barito-router/config"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 
+	"github.com/BaritoLog/barito-router/config"
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/instrumentation"
 	"github.com/patrickmn/go-cache"
@@ -141,6 +141,7 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 
 		result, err = producerClient.ProduceBatch(ctx, &timberCollection)
+		checkProduceResult(w, result, err)
 
 	} else {
 		timber, err := ConvertBytesToTimber(b, timberContext)
@@ -150,8 +151,11 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 
 		result, err = producerClient.Produce(ctx, &timber)
+		checkProduceResult(w, result, err)
 	}
+}
 
+func checkProduceResult(w http.ResponseWriter, result *pb.ProduceResult, err error) {
 	if err != nil {
 		msg := onRpcError(w, err)
 		log.Errorf("%s", msg)
