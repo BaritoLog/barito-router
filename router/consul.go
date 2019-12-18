@@ -24,8 +24,8 @@ func consulService(consulAddr, serviceName string, cacheBag *cache.Cache) (srv *
 }
 
 func fetchConsulService(consulCatalog ConsulCatalog, consulAddr string, serviceName string, cacheBag *cache.Cache) (srv *api.CatalogService, err error) {
-    cacheKey := "services_"+consulAddr+"_"+serviceName;
-	services, err := fetchProducerUsingCache(cacheBag, cacheKey, func() (consulServices []*api.CatalogService, err error) {
+    cacheKey := "services_"+consulAddr+"_"+serviceName
+	services, err := fetchServicesUsingCache(cacheBag, cacheKey, func() (consulServices []*api.CatalogService, err error) {
 		consulServices, _, err = consulCatalog.Service(serviceName, "", nil)
 		if err != nil {
 			return
@@ -55,7 +55,7 @@ func fetchConsulService(consulCatalog ConsulCatalog, consulAddr string, serviceN
 	return
 }
 
-func fetchProducerUsingCache(cacheBag *cache.Cache, key string, function func() ([]*api.CatalogService, error)) (services []*api.CatalogService, err error) {
+func fetchServicesUsingCache(cacheBag *cache.Cache, key string, function func() ([]*api.CatalogService, error)) (services []*api.CatalogService, err error) {
 	// check if still in cache
 	if cacheValue, found := cacheBag.Get(key); found {
 		services = cacheValue.([]*api.CatalogService)
