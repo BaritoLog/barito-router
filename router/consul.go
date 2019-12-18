@@ -11,7 +11,6 @@ import (
 
 const ConsulServiceBackupCachePrefix = "consul_backup_cache_"
 
-
 type ConsulCatalog interface {
 	Service(service, tag string, q *api.QueryOptions) ([]*api.CatalogService, *api.QueryMeta, error)
 }
@@ -20,11 +19,11 @@ func consulService(consulAddr, serviceName string, cacheBag *cache.Cache) (srv *
 	consulClient, _ := api.NewClient(&api.Config{
 		Address: consulAddr,
 	})
-    return fetchConsulService(consulClient.Catalog(), consulAddr, serviceName, cacheBag)
+	return fetchConsulService(consulClient.Catalog(), consulAddr, serviceName, cacheBag)
 }
 
 func fetchConsulService(consulCatalog ConsulCatalog, consulAddr string, serviceName string, cacheBag *cache.Cache) (srv *api.CatalogService, err error) {
-    cacheKey := "services_"+consulAddr+"_"+serviceName
+	cacheKey := "services_" + consulAddr + "_" + serviceName
 	services, err := fetchServicesUsingCache(cacheBag, cacheKey, func() (consulServices []*api.CatalogService, err error) {
 		consulServices, _, err = consulCatalog.Service(serviceName, "", nil)
 		if err != nil {
