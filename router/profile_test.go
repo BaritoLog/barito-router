@@ -38,6 +38,22 @@ func TestProfile_New(t *testing.T) {
 	FatalIf(t, profile.AppStatus != wantAppStatus, "%s != %s", profile.AppStatus, wantAppStatus)
 }
 
+func TestProfile_New_OldConsulHost(t *testing.T) {
+	wantConsulHost := "some-consul-host"
+	jsonBody := fmt.Sprintf(`{
+		"cluster_name": "some-cluster-name",
+		"name": "some-name",
+		"consul_host": "%s",
+		"app_group_name": "some-app-group",
+		"max_tps": 9999,
+		"status": "some-app-status"
+	}`, wantConsulHost)
+	profile, err := NewProfileFromBytes([]byte(jsonBody))
+
+	FatalIfError(t, err)
+	FatalIf(t, profile.ConsulHosts[0] != wantConsulHost, "%s != %s", profile.ConsulHosts[0], wantConsulHost)
+}
+
 func TestProfile_New_InvalidJson(t *testing.T) {
 	_, err := NewProfileFromBytes([]byte("invalid-json"))
 	FatalIfWrongError(t, err, "invalid character 'i' looking for beginning of value")
