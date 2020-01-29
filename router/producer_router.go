@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/BaritoLog/barito-router/config"
 	"github.com/BaritoLog/barito-router/appcontext"
+	"github.com/BaritoLog/barito-router/config"
 	"github.com/BaritoLog/barito-router/instrumentation"
 	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
@@ -106,7 +106,7 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	srvName, _ := profile.MetaServiceName(KeyProducer)
-	srv, err := consulService(profile.ConsulHost, srvName, p.cacheBag)
+	srv, err := consulService(profile.ConsulHosts[0], srvName, p.cacheBag)
 	if err != nil {
 		onConsulError(w, err)
 		return
@@ -120,7 +120,7 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	pAttr := producerAttributes{
-		consulAddr:   profile.ConsulHost,
+		consulAddr:   profile.ConsulHosts[0],
 		producerAddr: fmt.Sprintf("%s:%d", srv.ServiceAddress, srv.ServicePort),
 		producerName: srvName,
 		appSecret:    profile.AppSecret,

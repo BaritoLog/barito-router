@@ -31,7 +31,6 @@ func TestProfile_New(t *testing.T) {
 	FatalIfError(t, err)
 	FatalIf(t, profile.ClusterName != wantClusterName, "%s != %s", profile.ClusterName, wantClusterName)
 	FatalIf(t, profile.Name != wantName, "%s != %s", profile.Name, wantName)
-	FatalIf(t, profile.ConsulHost != wantConsulHost, "%s != %s", profile.ConsulHost, wantConsulHost)
 	FatalIf(t, profile.ConsulHosts[0] != wantConsulHosts1, "%s != %s", profile.ConsulHosts[0], wantConsulHosts1)
 	FatalIf(t, profile.ConsulHosts[1] != wantConsulHosts2, "%s != %s", profile.ConsulHosts[1], wantConsulHosts2)
 	FatalIf(t, profile.AppGroup != wantAppGroup, "%s != %s", profile.AppGroup, wantAppGroup)

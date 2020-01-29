@@ -3,10 +3,12 @@ package router
 import (
 	"bytes"
 	"fmt"
-	"github.com/patrickmn/go-cache"
 	"net/http"
 	"testing"
 	"time"
+
+	newrelic "github.com/newrelic/go-agent"
+	"github.com/patrickmn/go-cache"
 
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/mock"
@@ -14,7 +16,6 @@ import (
 	. "github.com/BaritoLog/go-boilerplate/testkit"
 	"github.com/golang/mock/gomock"
 	"github.com/hashicorp/consul/api"
-	"github.com/newrelic/go-agent"
 )
 
 func TestProducerRouter_Ping(t *testing.T) {
@@ -98,7 +99,7 @@ func TestProducerRouter_WithAppGroupSecret_NoProfile(t *testing.T) {
 
 func TestProducerRouter_ConsulError(t *testing.T) {
 	marketServer := NewJsonTestServer(http.StatusOK, Profile{
-		ConsulHost: "wrong-consul",
+		ConsulHosts: []string{"wrong-consul"},
 	})
 	defer marketServer.Close()
 
@@ -134,7 +135,7 @@ func TestProducerRouter_WithAppSecret(t *testing.T) {
 
 	host, consulPort := httpkit.HostOfRawURL(consulServer.URL)
 	marketServer := NewJsonTestServer(http.StatusOK, Profile{
-		ConsulHost: fmt.Sprintf("%s:%d", host, consulPort),
+		ConsulHosts: []string{fmt.Sprintf("%s:%d", host, consulPort)},
 	})
 	defer marketServer.Close()
 
@@ -176,7 +177,7 @@ func TestProducerRouter_WithAppGroupSecret(t *testing.T) {
 
 	host, consulPort := httpkit.HostOfRawURL(consulServer.URL)
 	marketServer := NewJsonTestServer(http.StatusOK, Profile{
-		ConsulHost: fmt.Sprintf("%s:%d", host, consulPort),
+		ConsulHosts: []string{fmt.Sprintf("%s:%d", host, consulPort)},
 	})
 	defer marketServer.Close()
 
