@@ -12,6 +12,7 @@ type Profile struct {
 	MaxTps      int         `json:"max_tps"`
 	ClusterName string      `json:"cluster_name"`
 	ConsulHost  string      `json:"consul_host"`
+	ConsulHosts []string    `json:"consul_hosts"`
 	AppStatus   string      `json:"status"`
 	Meta        ProfileMeta `json:"meta"`
 }

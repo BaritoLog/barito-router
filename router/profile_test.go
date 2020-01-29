@@ -11,6 +11,8 @@ func TestProfile_New(t *testing.T) {
 	wantClusterName := "some-cluster-name"
 	wantName := "some-name"
 	wantConsulHost := "some-consul-host"
+	wantConsulHosts1 := "host1"
+	wantConsulHosts2 := "host2"
 	wantAppGroup := "some-app-group"
 	wantMaxTps := 9999
 	wantAppStatus := "some-app-status"
@@ -19,16 +21,19 @@ func TestProfile_New(t *testing.T) {
 		"cluster_name": "%s",
 		"name": "%s",
 		"consul_host": "%s",
+		"consul_hosts": ["%s", "%s"],
 		"app_group_name": "%s",
 		"max_tps": %d,
 		"status": "%s"
-	}`, wantClusterName, wantName, wantConsulHost, wantAppGroup, wantMaxTps, wantAppStatus)
+	}`, wantClusterName, wantName, wantConsulHost, wantConsulHosts1, wantConsulHosts2, wantAppGroup, wantMaxTps, wantAppStatus)
 	profile, err := NewProfileFromBytes([]byte(jsonBody))
 
 	FatalIfError(t, err)
 	FatalIf(t, profile.ClusterName != wantClusterName, "%s != %s", profile.ClusterName, wantClusterName)
 	FatalIf(t, profile.Name != wantName, "%s != %s", profile.Name, wantName)
 	FatalIf(t, profile.ConsulHost != wantConsulHost, "%s != %s", profile.ConsulHost, wantConsulHost)
+	FatalIf(t, profile.ConsulHosts[0] != wantConsulHosts1, "%s != %s", profile.ConsulHosts[0], wantConsulHosts1)
+	FatalIf(t, profile.ConsulHosts[1] != wantConsulHosts2, "%s != %s", profile.ConsulHosts[1], wantConsulHosts2)
 	FatalIf(t, profile.AppGroup != wantAppGroup, "%s != %s", profile.AppGroup, wantAppGroup)
 	FatalIf(t, profile.MaxTps != wantMaxTps, "%d != %d", profile.MaxTps, wantMaxTps)
 	FatalIf(t, profile.AppStatus != wantAppStatus, "%s != %s", profile.AppStatus, wantAppStatus)
