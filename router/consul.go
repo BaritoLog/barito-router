@@ -15,11 +15,19 @@ type ConsulCatalog interface {
 	Service(service, tag string, q *api.QueryOptions) ([]*api.CatalogService, *api.QueryMeta, error)
 }
 
-func consulService(consulAddr, serviceName string, cacheBag *cache.Cache) (srv *api.CatalogService, err error) {
-	consulClient, _ := api.NewClient(&api.Config{
-		Address: consulAddr,
-	})
-	return fetchConsulService(consulClient.Catalog(), consulAddr, serviceName, cacheBag)
+var fetchConsulServiceFunc = fetchConsulService
+
+func consulService(consulAddresses []string, serviceName string, cacheBag *cache.Cache) (srv *api.CatalogService, consulAddress string, err error) {
+	for _, consulAddress = range consulAddresses {
+		consulClient, _ := api.NewClient(&api.Config{
+			Address: consulAddress,
+		})
+
+		if srv, err = fetchConsulServiceFunc(consulClient.Catalog(), consulAddress, serviceName, cacheBag); err == nil {
+			return
+		}
+	}
+	return
 }
 
 func fetchConsulService(consulCatalog ConsulCatalog, consulAddr string, serviceName string, cacheBag *cache.Cache) (srv *api.CatalogService, err error) {

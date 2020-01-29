@@ -106,7 +106,7 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	srvName, _ := profile.MetaServiceName(KeyProducer)
-	srv, err := consulService(profile.ConsulHosts[0], srvName, p.cacheBag)
+	srv, consulAddr, err := consulService(profile.ConsulHosts, srvName, p.cacheBag)
 	if err != nil {
 		onConsulError(w, err)
 		return
@@ -120,7 +120,7 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	pAttr := producerAttributes{
-		consulAddr:   profile.ConsulHosts[0],
+		consulAddr:   consulAddr,
 		producerAddr: fmt.Sprintf("%s:%d", srv.ServiceAddress, srv.ServicePort),
 		producerName: srvName,
 		appSecret:    profile.AppSecret,
