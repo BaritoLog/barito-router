@@ -1,5 +1,19 @@
 # Changelog
 
+0.6.6
+
+- Accept multiple Consul address
+
+0.6.5
+
+- update consul to randomize service from multiple service available
+- tidy up code on consul module
+- fix indentation on consul module
+
+**0.6.4**
+
+- bugfix bandwidth exceeded error
+
 **0.6.3**
 
 - Add EnvProducerPort variable
