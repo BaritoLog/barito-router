@@ -58,7 +58,7 @@ func TestKibanaRouter_NoProfile(t *testing.T) {
 
 func TestKibanaRouter_ConsulError(t *testing.T) {
 	marketServer := NewJsonTestServer(http.StatusOK, Profile{
-		ConsulHost: "wrong-consul",
+		ConsulHosts: []string{"wrong-consul"},
 	})
 	defer marketServer.Close()
 
@@ -89,7 +89,7 @@ func TestKibanaRouter(t *testing.T) {
 
 	host, port = httpkit.HostOfRawURL(consulServer.URL)
 	marketServer := NewJsonTestServer(http.StatusOK, Profile{
-		ConsulHost: fmt.Sprintf("%s:%d", host, port),
+		ConsulHosts: []string{fmt.Sprintf("%s:%d", host, port)},
 	})
 	defer marketServer.Close()
 

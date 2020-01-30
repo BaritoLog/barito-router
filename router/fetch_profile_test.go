@@ -23,7 +23,7 @@ func TestFetchProfileWithCache(t *testing.T) {
 		ID:          99,
 		ClusterName: "some-cluster-name",
 		Name:        "some-name",
-		ConsulHost:  "some-consul-host",
+		ConsulHosts: []string{"some-consul-host"},
 		AppGroup:    "some-app-group",
 		MaxTps:      9999,
 		AppStatus:   "App-status",
@@ -45,7 +45,7 @@ func TestFetchProfileWithCache(t *testing.T) {
 	FatalIf(t, nil == profile, "Should be able to fetch profile from cache")
 	FatalIf(t, p.ClusterName != profile.ClusterName, "%s != %s", p.ClusterName, profile.ClusterName)
 	FatalIf(t, p.Name != profile.Name, "%s != %s", p.Name, profile.Name)
-	FatalIf(t, p.ConsulHost != profile.ConsulHost, "%s != %s", p.ConsulHost, profile.ConsulHost)
+	FatalIf(t, p.ConsulHosts[0] != profile.ConsulHosts[0], "%s != %s", p.ConsulHosts[0], profile.ConsulHosts[0])
 	FatalIf(t, p.AppGroup != profile.AppGroup, "%s != %s", p.AppGroup, profile.AppGroup)
 	FatalIf(t, p.MaxTps != profile.MaxTps, "%d != %d", p.MaxTps, profile.MaxTps)
 	FatalIf(t, p.AppStatus != profile.AppStatus, "%s != %s", p.AppStatus, profile.AppStatus)

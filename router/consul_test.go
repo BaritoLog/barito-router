@@ -1,28 +1,46 @@
 package router
 
 import (
+	"errors"
+	"testing"
+	"time"
+
 	"github.com/BaritoLog/barito-router/mock"
 	. "github.com/BaritoLog/go-boilerplate/testkit"
 	"github.com/golang/mock/gomock"
 	"github.com/hashicorp/consul/api"
 	"github.com/patrickmn/go-cache"
-	"testing"
-	"time"
 )
+
+func TestConsulService_MultiHostsRetry(t *testing.T) {
+	origFetchConsulServiceFunc := fetchConsulServiceFunc
+	fetchConsulServiceFunc = func(consulCatalog ConsulCatalog, consulAddr, serviceName string, cacheBag *cache.Cache) (*api.CatalogService, error) {
+		if consulAddr == "err" {
+			return nil, errors.New("error")
+		} else {
+			return &api.CatalogService{}, nil
+		}
+	}
+	defer func() { fetchConsulServiceFunc = origFetchConsulServiceFunc }()
+
+	_, consulAddr, err := consulService([]string{"err", "non-err"}, "", nil)
+	FatalIf(t, consulAddr != "non-err", "should choose 2nd Consul server")
+	FatalIf(t, err != nil, "should not error")
+}
 
 func TestConsulService(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-    consulCatalog := mock.NewMockConsulCatalog(ctrl)
+	consulCatalog := mock.NewMockConsulCatalog(ctrl)
 
-    returnedServices := []*api.CatalogService{
-        &(api.CatalogService{ID: "test"}),
+	returnedServices := []*api.CatalogService{
+		&(api.CatalogService{ID: "test"}),
 	}
 	consulCatalog.EXPECT().Service(gomock.Any(), gomock.Any(), gomock.Any()).Return(returnedServices, nil, nil)
 
-    cacheBag := cache.New(1 * time.Minute, 1 * time.Minute)
-    srv, _ := fetchConsulService(consulCatalog, "someAddr", "provider", cacheBag)
+	cacheBag := cache.New(1*time.Minute, 1*time.Minute)
+	srv, _ := fetchConsulService(consulCatalog, "someAddr", "provider", cacheBag)
 
 	FatalIf(t, srv.ID != "test", "should return consul service")
 }
@@ -36,7 +54,7 @@ func TestConsulService_noServiceAvailable(t *testing.T) {
 	returnedServices := []*api.CatalogService{}
 	consulCatalog.EXPECT().Service(gomock.Any(), gomock.Any(), gomock.Any()).Return(returnedServices, nil, nil)
 
-	cacheBag := cache.New(1 * time.Minute, 1 * time.Minute)
+	cacheBag := cache.New(1*time.Minute, 1*time.Minute)
 	srv, err := fetchConsulService(consulCatalog, "someAddr", "provider", cacheBag)
 
 	FatalIf(t, err == nil, "should return error")
@@ -58,14 +76,14 @@ func TestConsulService_withMultipleServicesAvailable(t *testing.T) {
 		&(api.CatalogService{ID: "test3"}),
 	}
 	consulCatalog.EXPECT().Service(gomock.Any(), gomock.Any(), gomock.Any()).Return(returnedServices, nil, nil)
-	cacheBag := cache.New(1 * time.Minute, 1 * time.Minute)
+	cacheBag := cache.New(1*time.Minute, 1*time.Minute)
 
 	result := map[string]bool{
-        "test1": false,
+		"test1": false,
 		"test2": false,
 		"test3": false,
 	}
-	for i := 0;  i<30; i++ {
+	for i := 0; i < 30; i++ {
 		srv, _ := fetchConsulService(consulCatalog, "someAddr", "provider", cacheBag)
 		result[srv.ID] = true
 	}
