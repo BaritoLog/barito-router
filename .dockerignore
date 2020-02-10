@@ -1,0 +1,7 @@
+*/**
+
+!**/*.go
+!go.mod
+!go.sum
+**/_test.go
+bin
