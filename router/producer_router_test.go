@@ -226,7 +226,7 @@ func NewTestSuccessfulProducer(ctrl *gomock.Controller, marketUrl string, host s
 		producerAddr: fmt.Sprintf("%s:%d", host, producerPort),
 	}
 
-	router.producerStore[pAttr] = &grpcParts{
+	router.producerStore.producerStoreMap[pAttr] = &grpcParts{
 		client: pClient,
 	}
 
