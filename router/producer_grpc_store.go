@@ -1,6 +1,8 @@
 package router
 
 import (
+	"sync"
+
 	pb "github.com/vwidjaya/barito-proto/producer"
 	"google.golang.org/grpc"
 )
@@ -17,28 +19,36 @@ type grpcParts struct {
 	client pb.ProducerClient
 }
 
-type ProducerStore map[producerAttributes]*grpcParts
-
-func NewProducerStore() ProducerStore {
-	return make(map[producerAttributes]*grpcParts)
+type ProducerStore struct {
+	producerStoreMap   map[producerAttributes]*grpcParts
+	producerStoreMutex *sync.RWMutex
 }
 
-func (s ProducerStore) GetClient(attr producerAttributes) pb.ProducerClient {
-	if _, ok := s[attr]; !ok {
+func NewProducerStore() *ProducerStore {
+	return &ProducerStore{
+		producerStoreMap:   make(map[producerAttributes]*grpcParts),
+		producerStoreMutex: &sync.RWMutex{},
+	}
+}
+
+func (s *ProducerStore) GetClient(attr producerAttributes) pb.ProducerClient {
+	if _, ok := s.producerStoreMap[attr]; !ok {
 		conn, _ := grpc.Dial(attr.producerAddr, grpc.WithInsecure())
 
-		s[attr] = &grpcParts{
+		s.producerStoreMutex.Lock()
+		s.producerStoreMap[attr] = &grpcParts{
 			conn:   conn,
 			client: pb.NewProducerClient(conn),
 		}
+		s.producerStoreMutex.Unlock()
 	}
 
-	return s[attr].client
+	return s.producerStoreMap[attr].client
 }
 
-func (s ProducerStore) CloseConns() {
-	for attr, parts := range s {
-		delete(s, attr)
+func (s *ProducerStore) CloseConns() {
+	for attr, parts := range s.producerStoreMap {
+		delete(s.producerStoreMap, attr)
 		parts.conn.Close()
 	}
 }

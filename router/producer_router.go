@@ -40,7 +40,7 @@ type producerRouter struct {
 	client *http.Client
 	appCtx *appcontext.AppContext
 
-	producerStore ProducerStore
+	producerStore &ProducerStore
 }
 
 func NewProducerRouter(addr, marketUrl, profilePath string, profileByAppGroupPath string, appCtx *appcontext.AppContext) ProducerRouter {
