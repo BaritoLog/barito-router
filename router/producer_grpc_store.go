@@ -31,19 +31,32 @@ func NewProducerStore() *ProducerStore {
 	}
 }
 
-func (s *ProducerStore) GetClient(attr producerAttributes) pb.ProducerClient {
-	if _, ok := s.producerStoreMap[attr]; !ok {
-		conn, _ := grpc.Dial(attr.producerAddr, grpc.WithInsecure())
+func (s *ProducerStore) read(attr producerAttributes) (value *grpcParts, ok bool) {
+	s.producerStoreMutex.RLock()
+	defer s.producerStoreMutex.RUnlock()
 
+	value, ok = s.producerStoreMap[attr]
+	return
+}
+
+func (s *ProducerStore) GetClient(attr producerAttributes) pb.ProducerClient {
+	value, ok := s.read(attr)
+	if !ok {
 		s.producerStoreMutex.Lock()
-		s.producerStoreMap[attr] = &grpcParts{
-			conn:   conn,
-			client: pb.NewProducerClient(conn),
+		defer s.producerStoreMutex.Unlock()
+
+		if value, ok = s.producerStoreMap[attr]; !ok {
+			conn, _ := grpc.Dial(attr.producerAddr, grpc.WithInsecure())
+
+			value = &grpcParts{
+				conn:   conn,
+				client: pb.NewProducerClient(conn),
+			}
+			s.producerStoreMap[attr] = value
 		}
-		s.producerStoreMutex.Unlock()
 	}
 
-	return s.producerStoreMap[attr].client
+	return value.client
 }
 
 func (s *ProducerStore) CloseConns() {
