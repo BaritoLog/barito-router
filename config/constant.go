@@ -1,8 +1,9 @@
 package config
 
 import (
-	"github.com/BaritoLog/go-boilerplate/envkit"
 	"time"
+
+	"github.com/BaritoLog/go-boilerplate/envkit"
 )
 
 const (
@@ -24,6 +25,8 @@ const (
 	EnvNewRelicEnabled                   = "BARITO_NEW_RELIC_ENABLED"
 	EnvCacheExpirationTimeSeconds        = "BARITO_CACHE_EXPIRATION_TIME_IN_SECONDS"
 	EnvBackupCacheExpirationTimeHours    = "BARITO_BACKUP_CACHE_EXPIRATION_TIME_IN_HOURS"
+	EnvEnableTracing                     = "BARITO_ENABLE_TRACING"
+	EnvJaegerServiceName                 = "BARITO_JAEGER_SERVICE_NAME"
 
 	DefaultProducerRouterAddress             = ":8081"
 	DefaultKibanaRouterAddress               = ":8083"
@@ -35,8 +38,10 @@ const (
 	DefaultBaritoAuthorizeApiPath            = "api/authorize"
 	DefaultBaritoProfileApiByClusternamePath = "api/v2/profile_by_cluster_name"
 	DefaultCASAddress                        = ""
+	DefaultJaegerServiceName                 = "barito_router"
 	DefaultNewRelicAppName                   = "barito_router"
 	DefaultNewRelicLicenseKey                = ""
+	DefaultEnableTracing                     = false
 	DefaultNewRelicEnabled                   = false
 	DefaultCacheExpirationTimeSeconds        = 60
 	DefaultBackupCacheExpirationTimeHours    = 48
@@ -53,9 +58,11 @@ var (
 	AuthorizeApiPath               string
 	ProfileApiByClusternamePath    string
 	CasAddress                     string
+	JaegerServiceName              string
 	NewRelicAppName                string
 	NewRelicLicenseKey             string
 	NewRelicEnabled                bool
+	EnableTracing                  bool
 	CacheExpirationTimeSeconds     time.Duration
 	BackupCacheExpirationTimeHours time.Duration
 )
@@ -101,6 +108,10 @@ func init() {
 		EnvCASAddress,
 		DefaultCASAddress,
 	)
+	JaegerServiceName, _ = envkit.GetString(
+		EnvJaegerServiceName,
+		DefaultJaegerServiceName,
+	)
 	NewRelicAppName, _ = envkit.GetString(
 		EnvNewRelicAppName,
 		DefaultNewRelicAppName,
@@ -112,6 +123,10 @@ func init() {
 	NewRelicEnabled, _ = envkit.GetBool(
 		EnvNewRelicEnabled,
 		DefaultNewRelicEnabled,
+	)
+	EnableTracing, _ = envkit.GetBool(
+		EnvEnableTracing,
+		DefaultEnableTracing,
 	)
 	temp, _ := envkit.GetInt(
 		EnvCacheExpirationTimeSeconds,

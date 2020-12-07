@@ -2,13 +2,14 @@ package router
 
 import (
 	"errors"
-	. "github.com/BaritoLog/go-boilerplate/testkit"
-	"github.com/patrickmn/go-cache"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	. "github.com/BaritoLog/go-boilerplate/testkit"
+	"github.com/patrickmn/go-cache"
 )
 
 type roundTripFunc func(r *http.Request) (*http.Response, error)
@@ -36,6 +37,7 @@ func TestFetchProfileWithCache(t *testing.T) {
 
 	profile, _ := fetchProfileByAppGroupSecret(
 		client,
+		nil,
 		cacheBag,
 		"marketUrl",
 		"path",
@@ -69,6 +71,7 @@ func TestFetchProfileWithExpiredCacheShouldCallToBaritoMarket(t *testing.T) {
 
 	profile, _ := fetchProfileByAppGroupSecret(
 		client,
+		nil,
 		cacheBag,
 		"marketUrl",
 		"path",
@@ -92,6 +95,7 @@ func TestFetchProfileWhenBaritoMarketDownShouldReturnBackupCachedProfile(t *test
 
 	profile, _ := fetchProfileByAppGroupSecret(
 		client,
+		nil,
 		cacheBag,
 		"marketUrl",
 		"path",

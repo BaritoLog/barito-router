@@ -2,11 +2,13 @@ package router
 
 import (
 	"fmt"
-	"github.com/BaritoLog/barito-router/config"
-	"github.com/patrickmn/go-cache"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+
+	"github.com/BaritoLog/barito-router/config"
+	"github.com/opentracing/opentracing-go"
+	"github.com/patrickmn/go-cache"
 )
 
 const ProfileBackupCachePrefix = "profile_backup_cache_"
@@ -38,13 +40,18 @@ func fetchProfileByAppSecret(client *http.Client, cacheBag *cache.Cache, marketU
 	})
 }
 
-func fetchProfileByAppGroupSecret(client *http.Client, cacheBag *cache.Cache, marketUrl, path, appGroupSecret string, appName string) (*Profile, error) {
+func fetchProfileByAppGroupSecret(client *http.Client, spanContext opentracing.SpanContext, cacheBag *cache.Cache, marketUrl, path, appGroupSecret string, appName string) (*Profile, error) {
 	return fetchUsingCache(cacheBag, appGroupSecret+"_"+appName, func() (profile *Profile, err error) {
 		address := fmt.Sprintf("%s/%s", marketUrl, path)
 		q := url.Values{}
 		q.Add("app_group_secret", appGroupSecret)
 		q.Add("app_name", appName)
 		req, _ := http.NewRequest("GET", address, nil)
+		opentracing.GlobalTracer().Inject(
+			spanContext,
+			opentracing.HTTPHeaders,
+			opentracing.HTTPHeadersCarrier(req.Header))
+
 		req.URL.RawQuery = q.Encode()
 
 		return fetchProfile(client, req)

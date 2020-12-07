@@ -2,13 +2,20 @@ package main
 
 import (
 	"fmt"
-	"github.com/BaritoLog/barito-router/config"
 	"log"
 	"os"
+
+	"github.com/BaritoLog/barito-router/config"
+	"github.com/opentracing/opentracing-go"
+	"github.com/uber/jaeger-client-go/zipkin"
+	"github.com/uber/jaeger-lib/metrics"
 
 	"github.com/BaritoLog/barito-router/appcontext"
 	newrelic "github.com/newrelic/go-agent"
 	"github.com/urfave/cli"
+
+	jaegercfg "github.com/uber/jaeger-client-go/config"
+	jaegerlog "github.com/uber/jaeger-client-go/log"
 )
 
 func main() {
@@ -21,10 +28,16 @@ func main() {
 	fmt.Printf("%s=%s\n", config.EnvBaritoAuthorizeApiPath, config.AuthorizeApiPath)
 	fmt.Printf("%s=%s\n\n", config.EnvBaritoProfileApiByClusternamePath, config.ProfileApiByClusternamePath)
 	fmt.Printf("%s=%s\n", config.EnvCASAddress, config.CasAddress)
+	fmt.Printf("%s=%s\n", config.EnvEnableTracing, config.DefaultEnableTracing)
 
 	newRelicConfig := newrelic.NewConfig(config.NewRelicAppName, config.NewRelicLicenseKey)
 	newRelicConfig.Enabled = config.NewRelicEnabled
 	appCtx := appcontext.NewAppContext(newRelicConfig)
+
+	// enable tracing
+	if config.EnableTracing {
+		initTracer()
+	}
 
 	app := cli.App{
 		Name:    config.Name,
@@ -65,4 +78,39 @@ func main() {
 	if err != nil {
 		log.Fatal(fmt.Sprintf("Some error occurred: %s", err.Error()))
 	}
+}
+
+func initTracer() {
+	// config from environment variable
+	cfg, err := jaegercfg.FromEnv()
+	if err != nil {
+		// parsing errors might happen here, such as when we get a string where we expect a number
+		log.Printf("Could not parse Jaeger env vars: %s", err.Error())
+		return
+	}
+
+	// Example logger and metrics factory. Use github.com/uber/jaeger-client-go/log
+	// and github.com/uber/jaeger-lib/metrics respectively to bind to real logging and metrics
+	// frameworks.
+	jLogger := jaegerlog.StdLogger
+	jMetricsFactory := metrics.NullFactory
+
+	// Zipkin shares span ID between client and server spans; it must be enabled via the following option.
+	zipkinPropagator := zipkin.NewZipkinB3HTTPHeaderPropagator()
+
+	// Create tracer and then initialize global tracer
+	closer, err := cfg.InitGlobalTracer(
+		config.JaegerServiceName,
+		jaegercfg.Logger(jLogger),
+		jaegercfg.Metrics(jMetricsFactory),
+		jaegercfg.Injector(opentracing.HTTPHeaders, zipkinPropagator),
+		jaegercfg.Extractor(opentracing.HTTPHeaders, zipkinPropagator),
+		jaegercfg.ZipkinSharedRPCSpan(true),
+	)
+
+	if err != nil {
+		log.Printf("Could not initialize jaeger tracer: %s", err.Error())
+		return
+	}
+	defer closer.Close()
 }
