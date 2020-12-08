@@ -14,7 +14,7 @@ import (
 
 const ProfileBackupCachePrefix = "profile_backup_cache_"
 
-func fetchProfileByClusterName(client *http.Client, cacheBag *cache.Cache, marketUrl, accessToken, path, clusterName string) (*Profile, error) {
+func fetchProfileByClusterName(client *http.Client, spanContext opentracing.SpanContext, cacheBag *cache.Cache, marketUrl, accessToken, path, clusterName string) (*Profile, error) {
 	return fetchUsingCache(cacheBag, accessToken+"_"+clusterName, func() (profile *Profile, err error) {
 		address := fmt.Sprintf("%s/%s", marketUrl, path)
 		q := url.Values{}
@@ -24,11 +24,11 @@ func fetchProfileByClusterName(client *http.Client, cacheBag *cache.Cache, marke
 		req, _ := http.NewRequest("GET", address, nil)
 		req.URL.RawQuery = q.Encode()
 
-		return fetchProfile(client, req)
+		return fetchProfile(client, req, spanContext)
 	})
 }
 
-func fetchProfileByAppSecret(client *http.Client, cacheBag *cache.Cache, marketUrl, path, appSecret string) (*Profile, error) {
+func fetchProfileByAppSecret(client *http.Client, spanContext opentracing.SpanContext, cacheBag *cache.Cache, marketUrl, path, appSecret string) (*Profile, error) {
 	return fetchUsingCache(cacheBag, appSecret, func() (profile *Profile, err error) {
 		address := fmt.Sprintf("%s/%s", marketUrl, path)
 		q := url.Values{}
@@ -37,7 +37,7 @@ func fetchProfileByAppSecret(client *http.Client, cacheBag *cache.Cache, marketU
 		req, _ := http.NewRequest("GET", address, nil)
 		req.URL.RawQuery = q.Encode()
 
-		return fetchProfile(client, req)
+		return fetchProfile(client, req, spanContext)
 	})
 }
 
@@ -48,6 +48,15 @@ func fetchProfileByAppGroupSecret(client *http.Client, spanContext opentracing.S
 		q.Add("app_group_secret", appGroupSecret)
 		q.Add("app_name", appName)
 		req, _ := http.NewRequest("GET", address, nil)
+
+		req.URL.RawQuery = q.Encode()
+
+		return fetchProfile(client, req, spanContext)
+	})
+}
+
+func fetchProfile(client *http.Client, req *http.Request, spanContext opentracing.SpanContext) (profile *Profile, err error) {
+	if config.EnableTracing {
 		err = opentracing.GlobalTracer().Inject(
 			spanContext,
 			opentracing.HTTPHeaders,
@@ -55,14 +64,8 @@ func fetchProfileByAppGroupSecret(client *http.Client, spanContext opentracing.S
 		if err != nil {
 			log.Errorf("Error when inject trace header: %q", err.Error())
 		}
+	}
 
-		req.URL.RawQuery = q.Encode()
-
-		return fetchProfile(client, req)
-	})
-}
-
-func fetchProfile(client *http.Client, req *http.Request) (profile *Profile, err error) {
 	res, err := client.Do(req)
 	if err != nil {
 		return

@@ -297,6 +297,7 @@ func NewTestSuccessfulProducer(ctrl *gomock.Controller, marketUrl string, host s
 
 func NewTestSuccessfulProducerWithTrace(ctrl *gomock.Controller, marketUrl string, host string, producerPort int, consulPort int) ProducerRouter {
 	initTracer()
+	config.EnableTracing = true
 	config := newrelic.NewConfig("barito-router", "")
 	config.Enabled = false
 	appCtx := appcontext.NewAppContext(config)

@@ -92,7 +92,7 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 	} else {
-		profile, err = fetchProfileByAppSecret(p.client, p.cacheBag, p.marketUrl, p.profilePath, appSecret)
+		profile, err = fetchProfileByAppSecret(p.client, span.Context(), p.cacheBag, p.marketUrl, p.profilePath, appSecret)
 		if profile != nil {
 			instrumentation.RunTransaction(p.appCtx.NewRelicApp(), p.profilePath, w, req)
 		}
