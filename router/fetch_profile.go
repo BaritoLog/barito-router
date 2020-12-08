@@ -9,6 +9,7 @@ import (
 	"github.com/BaritoLog/barito-router/config"
 	"github.com/opentracing/opentracing-go"
 	"github.com/patrickmn/go-cache"
+	log "github.com/sirupsen/logrus"
 )
 
 const ProfileBackupCachePrefix = "profile_backup_cache_"
@@ -47,10 +48,13 @@ func fetchProfileByAppGroupSecret(client *http.Client, spanContext opentracing.S
 		q.Add("app_group_secret", appGroupSecret)
 		q.Add("app_name", appName)
 		req, _ := http.NewRequest("GET", address, nil)
-		opentracing.GlobalTracer().Inject(
+		err = opentracing.GlobalTracer().Inject(
 			spanContext,
 			opentracing.HTTPHeaders,
 			opentracing.HTTPHeadersCarrier(req.Header))
+		if err != nil {
+			log.Errorf("Error when inject trace header: %q", err.Error())
+		}
 
 		req.URL.RawQuery = q.Encode()
 

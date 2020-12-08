@@ -28,7 +28,7 @@ func main() {
 	fmt.Printf("%s=%s\n", config.EnvBaritoAuthorizeApiPath, config.AuthorizeApiPath)
 	fmt.Printf("%s=%s\n\n", config.EnvBaritoProfileApiByClusternamePath, config.ProfileApiByClusternamePath)
 	fmt.Printf("%s=%s\n", config.EnvCASAddress, config.CasAddress)
-	fmt.Printf("%s=%s\n", config.EnvEnableTracing, config.DefaultEnableTracing)
+	fmt.Printf("%s=%v\n", config.EnvEnableTracing, config.DefaultEnableTracing)
 
 	newRelicConfig := newrelic.NewConfig(config.NewRelicAppName, config.NewRelicLicenseKey)
 	newRelicConfig.Enabled = config.NewRelicEnabled
