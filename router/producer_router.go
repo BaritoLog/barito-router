@@ -80,7 +80,6 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	span := opentracing.StartSpan("barito_router_producer.produce_log")
 	defer span.Finish()
 
-	// todo: fetch profile
 	if appSecret == "" {
 		if appGroupSecret != "" && appName != "" {
 			profile, err = fetchProfileByAppGroupSecret(p.client, span.Context(), p.cacheBag, p.marketUrl, p.profileByAppGroupPath, appGroupSecret, appName)
@@ -110,11 +109,14 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// todo: trace call, with tag
 	srvName, _ := profile.MetaServiceName(KeyProducer)
 	srv, consulAddr, err := consulService(profile.ConsulHosts, srvName, p.cacheBag)
 	if err != nil {
 		onConsulError(w, err)
+		return
+	}
+	if srv == nil {
+		onConsulError(w, fmt.Errorf("Can't find service from consul: %s", KeyProducer))
 		return
 	}
 

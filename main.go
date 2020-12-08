@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 
@@ -28,7 +29,7 @@ func main() {
 	fmt.Printf("%s=%s\n", config.EnvBaritoAuthorizeApiPath, config.AuthorizeApiPath)
 	fmt.Printf("%s=%s\n\n", config.EnvBaritoProfileApiByClusternamePath, config.ProfileApiByClusternamePath)
 	fmt.Printf("%s=%s\n", config.EnvCASAddress, config.CasAddress)
-	fmt.Printf("%s=%v\n", config.EnvEnableTracing, config.DefaultEnableTracing)
+	fmt.Printf("%s=%v\n", config.EnvEnableTracing, config.EnableTracing)
 
 	newRelicConfig := newrelic.NewConfig(config.NewRelicAppName, config.NewRelicLicenseKey)
 	newRelicConfig.Enabled = config.NewRelicEnabled
@@ -36,7 +37,11 @@ func main() {
 
 	// enable tracing
 	if config.EnableTracing {
-		initTracer()
+		err, closer := initTracer()
+		if err != nil {
+			log.Fatal(fmt.Sprintf("Failed to init tracer: %s", err.Error()))
+		}
+		defer closer.Close()
 	}
 
 	app := cli.App{
@@ -80,13 +85,14 @@ func main() {
 	}
 }
 
-func initTracer() {
+func initTracer() (error, io.Closer) {
 	// config from environment variable
 	cfg, err := jaegercfg.FromEnv()
+	fmt.Printf("Jaeger cfg: %+v", cfg)
 	if err != nil {
 		// parsing errors might happen here, such as when we get a string where we expect a number
 		log.Printf("Could not parse Jaeger env vars: %s", err.Error())
-		return
+		return err, nil
 	}
 
 	// Example logger and metrics factory. Use github.com/uber/jaeger-client-go/log
@@ -110,7 +116,8 @@ func initTracer() {
 
 	if err != nil {
 		log.Printf("Could not initialize jaeger tracer: %s", err.Error())
-		return
+		return err, nil
 	}
-	defer closer.Close()
+
+	return nil, closer
 }
