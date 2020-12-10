@@ -81,6 +81,7 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	defer span.Finish()
 
 	clusterName := KibanaGetClustername(req)
+	span.SetTag("app-group", clusterName)
 	profile, err := fetchProfileByClusterName(r.client, span.Context(), r.cacheBag, r.marketUrl, r.accessToken, r.profilePath, clusterName)
 	if profile != nil {
 		instrumentation.RunTransaction(r.appCtx.NewRelicApp(), r.profilePath, w, req)

@@ -109,6 +109,8 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	span.SetTag("app-group", profile.ClusterName)
+
 	srvName, _ := profile.MetaServiceName(KeyProducer)
 	srv, consulAddr, err := consulService(profile.ConsulHosts, srvName, p.cacheBag)
 	if err != nil {
