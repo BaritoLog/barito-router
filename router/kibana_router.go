@@ -2,15 +2,17 @@ package router
 
 import (
 	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/config"
 	"github.com/BaritoLog/barito-router/instrumentation"
 	"github.com/BaritoLog/go-boilerplate/httpkit"
 	"github.com/hashicorp/consul/api"
+	"github.com/opentracing/opentracing-go"
 	"github.com/patrickmn/go-cache"
-	"net/http"
-	"net/url"
-	"strings"
 
 	"github.com/BaritoLog/cas"
 )
@@ -75,8 +77,12 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
+	span := opentracing.StartSpan("barito_router_viewer.view_kibana")
+	defer span.Finish()
+
 	clusterName := KibanaGetClustername(req)
-	profile, err := fetchProfileByClusterName(r.client, r.cacheBag, r.marketUrl, r.accessToken, r.profilePath, clusterName)
+	span.SetTag("app-group", clusterName)
+	profile, err := fetchProfileByClusterName(r.client, span.Context(), r.cacheBag, r.marketUrl, r.accessToken, r.profilePath, clusterName)
 	if profile != nil {
 		instrumentation.RunTransaction(r.appCtx.NewRelicApp(), r.profilePath, w, req)
 	}

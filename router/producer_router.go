@@ -10,6 +10,7 @@ import (
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/config"
 	"github.com/BaritoLog/barito-router/instrumentation"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
 	pb "github.com/vwidjaya/barito-proto/producer"
@@ -76,9 +77,12 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var profile *Profile
 	var err error
 
+	span := opentracing.StartSpan("barito_router_producer.produce_log")
+	defer span.Finish()
+
 	if appSecret == "" {
 		if appGroupSecret != "" && appName != "" {
-			profile, err = fetchProfileByAppGroupSecret(p.client, p.cacheBag, p.marketUrl, p.profileByAppGroupPath, appGroupSecret, appName)
+			profile, err = fetchProfileByAppGroupSecret(p.client, span.Context(), p.cacheBag, p.marketUrl, p.profileByAppGroupPath, appGroupSecret, appName)
 			if profile != nil {
 				instrumentation.RunTransaction(p.appCtx.NewRelicApp(), p.profileByAppGroupPath, w, req)
 			}
@@ -88,7 +92,7 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 	} else {
-		profile, err = fetchProfileByAppSecret(p.client, p.cacheBag, p.marketUrl, p.profilePath, appSecret)
+		profile, err = fetchProfileByAppSecret(p.client, span.Context(), p.cacheBag, p.marketUrl, p.profilePath, appSecret)
 		if profile != nil {
 			instrumentation.RunTransaction(p.appCtx.NewRelicApp(), p.profilePath, w, req)
 		}
@@ -105,10 +109,16 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	span.SetTag("app-group", profile.ClusterName)
+
 	srvName, _ := profile.MetaServiceName(KeyProducer)
 	srv, consulAddr, err := consulService(profile.ConsulHosts, srvName, p.cacheBag)
 	if err != nil {
 		onConsulError(w, err)
+		return
+	}
+	if srv == nil {
+		onConsulError(w, fmt.Errorf("Can't find service from consul: %s", KeyProducer))
 		return
 	}
 
