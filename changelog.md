@@ -1,6 +1,6 @@
 # Changelog
 
-0.7.7
+0.7.0
 - Implement opentracing jaeger to router producer and router viewer
 
 0.6.6
