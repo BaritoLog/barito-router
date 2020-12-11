@@ -1,5 +1,8 @@
 # Changelog
 
+0.7.7
+- Implement opentracing jaeger to router producer and router viewer
+
 0.6.6
 
 - Accept multiple Consul address
