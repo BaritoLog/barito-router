@@ -10,12 +10,13 @@ RUN mkdir -p bin && \
 
 FROM ubuntu:20.04
 
-COPY --from=build /app/bin/barito-router /usr/bin/barito-router
-
 RUN useradd -m -U -d /app app
 RUN apt update && apt install -y --no-install-recommends \
       ca-certificates && \
     apt-get clean && \
     rm -rf /tmp/* /var/tmp/* /var/lib/apt/lists/*
 USER app
+
+COPY --from=build /app/bin/barito-router /usr/bin/barito-router
+
 ENTRYPOINT [ "/usr/bin/barito-router" ]

@@ -1,5 +1,9 @@
 # Changelog
 
+0.7.1
+- Add tracing capabilities
+- Add verbose error when produce failed
+
 0.7.0
 - Implement opentracing jaeger to router producer and router viewer
 

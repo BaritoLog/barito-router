@@ -8,7 +8,7 @@ import (
 
 const (
 	Name    = "Barito Router"
-	Version = "0.7.0"
+	Version = "0.7.1"
 
 	EnvProducerRouterAddress             = "BARITO_PRODUCER_ROUTER"
 	EnvKibanaRouterAddress               = "BARITO_KIBANA_ROUTER"

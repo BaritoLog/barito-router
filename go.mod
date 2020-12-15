@@ -6,6 +6,7 @@ require (
 	github.com/BaritoLog/cas v0.0.0-20190218025122-1d0220aa6e84
 	github.com/BaritoLog/go-boilerplate v0.0.0-20190116075340-b95aeda121e9
 	github.com/HdrHistogram/hdrhistogram-go v1.0.1 // indirect
+	github.com/coreos/etcd v3.3.25+incompatible
 	github.com/cssivision/reverseproxy v0.0.1
 	github.com/go-chi/chi v4.1.2+incompatible // indirect
 	github.com/golang/mock v1.3.1

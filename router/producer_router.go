@@ -99,11 +99,13 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	if err != nil {
 		onTradeError(w, err)
+		logProduceError("Failed when fetch Profile", "", appGroupSecret, appName, err)
 		return
 	}
 
 	if profile == nil {
 		onNoProfile(w)
+		logProduceError("Failed when fetch Profile", "", appGroupSecret, appName, err)
 		instrumentation.RunTransaction(p.appCtx.NewRelicApp(), AppNoProfilePath, w, req)
 
 		return
@@ -115,9 +117,11 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	srv, consulAddr, err := consulService(profile.ConsulHosts, srvName, p.cacheBag)
 	if err != nil {
 		onConsulError(w, err)
+		logProduceError("Failed when call consul", profile.ClusterName, appGroupSecret, appName, err)
 		return
 	}
 	if srv == nil {
+		logProduceError("Failed when fetch producer service from consul", profile.ClusterName, appGroupSecret, appName, err)
 		onConsulError(w, fmt.Errorf("Can't find service from consul: %s", KeyProducer))
 		return
 	}
@@ -147,20 +151,28 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		timberCollection, err := ConvertBytesToTimberCollection(b, timberContext)
 		if err != nil {
 			log.Errorf("%s", err.Error())
+			logProduceError("Failed when convert message to timberCollection", profile.ClusterName, appGroupSecret, appName, err)
 			return
 		}
 
 		result, err = producerClient.ProduceBatch(ctx, &timberCollection)
+		if err != nil {
+			logProduceError("Failed when do RPC to producer on /produce_batch", profile.ClusterName, appGroupSecret, appName, err)
+		}
 		checkProduceResult(w, result, err)
 
 	} else {
 		timber, err := ConvertBytesToTimber(b, timberContext)
 		if err != nil {
 			log.Errorf("%s", err.Error())
+			logProduceError("Failed when convert message to timber", profile.ClusterName, appGroupSecret, appName, err)
 			return
 		}
 
 		result, err = producerClient.Produce(ctx, &timber)
+		if err != nil {
+			logProduceError("Failed when do RPC to producer on /produce", profile.ClusterName, appGroupSecret, appName, err)
+		}
 		checkProduceResult(w, result, err)
 	}
 }
