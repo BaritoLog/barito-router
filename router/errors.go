@@ -60,7 +60,10 @@ func onRpcSuccess(w http.ResponseWriter, message string) {
 }
 
 func logProduceError(context, clusterName, appGroupSecret, appName string, err error) {
-	maskedAppGroupSecret := appGroupSecret[0:6]
+	maskedAppGroupSecret := appGroupSecret
+	if len(maskedAppGroupSecret) > 6 {
+		maskedAppGroupSecret = appGroupSecret[0:6]
+	}
 	errorMsg := ""
 	if err != nil {
 		errorMsg = err.Error()
