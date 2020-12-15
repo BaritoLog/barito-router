@@ -1,9 +1,11 @@
 package router
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/status"
 )
 
@@ -55,4 +57,14 @@ func onRpcError(w http.ResponseWriter, err error) string {
 func onRpcSuccess(w http.ResponseWriter, message string) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(message))
+}
+
+func logProduceError(context, clusterName, appGroupSecret, appName string, err error) {
+	maskedAppGroupSecret := appGroupSecret[0:6]
+	errorMsg := ""
+	if err != nil {
+		errorMsg = err.Error()
+	}
+	msg := fmt.Sprintf("Got error clusterName=%q, appgroupSecret=%q, appname=%q, context=%q, error=%q", clusterName, maskedAppGroupSecret, appName, context, errorMsg)
+	log.Errorf("%s", msg)
 }
