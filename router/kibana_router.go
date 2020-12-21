@@ -110,7 +110,7 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	srvName, _ := profile.MetaServiceName(KeyKibana)
-	srv, _, err := consulService(profile.ConsulHosts, srvName, r.cacheBag)
+	srv, _, err := consulService(profile.ConsulHosts, srvName, profile.ClusterName, r.cacheBag)
 	if err != nil {
 		onConsulError(w, err)
 		return

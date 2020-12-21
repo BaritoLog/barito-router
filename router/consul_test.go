@@ -14,7 +14,7 @@ import (
 
 func TestConsulService_MultiHostsRetry(t *testing.T) {
 	origFetchConsulServiceFunc := fetchConsulServiceFunc
-	fetchConsulServiceFunc = func(consulCatalog ConsulCatalog, consulAddr, serviceName string, cacheBag *cache.Cache) (*api.CatalogService, error) {
+	fetchConsulServiceFunc = func(consulCatalog ConsulCatalog, consulAddr, serviceName, clusterName string, cacheBag *cache.Cache) (*api.CatalogService, error) {
 		if consulAddr == "err" {
 			return nil, errors.New("error")
 		} else {
@@ -23,7 +23,7 @@ func TestConsulService_MultiHostsRetry(t *testing.T) {
 	}
 	defer func() { fetchConsulServiceFunc = origFetchConsulServiceFunc }()
 
-	_, consulAddr, err := consulService([]string{"err", "non-err"}, "", nil)
+	_, consulAddr, err := consulService([]string{"err", "non-err"}, "", "dummy-appgroup", nil)
 	FatalIf(t, consulAddr != "non-err", "should choose 2nd Consul server")
 	FatalIf(t, err != nil, "should not error")
 }
@@ -40,7 +40,7 @@ func TestConsulService(t *testing.T) {
 	consulCatalog.EXPECT().Service(gomock.Any(), gomock.Any(), gomock.Any()).Return(returnedServices, nil, nil)
 
 	cacheBag := cache.New(1*time.Minute, 1*time.Minute)
-	srv, _ := fetchConsulService(consulCatalog, "someAddr", "provider", cacheBag)
+	srv, _ := fetchConsulService(consulCatalog, "someAddr", "provider", "dummy-appgroup", cacheBag)
 
 	FatalIf(t, srv.ID != "test", "should return consul service")
 }
@@ -55,7 +55,7 @@ func TestConsulService_noServiceAvailable(t *testing.T) {
 	consulCatalog.EXPECT().Service(gomock.Any(), gomock.Any(), gomock.Any()).Return(returnedServices, nil, nil)
 
 	cacheBag := cache.New(1*time.Minute, 1*time.Minute)
-	srv, err := fetchConsulService(consulCatalog, "someAddr", "provider", cacheBag)
+	srv, err := fetchConsulService(consulCatalog, "someAddr", "provider", "dummy-appgroup", cacheBag)
 
 	FatalIf(t, err == nil, "should return error")
 	FatalIf(t, srv != nil, "should not return service")
@@ -84,7 +84,7 @@ func TestConsulService_withMultipleServicesAvailable(t *testing.T) {
 		"test3": false,
 	}
 	for i := 0; i < 30; i++ {
-		srv, _ := fetchConsulService(consulCatalog, "someAddr", "provider", cacheBag)
+		srv, _ := fetchConsulService(consulCatalog, "someAddr", "provider", "dummy-appgroup", cacheBag)
 		result[srv.ID] = true
 	}
 

@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/BaritoLog/barito-router/config"
 	"github.com/opentracing/opentracing-go"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/uber/jaeger-client-go/zipkin"
 	"github.com/uber/jaeger-lib/metrics"
 
@@ -78,6 +80,13 @@ func main() {
 			},
 		},
 	}
+
+	http.Handle("/metrics", promhttp.Handler())
+	exporterPort, exists := os.LookupEnv("EXPORTER_PORT")
+	if !exists {
+		exporterPort = ":8008"
+	}
+	go http.ListenAndServe(exporterPort, nil)
 
 	err := app.Run(os.Args)
 	if err != nil {

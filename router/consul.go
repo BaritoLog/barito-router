@@ -2,11 +2,13 @@ package router
 
 import (
 	"fmt"
-	"github.com/BaritoLog/barito-router/config"
-	"github.com/hashicorp/consul/api"
-	"github.com/patrickmn/go-cache"
 	"math/rand"
 	"time"
+
+	"github.com/BaritoLog/barito-router/config"
+	"github.com/BaritoLog/barito-router/instrumentation"
+	"github.com/hashicorp/consul/api"
+	"github.com/patrickmn/go-cache"
 )
 
 const ConsulServiceBackupCachePrefix = "consul_backup_cache_"
@@ -17,23 +19,26 @@ type ConsulCatalog interface {
 
 var fetchConsulServiceFunc = fetchConsulService
 
-func consulService(consulAddresses []string, serviceName string, cacheBag *cache.Cache) (srv *api.CatalogService, consulAddress string, err error) {
+func consulService(consulAddresses []string, serviceName, appGroupName string, cacheBag *cache.Cache) (srv *api.CatalogService, consulAddress string, err error) {
 	for _, consulAddress = range consulAddresses {
 		consulClient, _ := api.NewClient(&api.Config{
 			Address: consulAddress,
 		})
 
-		if srv, err = fetchConsulServiceFunc(consulClient.Catalog(), consulAddress, serviceName, cacheBag); err == nil {
+		if srv, err = fetchConsulServiceFunc(consulClient.Catalog(), consulAddress, serviceName, appGroupName, cacheBag); err == nil {
 			return
 		}
 	}
 	return
 }
 
-func fetchConsulService(consulCatalog ConsulCatalog, consulAddr string, serviceName string, cacheBag *cache.Cache) (srv *api.CatalogService, err error) {
+func fetchConsulService(consulCatalog ConsulCatalog, consulAddr, serviceName, appGroupName string, cacheBag *cache.Cache) (srv *api.CatalogService, err error) {
 	cacheKey := "services_" + consulAddr + "_" + serviceName
 	services, err := fetchServicesUsingCache(cacheBag, cacheKey, func() (consulServices []*api.CatalogService, err error) {
+		startTime := time.Now()
 		consulServices, _, err = consulCatalog.Service(serviceName, "", nil)
+		instrumentation.ObserveConsulLatency(appGroupName, consulAddr, time.Since(startTime))
+
 		if err != nil {
 			return
 		}
