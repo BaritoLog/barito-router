@@ -5,8 +5,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/BaritoLog/barito-router/config"
+	"github.com/BaritoLog/barito-router/instrumentation"
 	"github.com/opentracing/opentracing-go"
 	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
@@ -66,7 +68,9 @@ func fetchProfile(client *http.Client, req *http.Request, spanContext opentracin
 		}
 	}
 
+	startTime := time.Now()
 	res, err := client.Do(req)
+	instrumentation.ObserveBaritoMarketLatency(time.Since(startTime))
 	if err != nil {
 		return
 	}

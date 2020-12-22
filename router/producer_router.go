@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/config"
@@ -99,29 +100,33 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	if err != nil {
 		onTradeError(w, err)
-		logProduceError("Failed when fetch Profile", "", appGroupSecret, appName, err)
+		logProduceError(instrumentation.ErrorFetchProfile, "", appGroupSecret, appName, req, err)
 		return
 	}
 
 	if profile == nil {
 		onNoProfile(w)
-		logProduceError("Failed when fetch Profile", "", appGroupSecret, appName, err)
+		logProduceError(instrumentation.ErrorFetchProfile, "", appGroupSecret, appName, req, err)
 		instrumentation.RunTransaction(p.appCtx.NewRelicApp(), AppNoProfilePath, w, req)
 
 		return
 	}
 
+	instrumentation.IncreaseProducerRequestCount(
+		profile.ClusterName,
+		appName,
+	)
 	span.SetTag("app-group", profile.ClusterName)
 
 	srvName, _ := profile.MetaServiceName(KeyProducer)
-	srv, consulAddr, err := consulService(profile.ConsulHosts, srvName, p.cacheBag)
+	srv, consulAddr, err := consulService(profile.ConsulHosts, srvName, profile.ClusterName, p.cacheBag)
 	if err != nil {
 		onConsulError(w, err)
-		logProduceError("Failed when call consul", profile.ClusterName, appGroupSecret, appName, err)
+		logProduceError(instrumentation.ErrorConsulCall, profile.ClusterName, appGroupSecret, appName, req, err)
 		return
 	}
 	if srv == nil {
-		logProduceError("Failed when fetch producer service from consul", profile.ClusterName, appGroupSecret, appName, err)
+		logProduceError(instrumentation.ErrorNoProducer, profile.ClusterName, appGroupSecret, appName, req, err)
 		onConsulError(w, fmt.Errorf("Can't find service from consul: %s", KeyProducer))
 		return
 	}
@@ -149,15 +154,19 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if req.URL.Path == "/produce_batch" {
 		timberCollection, err := ConvertBytesToTimberCollection(b, timberContext)
+		instrumentation.ObserveTimberCollection(profile.ClusterName, appName, &timberCollection)
 		if err != nil {
 			log.Errorf("%s", err.Error())
-			logProduceError("Failed when convert message to timberCollection", profile.ClusterName, appGroupSecret, appName, err)
+			logProduceError(instrumentation.ErrorTimberConvert, profile.ClusterName, appGroupSecret, appName, req, err)
 			return
 		}
 
+		startTime := time.Now()
 		result, err = producerClient.ProduceBatch(ctx, &timberCollection)
+		instrumentation.ObserveProducerLatency(profile.ClusterName, time.Since(startTime))
+
 		if err != nil {
-			logProduceError("Failed when do RPC to producer on /produce_batch", profile.ClusterName, appGroupSecret, appName, err)
+			logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, req, err)
 		}
 		checkProduceResult(w, result, err)
 
@@ -165,13 +174,15 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		timber, err := ConvertBytesToTimber(b, timberContext)
 		if err != nil {
 			log.Errorf("%s", err.Error())
-			logProduceError("Failed when convert message to timber", profile.ClusterName, appGroupSecret, appName, err)
+			logProduceError(instrumentation.ErrorTimberConvert, profile.ClusterName, appGroupSecret, appName, req, err)
 			return
 		}
 
+		startTime := time.Now()
 		result, err = producerClient.Produce(ctx, &timber)
+		instrumentation.ObserveProducerLatency(profile.ClusterName, time.Since(startTime))
 		if err != nil {
-			logProduceError("Failed when do RPC to producer on /produce", profile.ClusterName, appGroupSecret, appName, err)
+			logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, req, err)
 		}
 		checkProduceResult(w, result, err)
 	}
