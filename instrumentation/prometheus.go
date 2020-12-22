@@ -87,8 +87,8 @@ func ObserveBaritoMarketLatency(timeDuration time.Duration) {
 	producerLatencyToMarket.Observe(timeDuration.Seconds())
 }
 
-func ObserveConsulLatency(clusterName, host string, timeDuration time.Duration) {
-	producerLatencyToConsul.WithLabelValues(clusterName, host).Observe(timeDuration.Seconds())
+func ObserveConsulLatency(appGroup, host string, timeDuration time.Duration) {
+	producerLatencyToConsul.WithLabelValues(appGroup, host).Observe(timeDuration.Seconds())
 }
 
 func ObserveProducerLatency(appGroup string, timeDuration time.Duration) {
