@@ -1,5 +1,14 @@
 # Changelog
 
+0.7.3.1
+- support disable appName label on metrics
+
+0.7.3
+- Enable prometheus instrumentation
+
+0.7.2
+- Add tracing and enable verbose error log
+
 0.7.1
 - Add tracing capabilities
 - Add verbose error when produce failed
