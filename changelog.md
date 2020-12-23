@@ -1,5 +1,8 @@
 # Changelog
 
+0.7.3.2
+- add appName label on producer latency metrics
+
 0.7.3.1
 - support disable appName label on metrics
 

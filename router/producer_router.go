@@ -163,7 +163,7 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 		startTime := time.Now()
 		result, err = producerClient.ProduceBatch(ctx, &timberCollection)
-		instrumentation.ObserveProducerLatency(profile.ClusterName, time.Since(startTime))
+		instrumentation.ObserveProducerLatency(profile.ClusterName, appName, time.Since(startTime))
 
 		if err != nil {
 			logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, req, err)
@@ -180,7 +180,7 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 		startTime := time.Now()
 		result, err = producerClient.Produce(ctx, &timber)
-		instrumentation.ObserveProducerLatency(profile.ClusterName, time.Since(startTime))
+		instrumentation.ObserveProducerLatency(profile.ClusterName, appName, time.Since(startTime))
 		if err != nil {
 			logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, req, err)
 		}

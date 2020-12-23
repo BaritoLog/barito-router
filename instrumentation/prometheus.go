@@ -75,7 +75,7 @@ func InitProducerInstrumentation() {
 		Help:       "Latency to producer",
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		MaxAge:     1 * time.Minute,
-	}, []string{"app_group"})
+	}, []string{"app_group", "app_name"})
 }
 
 func IncreaseProducerRequestCount(appGroup, appName string) {
@@ -104,8 +104,11 @@ func ObserveConsulLatency(appGroup, host string, timeDuration time.Duration) {
 	producerLatencyToConsul.WithLabelValues(appGroup, host).Observe(timeDuration.Seconds())
 }
 
-func ObserveProducerLatency(appGroup string, timeDuration time.Duration) {
-	producerLatencyToProducer.WithLabelValues(appGroup).Observe(timeDuration.Seconds())
+func ObserveProducerLatency(appGroup, appName string, timeDuration time.Duration) {
+	if disableAppNameLabelMetrics {
+		appName = "GLOBAL"
+	}
+	producerLatencyToProducer.WithLabelValues(appGroup, appName).Observe(timeDuration.Seconds())
 }
 
 func ObserveTimberCollection(appGroup, appName string, timberCollection *pb.TimberCollection) {
