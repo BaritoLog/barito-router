@@ -80,7 +80,7 @@ func TestKibanaRouter(t *testing.T) {
 	host, port := httpkit.HostOfRawURL(targetServer.URL)
 
 	consulServer := NewJsonTestServer(http.StatusOK, []api.CatalogService{
-		api.CatalogService{
+		{
 			ServiceAddress: host,
 			ServicePort:    port,
 		},
@@ -90,6 +90,29 @@ func TestKibanaRouter(t *testing.T) {
 	host, port = httpkit.HostOfRawURL(consulServer.URL)
 	marketServer := NewJsonTestServer(http.StatusOK, Profile{
 		ConsulHosts: []string{fmt.Sprintf("%s:%d", host, port)},
+	})
+	defer marketServer.Close()
+
+	config := newrelic.NewConfig("barito-router", "")
+	config.Enabled = false
+	appCtx := appcontext.NewAppContext(config)
+
+	router := NewKibanaRouter(":45500", marketServer.URL, "abc", "profilePath", "authorizePath", "", appCtx)
+
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost", strings.NewReader(""))
+
+	resp := RecordResponse(router.ServeHTTP, req)
+	FatalIfWrongResponseStatus(t, resp, http.StatusTeapot)
+	FatalIfWrongResponseBody(t, resp, "some-target")
+}
+
+func TestKibanaRouter_k8s(t *testing.T) {
+	targetServer := NewTestServer(http.StatusTeapot, []byte("some-target"))
+	defer targetServer.Close()
+	host, port := httpkit.HostOfRawURL(targetServer.URL)
+
+	marketServer := NewJsonTestServer(http.StatusOK, Profile{
+		KibanaAddress: fmt.Sprintf("%s:%d", host, port),
 	})
 	defer marketServer.Close()
 

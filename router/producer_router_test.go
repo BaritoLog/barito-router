@@ -167,6 +167,83 @@ func TestProducerRouter_WithAppSecret(t *testing.T) {
 	FatalIfWrongResponseBody(t, resp, "")
 }
 
+func TestProducerRouter_WithAppSecret_K8s(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	targetServer := NewTestServer(http.StatusOK, []byte(""))
+	defer targetServer.Close()
+	producerHost, producerPort := httpkit.HostOfRawURL(targetServer.URL)
+
+	marketServer := NewJsonTestServer(http.StatusOK, Profile{
+		ConsulHosts:     []string{},
+		ProducerAddress: fmt.Sprintf("%s:%d", producerHost, producerPort),
+	})
+	defer marketServer.Close()
+
+	router := NewTestSuccessfulProducerK8s(ctrl, marketServer.URL, producerHost, producerPort)
+
+	testPayload := sampleRawTimber()
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost/produce", bytes.NewBuffer(testPayload))
+	req.Header.Add("X-App-Secret", "some-secret")
+	resp := RecordResponse(router.ServeHTTP, req)
+
+	FatalIfWrongResponseStatus(t, resp, http.StatusOK)
+	FatalIfWrongResponseBody(t, resp, "")
+
+	testPayload = sampleRawTimberCollection()
+	req, _ = http.NewRequest(http.MethodGet, "http://localhost/produce_batch", bytes.NewBuffer(testPayload))
+	req.Header.Add("X-App-Secret", "some-secret")
+	resp = RecordResponse(router.ServeHTTP, req)
+
+	FatalIfWrongResponseStatus(t, resp, http.StatusOK)
+	FatalIfWrongResponseBody(t, resp, "")
+}
+
+func TestProducerRouter_WithAppSecret_DoubleWrite(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	targetServer := NewTestServer(http.StatusOK, []byte(""))
+	defer targetServer.Close()
+	host, producerPort := httpkit.HostOfRawURL(targetServer.URL)
+
+	consulServer := NewJsonTestServer(http.StatusOK, []api.CatalogService{
+		api.CatalogService{
+			ServiceAddress: host,
+			ServicePort:    producerPort,
+		},
+	})
+	defer consulServer.Close()
+
+	host, consulPort := httpkit.HostOfRawURL(consulServer.URL)
+	marketServer := NewJsonTestServer(http.StatusOK, Profile{
+		ConsulHosts:     []string{fmt.Sprintf("%s:%d", host, consulPort)},
+		ProducerAddress: fmt.Sprintf("%s:%d", host, producerPort),
+	})
+	defer marketServer.Close()
+
+	router := NewTestSuccessfulProducerDoubleWrite(ctrl, marketServer.URL, host, producerPort, consulPort)
+
+	testPayload := sampleRawTimber()
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost/produce", bytes.NewBuffer(testPayload))
+	req.Header.Add("X-App-Secret", "some-secret")
+	resp := RecordResponse(router.ServeHTTP, req)
+
+	FatalIfWrongResponseStatus(t, resp, http.StatusOK)
+	FatalIfWrongResponseBody(t, resp, "")
+
+	testPayload = sampleRawTimberCollection()
+	req, _ = http.NewRequest(http.MethodGet, "http://localhost/produce_batch", bytes.NewBuffer(testPayload))
+	req.Header.Add("X-App-Secret", "some-secret")
+	resp = RecordResponse(router.ServeHTTP, req)
+
+	FatalIfWrongResponseStatus(t, resp, http.StatusOK)
+	FatalIfWrongResponseBody(t, resp, "")
+}
+
 func TestProducerRouter_WithTrace(t *testing.T) {
 
 	traceHeaders := []string{
@@ -263,6 +340,85 @@ func TestProducerRouter_WithAppGroupSecret(t *testing.T) {
 	FatalIfWrongResponseBody(t, resp, "")
 }
 
+func TestProducerRouter_WithAppGroupSecret_K8s(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	targetServer := NewTestServer(http.StatusOK, []byte(""))
+	defer targetServer.Close()
+	producerHost, producerPort := httpkit.HostOfRawURL(targetServer.URL)
+
+	marketServer := NewJsonTestServer(http.StatusOK, Profile{
+		ConsulHosts:     []string{},
+		ProducerAddress: fmt.Sprintf("%s:%d", producerHost, producerPort),
+	})
+	defer marketServer.Close()
+
+	router := NewTestSuccessfulProducerK8s(ctrl, marketServer.URL, producerHost, producerPort)
+
+	testPayload := sampleRawTimber()
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost/produce", bytes.NewBuffer(testPayload))
+	req.Header.Add("X-App-Group-Secret", "some-secret")
+	req.Header.Add("X-App-Name", "some-name")
+	resp := RecordResponse(router.ServeHTTP, req)
+
+	FatalIfWrongResponseStatus(t, resp, http.StatusOK)
+	FatalIfWrongResponseBody(t, resp, "")
+
+	testPayload = sampleRawTimberCollection()
+	req, _ = http.NewRequest(http.MethodGet, "http://localhost/produce_batch", bytes.NewBuffer(testPayload))
+	req.Header.Add("X-App-Secret", "some-secret")
+	resp = RecordResponse(router.ServeHTTP, req)
+
+	FatalIfWrongResponseStatus(t, resp, http.StatusOK)
+	FatalIfWrongResponseBody(t, resp, "")
+}
+
+func TestProducerRouter_WithAppGroupSecret_DoubleWrite(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	targetServer := NewTestServer(http.StatusOK, []byte(""))
+	defer targetServer.Close()
+	host, producerPort := httpkit.HostOfRawURL(targetServer.URL)
+
+	consulServer := NewJsonTestServer(http.StatusOK, []api.CatalogService{
+		api.CatalogService{
+			ServiceAddress: host,
+			ServicePort:    producerPort,
+		},
+	})
+	defer consulServer.Close()
+
+	host, consulPort := httpkit.HostOfRawURL(consulServer.URL)
+	marketServer := NewJsonTestServer(http.StatusOK, Profile{
+		ConsulHosts:     []string{fmt.Sprintf("%s:%d", host, consulPort)},
+		ProducerAddress: fmt.Sprintf("%s:%d", host, producerPort),
+	})
+	defer marketServer.Close()
+
+	router := NewTestSuccessfulProducerDoubleWrite(ctrl, marketServer.URL, host, producerPort, consulPort)
+
+	testPayload := sampleRawTimber()
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost/produce", bytes.NewBuffer(testPayload))
+	req.Header.Add("X-App-Group-Secret", "some-secret")
+	req.Header.Add("X-App-Name", "some-name")
+	resp := RecordResponse(router.ServeHTTP, req)
+
+	FatalIfWrongResponseStatus(t, resp, http.StatusOK)
+	FatalIfWrongResponseBody(t, resp, "")
+
+	testPayload = sampleRawTimberCollection()
+	req, _ = http.NewRequest(http.MethodGet, "http://localhost/produce_batch", bytes.NewBuffer(testPayload))
+	req.Header.Add("X-App-Secret", "some-secret")
+	resp = RecordResponse(router.ServeHTTP, req)
+
+	FatalIfWrongResponseStatus(t, resp, http.StatusOK)
+	FatalIfWrongResponseBody(t, resp, "")
+}
+
 func NewTestSuccessfulProducer(ctrl *gomock.Controller, marketUrl string, host string, producerPort int, consulPort int) ProducerRouter {
 	config := newrelic.NewConfig("barito-router", "")
 	config.Enabled = false
@@ -292,6 +448,78 @@ func NewTestSuccessfulProducer(ctrl *gomock.Controller, marketUrl string, host s
 		client: pClient,
 	}
 
+	return router
+}
+
+func NewTestSuccessfulProducerK8s(ctrl *gomock.Controller, marketUrl string, producerHost string, producerPort int) ProducerRouter {
+	config := newrelic.NewConfig("barito-router", "")
+	config.Enabled = false
+	appCtx := appcontext.NewAppContext(config)
+
+	router := &producerRouter{
+		addr:                  ":45500",
+		marketUrl:             marketUrl,
+		profilePath:           "profilePath",
+		profileByAppGroupPath: "profileByAppGroupPath",
+		client:                createClient(),
+		cacheBag:              cache.New(1*time.Minute, 10*time.Minute),
+		appCtx:                appCtx,
+		producerStore:         NewProducerStore(),
+	}
+
+	pClient := mock.NewMockProducerClient(ctrl)
+	pClient.EXPECT().Produce(gomock.Any(), gomock.Any())
+	pClient.EXPECT().ProduceBatch(gomock.Any(), gomock.Any())
+
+	pAttr := producerAttributes{
+		producerAddr: fmt.Sprintf("%s:%d", producerHost, producerPort),
+	}
+
+	router.producerStore.producerStoreMap[pAttr] = &grpcParts{
+		client: pClient,
+	}
+
+	return router
+}
+
+func NewTestSuccessfulProducerDoubleWrite(ctrl *gomock.Controller, marketUrl string, host string, producerPort int, consulPort int) ProducerRouter {
+	config := newrelic.NewConfig("barito-router", "")
+	config.Enabled = false
+	appCtx := appcontext.NewAppContext(config)
+
+	router := &producerRouter{
+		addr:                  ":45500",
+		marketUrl:             marketUrl,
+		profilePath:           "profilePath",
+		profileByAppGroupPath: "profileByAppGroupPath",
+		client:                createClient(),
+		cacheBag:              cache.New(1*time.Minute, 10*time.Minute),
+		appCtx:                appCtx,
+		producerStore:         NewProducerStore(),
+	}
+
+	pClient := mock.NewMockProducerClient(ctrl)
+	pClient.EXPECT().Produce(gomock.Any(), gomock.Any())
+	pClient.EXPECT().ProduceBatch(gomock.Any(), gomock.Any())
+	pClient.EXPECT().Produce(gomock.Any(), gomock.Any())
+	pClient.EXPECT().ProduceBatch(gomock.Any(), gomock.Any())
+
+	pAttr := producerAttributes{
+		consulAddr:   fmt.Sprintf("%s:%d", host, consulPort),
+		producerAddr: fmt.Sprintf("%s:%d", host, producerPort),
+	}
+
+	router.producerStore.producerStoreMap[pAttr] = &grpcParts{
+		client: pClient,
+	}
+
+	pAttr = producerAttributes{
+		producerAddr: fmt.Sprintf("%s:%d", host, producerPort),
+	}
+
+	router.producerStore.producerStoreMap[pAttr] = &grpcParts{
+		client: pClient,
+	}
 	return router
 }
 

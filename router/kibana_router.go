@@ -109,15 +109,22 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	srvName, _ := profile.MetaServiceName(KeyKibana)
-	srv, _, err := consulService(profile.ConsulHosts, srvName, profile.ClusterName, r.cacheBag)
-	if err != nil {
-		onConsulError(w, err)
-		return
-	}
-
 	sourceUrl := fmt.Sprintf("%s://%s:%s", httpkit.SchemeOfRequest(req), req.Host, r.addr)
-	targetUrl := fmt.Sprintf("%s://%s:%d", getTargetScheme(srv), srv.ServiceAddress, srv.ServicePort)
+
+	var targetUrl string
+
+	if profile.KibanaAddress != "" {
+		targetUrl = fmt.Sprintf("http://%s", profile.KibanaAddress)
+	} else {
+		srvName, _ := profile.MetaServiceName(KeyKibana)
+		srv, _, err := consulService(profile.ConsulHosts, srvName, profile.ClusterName, r.cacheBag)
+		if err != nil {
+			onConsulError(w, err)
+			return
+		}
+
+		targetUrl = fmt.Sprintf("%s://%s:%d", getTargetScheme(srv), srv.ServiceAddress, srv.ServicePort)
+	}
 
 	proxy := NewKibanaProxy(sourceUrl, targetUrl)
 	proxy.ReverseProxy().ServeHTTP(w, req)

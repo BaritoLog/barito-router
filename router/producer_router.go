@@ -1,6 +1,7 @@
 package router
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -11,10 +12,12 @@ import (
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/config"
 	"github.com/BaritoLog/barito-router/instrumentation"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
 	pb "github.com/vwidjaya/barito-proto/producer"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -36,13 +39,10 @@ type producerRouter struct {
 	marketUrl             string
 	profilePath           string
 	profileByAppGroupPath string
-
-	cacheBag *cache.Cache
-
-	client *http.Client
-	appCtx *appcontext.AppContext
-
-	producerStore *ProducerStore
+	cacheBag              *cache.Cache
+	client                *http.Client
+	appCtx                *appcontext.AppContext
+	producerStore         *ProducerStore
 }
 
 func NewProducerRouter(addr, marketUrl, profilePath string, profileByAppGroupPath string, appCtx *appcontext.AppContext) ProducerRouter {
@@ -66,69 +66,142 @@ func (p *producerRouter) Server() *http.Server {
 }
 
 func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+
+	reqBody := []byte{}
+
 	if req.URL.Path == "/ping" {
 		onPing(w)
 		return
 	}
 
+	span := opentracing.StartSpan("barito_router_producer.produce_log")
+	defer span.Finish()
+
+	profile, err := p.getProfile(w, req, span)
+	if p.isProfileError(w, req, profile, err) {
+		return
+	}
+
+	instrumentation.IncreaseProducerRequestCount(
+		profile.ClusterName,
+		req.Header.Get(AppNameHeaderName),
+	)
+	span.SetTag("app-group", profile.ClusterName)
+
+	//Collect all results and errors for all the produce endpoints.
+	var produceResults []*pb.ProduceResult
+	var produceErrors []error
+
+	if req.Body != nil {
+		reqBody, _ = ioutil.ReadAll(req.Body)
+	}
+
+	// ConsulHosts are only used in the legacy infrastructure(LXC containers).
+	if len(profile.ConsulHosts) > 0 {
+		pAttrConsul, err := p.fetchProducerAttributesFromConsul(w, req, profile)
+		if err != nil {
+			return
+		}
+		result, err := p.handleProduce(req, reqBody, pAttrConsul, profile)
+
+		produceResults = append(produceResults, result)
+		produceErrors = append(produceErrors, err)
+	}
+
+	// profile.ProducerAddress is used only for the K8s infrastructure.
+	if profile.ProducerAddress != "" {
+		pAttrK8s := p.fetchK8sProducerAttributes(profile)
+		result, err := p.handleProduce(req, reqBody, pAttrK8s, profile)
+
+		produceResults = append(produceResults, result)
+		produceErrors = append(produceErrors, err)
+	}
+
+	checkProduceResultsAndRespond(w, produceResults, produceErrors)
+
+}
+
+func isAppSecretAvailable(appSecret string) bool {
+	if appSecret != "" {
+		return true
+	}
+	return false
+}
+
+func isAppGroupSecretAvailable(appGroupSecret string, appName string) bool {
+	if appGroupSecret != "" && appName != "" {
+		return true
+	}
+	return false
+}
+
+func (p *producerRouter) getProfile(w http.ResponseWriter, req *http.Request, span opentracing.Span) (*Profile, error) {
+
+	var err error
+	var profile *Profile
+
 	appSecret := req.Header.Get(AppSecretHeaderName)
 	appGroupSecret := req.Header.Get(AppGroupSecretHeaderName)
 	appName := req.Header.Get(AppNameHeaderName)
 
-	var profile *Profile
-	var err error
-
-	span := opentracing.StartSpan("barito_router_producer.produce_log")
-	defer span.Finish()
-
-	if appSecret == "" {
-		if appGroupSecret != "" && appName != "" {
-			profile, err = fetchProfileByAppGroupSecret(p.client, span.Context(), p.cacheBag, p.marketUrl, p.profileByAppGroupPath, appGroupSecret, appName)
-			if profile != nil {
-				instrumentation.RunTransaction(p.appCtx.NewRelicApp(), p.profileByAppGroupPath, w, req)
-			}
-		} else {
-			onNoSecret(w)
-			instrumentation.RunTransaction(p.appCtx.NewRelicApp(), AppNoSecretPath, w, req)
-			return
-		}
-	} else {
+	if isAppSecretAvailable(appSecret) {
 		profile, err = fetchProfileByAppSecret(p.client, span.Context(), p.cacheBag, p.marketUrl, p.profilePath, appSecret)
 		if profile != nil {
-			instrumentation.RunTransaction(p.appCtx.NewRelicApp(), p.profilePath, w, req)
+			instrumentation.RunTransaction(p.appCtx.NewRelicApp(), p.profileByAppGroupPath, w, req)
 		}
+		return profile, err
 	}
+
+	if isAppGroupSecretAvailable(appGroupSecret, appName) {
+		profile, err = fetchProfileByAppGroupSecret(p.client, span.Context(), p.cacheBag, p.marketUrl, p.profileByAppGroupPath, appGroupSecret, appName)
+		if profile != nil {
+			instrumentation.RunTransaction(p.appCtx.NewRelicApp(), p.profileByAppGroupPath, w, req)
+		}
+		return profile, err
+
+	}
+
+	onNoSecret(w)
+	instrumentation.RunTransaction(p.appCtx.NewRelicApp(), AppNoSecretPath, w, req)
+	return nil, nil
+}
+
+func (p *producerRouter) isProfileError(w http.ResponseWriter, req *http.Request, profile *Profile, err error) bool {
+
+	appGroupSecret := req.Header.Get(AppGroupSecretHeaderName)
+	appName := req.Header.Get(AppNameHeaderName)
 	if err != nil {
 		onTradeError(w, err)
 		logProduceError(instrumentation.ErrorFetchProfile, "", appGroupSecret, appName, req, err)
-		return
+		return true
 	}
 
 	if profile == nil {
 		onNoProfile(w)
 		logProduceError(instrumentation.ErrorFetchProfile, "", appGroupSecret, appName, req, err)
 		instrumentation.RunTransaction(p.appCtx.NewRelicApp(), AppNoProfilePath, w, req)
-
-		return
+		return true
 	}
+	return false
+}
 
-	instrumentation.IncreaseProducerRequestCount(
-		profile.ClusterName,
-		appName,
-	)
-	span.SetTag("app-group", profile.ClusterName)
+func (p *producerRouter) fetchProducerAttributesFromConsul(w http.ResponseWriter, req *http.Request, profile *Profile) (producerAttributes, error) {
 
-	srvName, _ := profile.MetaServiceName(KeyProducer)
-	srv, consulAddr, err := consulService(profile.ConsulHosts, srvName, profile.ClusterName, p.cacheBag)
+	appGroupSecret := req.Header.Get(AppGroupSecretHeaderName)
+	appName := req.Header.Get(AppNameHeaderName)
+	producerName, _ := profile.MetaServiceName(KeyProducer)
+
+	srv, consulAddr, err := consulService(profile.ConsulHosts, producerName, profile.ClusterName, p.cacheBag)
 	if err != nil {
 		onConsulError(w, err)
 		logProduceError(instrumentation.ErrorConsulCall, profile.ClusterName, appGroupSecret, appName, req, err)
-		return
+		return producerAttributes{}, err
 	}
 	if srv == nil {
+		err = fmt.Errorf("Can't find service from consul: %s", KeyProducer)
+		onConsulError(w, err)
 		logProduceError(instrumentation.ErrorNoProducer, profile.ClusterName, appGroupSecret, appName, req, err)
-		onConsulError(w, fmt.Errorf("Can't find service from consul: %s", KeyProducer))
-		return
+		return producerAttributes{}, err
 	}
 
 	if config.ProducerPort != "" {
@@ -141,24 +214,42 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	pAttr := producerAttributes{
 		consulAddr:   consulAddr,
 		producerAddr: fmt.Sprintf("%s:%d", srv.ServiceAddress, srv.ServicePort),
-		producerName: srvName,
+		producerName: producerName,
 		appSecret:    profile.AppSecret,
 	}
+	return pAttr, nil
+}
+
+func (p *producerRouter) fetchK8sProducerAttributes(profile *Profile) producerAttributes {
+
+	producerName, _ := profile.MetaServiceName(KeyProducer)
+
+	pAttr := producerAttributes{
+		consulAddr:   "",
+		producerAddr: profile.ProducerAddress,
+		producerName: producerName,
+		appSecret:    profile.AppSecret,
+	}
+	return pAttr
+}
+
+func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr producerAttributes, profile *Profile) (*pb.ProduceResult, error) {
+	appGroupSecret := req.Header.Get(AppGroupSecretHeaderName)
+	appName := req.Header.Get(AppNameHeaderName)
 
 	producerClient := p.producerStore.GetClient(pAttr)
 	ctx := context.Background()
-	b, _ := ioutil.ReadAll(req.Body)
 
 	timberContext := TimberContextFromProfile(profile)
 	var result *pb.ProduceResult
 
 	if req.URL.Path == "/produce_batch" {
-		timberCollection, err := ConvertBytesToTimberCollection(b, timberContext)
+		timberCollection, err := ConvertBytesToTimberCollection(reqBody, timberContext)
 		instrumentation.ObserveTimberCollection(profile.ClusterName, appName, &timberCollection)
 		if err != nil {
 			log.Errorf("%s", err.Error())
 			logProduceError(instrumentation.ErrorTimberConvert, profile.ClusterName, appGroupSecret, appName, req, err)
-			return
+			return nil, err
 		}
 
 		startTime := time.Now()
@@ -167,35 +258,69 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 		if err != nil {
 			logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, req, err)
+			return nil, err
 		}
-		checkProduceResult(w, result, err)
+		return result, nil
 
-	} else {
-		timber, err := ConvertBytesToTimber(b, timberContext)
+	}
+	if req.URL.Path == "/produce" {
+		timber, err := ConvertBytesToTimber(reqBody, timberContext)
 		if err != nil {
 			log.Errorf("%s", err.Error())
 			logProduceError(instrumentation.ErrorTimberConvert, profile.ClusterName, appGroupSecret, appName, req, err)
-			return
+			return nil, err
 		}
 
 		startTime := time.Now()
 		result, err = producerClient.Produce(ctx, &timber)
 		instrumentation.ObserveProducerLatency(profile.ClusterName, appName, time.Since(startTime))
+
 		if err != nil {
 			logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, req, err)
+			return nil, err
 		}
-		checkProduceResult(w, result, err)
+		return result, nil
 	}
+
+	return nil, fmt.Errorf("Invalid URL called - %s", req.URL.Path)
 }
 
-func checkProduceResult(w http.ResponseWriter, result *pb.ProduceResult, err error) {
-	if err != nil {
-		msg := onRpcError(w, err)
-		log.Errorf("%s", msg)
+func checkProduceResultsAndRespond(w http.ResponseWriter, results []*pb.ProduceResult, errors []error) {
+	var responseMsg bytes.Buffer
+	errorCodes := []int{}
+
+	//Collect all error messages and codes for responseMsg
+	for _, err := range errors {
+		if err != nil {
+			st, ok := status.FromError(err)
+			if ok {
+				errorCodes = append(errorCodes, runtime.HTTPStatusFromCode(st.Code()))
+			}
+			responseMsg.WriteString(st.Message())
+			log.Errorf("%s", st.Message())
+			break
+		}
+	}
+
+	// Return failure if any of the produce attempts had errors
+	if responseMsg.Len() > 0 {
+
+		w.Write(responseMsg.Bytes())
+
+		if len(errorCodes) > 0 {
+			w.WriteHeader(errorCodes[0])
+			return
+		}
+		w.WriteHeader(http.StatusBadGateway)
 		return
 	}
 
-	if result != nil {
-		onRpcSuccess(w, result.Topic)
+	// Collect all success results for responseMsg
+	for _, result := range results {
+		if result != nil {
+			responseMsg.WriteString(result.Topic + "\n")
+		}
 	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(responseMsg.Bytes())
 }
