@@ -148,7 +148,7 @@ func TestProducerRouter_WithAppSecret_LXC(t *testing.T) {
 	})
 	defer marketServer.Close()
 
-	router := NewTestSuccessfulProducer(ctrl, marketServer.URL, host, producerPort, consulPort)
+	router := NewTestSuccessfulProducerLXC(ctrl, marketServer.URL, host, producerPort, consulPort)
 
 	testPayload := sampleRawTimber()
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost/produce", bytes.NewBuffer(testPayload))
@@ -320,7 +320,7 @@ func TestProducerRouter_WithAppGroupSecret_LXC(t *testing.T) {
 	})
 	defer marketServer.Close()
 
-	router := NewTestSuccessfulProducer(ctrl, marketServer.URL, host, producerPort, consulPort)
+	router := NewTestSuccessfulProducerLXC(ctrl, marketServer.URL, host, producerPort, consulPort)
 
 	testPayload := sampleRawTimber()
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost/produce", bytes.NewBuffer(testPayload))
