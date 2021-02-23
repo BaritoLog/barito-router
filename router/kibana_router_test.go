@@ -73,7 +73,7 @@ func TestKibanaRouter_ConsulError(t *testing.T) {
 	FatalIf(t, resp.StatusCode != http.StatusFailedDependency, "Wrong response status code")
 }
 
-func TestKibanaRouter(t *testing.T) {
+func TestKibanaRouter_LXC(t *testing.T) {
 
 	targetServer := NewTestServer(http.StatusTeapot, []byte("some-target"))
 	defer targetServer.Close()
@@ -106,7 +106,7 @@ func TestKibanaRouter(t *testing.T) {
 	FatalIfWrongResponseBody(t, resp, "some-target")
 }
 
-func TestKibanaRouter_k8s(t *testing.T) {
+func TestKibanaRouter_K8s(t *testing.T) {
 	targetServer := NewTestServer(http.StatusTeapot, []byte("some-target"))
 	defer targetServer.Close()
 	host, port := httpkit.HostOfRawURL(targetServer.URL)

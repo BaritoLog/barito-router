@@ -125,7 +125,7 @@ func TestProducerRouter_ConsulError(t *testing.T) {
 	FatalIfWrongResponseStatus(t, resp, http.StatusFailedDependency)
 }
 
-func TestProducerRouter_WithAppSecret(t *testing.T) {
+func TestProducerRouter_WithAppSecret_LXC(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -297,7 +297,7 @@ func TestProducerRouter_WithTrace(t *testing.T) {
 	FatalIfWrongResponseBody(t, resp, "")
 }
 
-func TestProducerRouter_WithAppGroupSecret(t *testing.T) {
+func TestProducerRouter_WithAppGroupSecret_LXC(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -419,7 +419,7 @@ func TestProducerRouter_WithAppGroupSecret_DoubleWrite(t *testing.T) {
 	FatalIfWrongResponseBody(t, resp, "")
 }
 
-func NewTestSuccessfulProducer(ctrl *gomock.Controller, marketUrl string, host string, producerPort int, consulPort int) ProducerRouter {
+func NewTestSuccessfulProducerLXC(ctrl *gomock.Controller, marketUrl string, host string, producerPort int, consulPort int) ProducerRouter {
 	config := newrelic.NewConfig("barito-router", "")
 	config.Enabled = false
 	appCtx := appcontext.NewAppContext(config)
