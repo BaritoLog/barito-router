@@ -64,9 +64,7 @@ func (p *producerRouter) Server() *http.Server {
 }
 
 func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-
 	reqBody := []byte{}
-
 	if req.URL.Path == "/ping" {
 		onPing(w)
 		return
@@ -97,13 +95,14 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// ConsulHosts are only used in the legacy infrastructure(LXC containers).
 	if len(profile.ConsulHosts) > 0 {
 		pAttrConsul, err := p.fetchProducerAttributesFromConsul(w, req, profile)
-		if err != nil {
-			return
-		}
-		result, err := p.handleProduce(req, reqBody, pAttrConsul, profile)
+		if err == nil {
+			result, err := p.handleProduce(req, reqBody, pAttrConsul, profile)
 
-		produceResults = append(produceResults, result)
-		produceErrors = append(produceErrors, err)
+			produceResults = append(produceResults, result)
+			produceErrors = append(produceErrors, err)
+		} else {
+			produceErrors = append(produceErrors, err)
+		}
 	}
 
 	// profile.ProducerAddress is used only for the K8s infrastructure.
@@ -116,7 +115,6 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	checkProduceResultsAndRespond(w, produceResults, produceErrors)
-
 }
 
 func isAppSecretAvailable(appSecret string) bool {

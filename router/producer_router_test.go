@@ -135,7 +135,7 @@ func TestProducerRouter_WithAppSecret_LXC(t *testing.T) {
 	host, producerPort := httpkit.HostOfRawURL(targetServer.URL)
 
 	consulServer := NewJsonTestServer(http.StatusOK, []api.CatalogService{
-		api.CatalogService{
+		{
 			ServiceAddress: host,
 			ServicePort:    producerPort,
 		},
@@ -201,6 +201,37 @@ func TestProducerRouter_WithAppSecret_K8s(t *testing.T) {
 	FatalIfWrongResponseBody(t, resp, "")
 }
 
+func TestProducerRouter_WithAppSecret_K8sInvalidConsul(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	targetServer := NewTestServer(http.StatusOK, []byte(""))
+	defer targetServer.Close()
+	producerHost, producerPort := httpkit.HostOfRawURL(targetServer.URL)
+
+	marketServer := NewJsonTestServer(http.StatusOK, Profile{
+		ConsulHosts:     []string{"wrong-consul"},
+		ProducerAddress: fmt.Sprintf("%s:%d", producerHost, producerPort),
+	})
+	defer marketServer.Close()
+
+	router := NewTestSuccessfulProducerK8s(ctrl, marketServer.URL, producerHost, producerPort)
+
+	testPayload := sampleRawTimber()
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost/produce", bytes.NewBuffer(testPayload))
+	req.Header.Add("X-App-Secret", "some-secret")
+	resp := RecordResponse(router.ServeHTTP, req)
+
+	FatalIfWrongResponseStatus(t, resp, http.StatusFailedDependency)
+
+	testPayload = sampleRawTimberCollection()
+	req, _ = http.NewRequest(http.MethodGet, "http://localhost/produce_batch", bytes.NewBuffer(testPayload))
+	req.Header.Add("X-App-Secret", "some-secret")
+	resp = RecordResponse(router.ServeHTTP, req)
+
+	FatalIfWrongResponseStatus(t, resp, http.StatusFailedDependency)
+}
+
 func TestProducerRouter_WithAppSecret_DoubleWrite(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
@@ -211,7 +242,7 @@ func TestProducerRouter_WithAppSecret_DoubleWrite(t *testing.T) {
 	host, producerPort := httpkit.HostOfRawURL(targetServer.URL)
 
 	consulServer := NewJsonTestServer(http.StatusOK, []api.CatalogService{
-		api.CatalogService{
+		{
 			ServiceAddress: host,
 			ServicePort:    producerPort,
 		},
@@ -260,7 +291,7 @@ func TestProducerRouter_WithTrace(t *testing.T) {
 	host, producerPort := httpkit.HostOfRawURL(targetServer.URL)
 
 	consulServer := NewJsonTestServer(http.StatusOK, []api.CatalogService{
-		api.CatalogService{
+		{
 			ServiceAddress: host,
 			ServicePort:    producerPort,
 		},
@@ -307,7 +338,7 @@ func TestProducerRouter_WithAppGroupSecret_LXC(t *testing.T) {
 	host, producerPort := httpkit.HostOfRawURL(targetServer.URL)
 
 	consulServer := NewJsonTestServer(http.StatusOK, []api.CatalogService{
-		api.CatalogService{
+		{
 			ServiceAddress: host,
 			ServicePort:    producerPort,
 		},
@@ -385,7 +416,7 @@ func TestProducerRouter_WithAppGroupSecret_DoubleWrite(t *testing.T) {
 	host, producerPort := httpkit.HostOfRawURL(targetServer.URL)
 
 	consulServer := NewJsonTestServer(http.StatusOK, []api.CatalogService{
-		api.CatalogService{
+		{
 			ServiceAddress: host,
 			ServicePort:    producerPort,
 		},
