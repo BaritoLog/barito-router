@@ -12,12 +12,10 @@ import (
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/config"
 	"github.com/BaritoLog/barito-router/instrumentation"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
 	pb "github.com/vwidjaya/barito-proto/producer"
-	"google.golang.org/grpc/status"
 )
 
 const (
@@ -286,41 +284,24 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 }
 
 func checkProduceResultsAndRespond(w http.ResponseWriter, results []*pb.ProduceResult, errors []error) {
-	var responseMsg bytes.Buffer
-	errorCodes := []int{}
+	var validErrors []error
 
-	//Collect all error messages and codes for responseMsg
+	// Collect all errors
 	for _, err := range errors {
 		if err != nil {
-			st, ok := status.FromError(err)
-			if ok {
-				errorCodes = append(errorCodes, runtime.HTTPStatusFromCode(st.Code()))
+			validErrors = append(validErrors, err)
+		}
+	}
+
+	if len(validErrors) > 0 {
+		onRpcError(w, validErrors)
+	} else {
+		var responseMsg bytes.Buffer
+		for _, result := range results {
+			if result != nil {
+				responseMsg.WriteString(result.Topic + "\n")
 			}
-			responseMsg.WriteString(st.Message())
-			log.Errorf("%s", st.Message())
-			break
 		}
+		onRpcSuccess(w, responseMsg.String())
 	}
-
-	// Return failure if any of the produce attempts had errors
-	if responseMsg.Len() > 0 {
-
-		w.Write(responseMsg.Bytes())
-
-		if len(errorCodes) > 0 {
-			w.WriteHeader(errorCodes[0])
-			return
-		}
-		w.WriteHeader(http.StatusBadGateway)
-		return
-	}
-
-	// Collect all success results for responseMsg
-	for _, result := range results {
-		if result != nil {
-			responseMsg.WriteString(result.Topic + "\n")
-		}
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Write(responseMsg.Bytes())
 }

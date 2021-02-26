@@ -1,11 +1,14 @@
 package router
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 
 	"github.com/BaritoLog/barito-router/instrumentation"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/status"
 )
 
 // TODO: rename to onFetchError
@@ -38,6 +41,28 @@ func onKafkaPixyError(w http.ResponseWriter, err error) {
 func onAuthorizeError(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusUnauthorized)
 	w.Write([]byte("Unauthorized"))
+}
+
+func onRpcError(w http.ResponseWriter, errors []error) string {
+	httpCode := http.StatusBadGateway
+
+	st, ok := status.FromError(errors[0])
+	if ok {
+		httpCode = runtime.HTTPStatusFromCode(st.Code())
+	}
+	w.WriteHeader(httpCode)
+
+	var responseMsg bytes.Buffer
+	for _, err := range errors {
+		responseMsg.WriteString(err.Error() + "\n")
+	}
+	w.Write(responseMsg.Bytes())
+	return responseMsg.String()
+}
+
+func onRpcSuccess(w http.ResponseWriter, message string) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(message))
 }
 
 func logProduceError(context, clusterName, appGroupSecret, appName string, r *http.Request, err error) {
