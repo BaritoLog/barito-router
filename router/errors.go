@@ -1,6 +1,7 @@
 package router
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 
@@ -42,17 +43,21 @@ func onAuthorizeError(w http.ResponseWriter) {
 	w.Write([]byte("Unauthorized"))
 }
 
-func onRpcError(w http.ResponseWriter, err error) string {
+func onRpcError(w http.ResponseWriter, errors []error) string {
 	httpCode := http.StatusBadGateway
 
-	st, ok := status.FromError(err)
+	st, ok := status.FromError(errors[0])
 	if ok {
 		httpCode = runtime.HTTPStatusFromCode(st.Code())
 	}
-
 	w.WriteHeader(httpCode)
-	w.Write([]byte(st.Message()))
-	return st.Message()
+
+	var responseMsg bytes.Buffer
+	for _, err := range errors {
+		responseMsg.WriteString(err.Error() + "\n")
+	}
+	w.Write(responseMsg.Bytes())
+	return responseMsg.String()
 }
 
 func onRpcSuccess(w http.ResponseWriter, message string) {
