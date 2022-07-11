@@ -14,6 +14,7 @@ const (
 	EnvKibanaRouterAddress               = "BARITO_KIBANA_ROUTER"
 	EnvProducerPort                      = "BARITO_PRODUCER_PORT"
 	EnvBaritoMarketUrl                   = "BARITO_MARKET_URL"
+	EnvBaritoViewerUrl                   = "BARITO_VIEWER_URL"
 	EnvBaritoMarketAccessToken           = "BARITO_MARKET_ACCESS_TOKEN"
 	EnvBaritoProfileApiPath              = "BARITO_PROFILE_API_PATH"
 	EnvBaritoProfileApiByAppGroupPath    = "BARITO_PROFILE_API_BY_APP_GROUP_PATH"
@@ -26,12 +27,18 @@ const (
 	EnvCacheExpirationTimeSeconds        = "BARITO_CACHE_EXPIRATION_TIME_IN_SECONDS"
 	EnvBackupCacheExpirationTimeHours    = "BARITO_BACKUP_CACHE_EXPIRATION_TIME_IN_HOURS"
 	EnvEnableTracing                     = "BARITO_ENABLE_TRACING"
+	EnvEnableSSO                         = "BARITO_ENABLE_SSO"
+	EnvSSORedirectPath                   = "BARITO_SSO_REDIRECT"
+	EnvSSOClientID                       = "BARITO_SSO_CLIENT_ID"
+	EnvSSOClientSecret                   = "BARITO_SSO_CLIENT_SECRET"
+	EnvAllowedDomains                    = "BARITO_ALLOWED_DOMAINS"
 	EnvJaegerServiceName                 = "BARITO_JAEGER_SERVICE_NAME"
 
 	DefaultProducerRouterAddress             = ":8081"
 	DefaultKibanaRouterAddress               = ":8083"
 	DefaultProducerPort                      = ""
 	DefaultBaritoMarketUrl                   = "http://localhost:3000"
+	DefaultBaritoViewerUrl                   = "http://localhost:8083"
 	DefaultBaritoMarketAccessToken           = ""
 	DefaultBaritoProfileApiPath              = "api/profile"
 	DefaultBaritoProfileApiByAppGroupPath    = "api/profile_by_app_group"
@@ -42,6 +49,11 @@ const (
 	DefaultNewRelicAppName                   = "barito_router"
 	DefaultNewRelicLicenseKey                = ""
 	DefaultEnableTracing                     = false
+	DefaultEnableSSO                         = true
+	DefaultSSORedirectPath                   = "/auth/callback"
+	DefaultSSOClientID                       = ""
+	DefaultSSOClientSecret                   = ""
+	DefaultAllowedDomains                    = ""
 	DefaultNewRelicEnabled                   = false
 	DefaultCacheExpirationTimeSeconds        = 60
 	DefaultBackupCacheExpirationTimeHours    = 48
@@ -52,6 +64,7 @@ var (
 	ProducerPort                   string
 	KibanaRouterAddress            string
 	BaritoMarketUrl                string
+	BaritoViewerUrl                string
 	BaritoMarketAccessToken        string
 	ProfileApiPath                 string
 	ProfileApiByAppGroupPath       string
@@ -63,6 +76,11 @@ var (
 	NewRelicLicenseKey             string
 	NewRelicEnabled                bool
 	EnableTracing                  bool
+	EnableSSO                      bool
+	SSORedirectPath                string
+	SSOClientID                    string
+	SSOClientSecret                string
+	AllowedDomains                 string
 	CacheExpirationTimeSeconds     time.Duration
 	BackupCacheExpirationTimeHours time.Duration
 )
@@ -83,6 +101,10 @@ func init() {
 	BaritoMarketUrl, _ = envkit.GetString(
 		EnvBaritoMarketUrl,
 		DefaultBaritoMarketUrl,
+	)
+	BaritoViewerUrl, _ = envkit.GetString(
+		EnvBaritoViewerUrl,
+		DefaultBaritoViewerUrl,
 	)
 	BaritoMarketAccessToken, _ = envkit.GetString(
 		EnvBaritoMarketAccessToken,
@@ -127,6 +149,26 @@ func init() {
 	EnableTracing, _ = envkit.GetBool(
 		EnvEnableTracing,
 		DefaultEnableTracing,
+	)
+	EnableSSO, _ = envkit.GetBool(
+		EnvEnableSSO,
+		DefaultEnableSSO,
+	)
+	SSORedirectPath, _ = envkit.GetString(
+		EnvSSORedirectPath,
+		DefaultSSORedirectPath,
+	)
+	SSOClientID, _ = envkit.GetString(
+		EnvSSOClientID,
+		DefaultSSOClientID,
+	)
+	SSOClientSecret, _ = envkit.GetString(
+		EnvSSOClientSecret,
+		DefaultSSOClientSecret,
+	)
+	AllowedDomains, _ = envkit.GetString(
+		EnvAllowedDomains,
+		DefaultAllowedDomains,
 	)
 	temp, _ := envkit.GetInt(
 		EnvCacheExpirationTimeSeconds,

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/BaritoLog/barito-router/config"
 
 	"github.com/BaritoLog/barito-router/appcontext"
@@ -50,14 +51,30 @@ func RunProducerRouter(appCtx *appcontext.AppContext) {
 }
 
 func RunKibanaRouter(appCtx *appcontext.AppContext) {
-	kibanaRouter := router.NewKibanaRouter(
-		config.KibanaRouterAddress,
-		config.BaritoMarketUrl,
-		config.BaritoMarketAccessToken,
-		config.ProfileApiByClusternamePath,
-		config.AuthorizeApiPath,
-		config.CasAddress,
-		appCtx,
-	)
+	var kibanaRouter router.KibanaRouter
+	if config.EnableSSO {
+		kibanaRouter = router.NewKibanaRouterWithSSO(
+			config.KibanaRouterAddress,
+			config.BaritoMarketUrl,
+			config.BaritoMarketAccessToken,
+			config.ProfileApiByClusternamePath,
+			config.AuthorizeApiPath,
+			config.BaritoViewerUrl+config.SSORedirectPath,
+			config.SSOClientID,
+			config.SSOClientSecret,
+			config.AllowedDomains,
+			appCtx,
+		)
+	} else {
+		kibanaRouter = router.NewKibanaRouter(
+			config.KibanaRouterAddress,
+			config.BaritoMarketUrl,
+			config.BaritoMarketAccessToken,
+			config.ProfileApiByClusternamePath,
+			config.AuthorizeApiPath,
+			config.CasAddress,
+			appCtx,
+		)
+	}
 	kibanaRouter.Server().ListenAndServe()
 }

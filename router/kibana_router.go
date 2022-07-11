@@ -15,6 +15,8 @@ import (
 	"github.com/patrickmn/go-cache"
 
 	"github.com/BaritoLog/cas"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 )
 
 const (
@@ -31,12 +33,15 @@ type KibanaRouter interface {
 }
 
 type kibanaRouter struct {
-	addr          string
-	marketUrl     string
-	accessToken   string
-	profilePath   string
-	authorizePath string
-	casAddr       string
+	addr           string
+	marketUrl      string
+	accessToken    string
+	profilePath    string
+	authorizePath  string
+	casAddr        string
+	allowedDomains string
+	ssoEnabled     bool
+	oAuth2Config   *oauth2.Config
 
 	cacheBag *cache.Cache
 
@@ -59,10 +64,46 @@ func NewKibanaRouter(addr, marketUrl, accessToken, profilePath, authorizePath, c
 	}
 }
 
+func NewKibanaRouterWithSSO(addr, marketUrl, accessToken, profilePath, authorizePath, redirectURL, clientID, clientSecret, allowedDomains string, appCtx *appcontext.AppContext) KibanaRouter {
+	return &kibanaRouter{
+		addr:          addr,
+		marketUrl:     marketUrl,
+		accessToken:   accessToken,
+		profilePath:   profilePath,
+		authorizePath: authorizePath,
+		ssoEnabled:    true,
+		oAuth2Config: &oauth2.Config{
+			RedirectURL:  redirectURL,
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+			Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
+			Endpoint:     google.Endpoint,
+		},
+		allowedDomains: allowedDomains,
+		cacheBag:       cache.New(config.CacheExpirationTimeSeconds, 2*config.CacheExpirationTimeSeconds),
+		client:         createClient(),
+		appCtx:         appCtx,
+	}
+}
+
 func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if req.URL.Path == "/ping" {
 		onPing(w)
 		return
+	}
+
+	if r.isUseSSO() {
+		RANDOM_STRING := "random-string"
+		if req.URL.Path == "/auth/callback" {
+			OnAuthCallback(w, req, RANDOM_STRING, r.allowedDomains, r.oAuth2Config)
+			return
+		}
+
+		if req.Context().Value(0) == nil {
+			url := r.oAuth2Config.AuthCodeURL(RANDOM_STRING)
+			http.Redirect(w, req, url, http.StatusTemporaryRedirect)
+			return
+		}
 	}
 
 	if r.isUseCAS() {
@@ -180,6 +221,10 @@ func getTargetScheme(srv *api.CatalogService) (scheme string) {
 
 func (r *kibanaRouter) isUseCAS() bool {
 	return r.casAddr != ""
+}
+
+func (r *kibanaRouter) isUseSSO() bool {
+	return r.ssoEnabled
 }
 
 func (r *kibanaRouter) isUserAuthorized(username string, clusterName string) (success bool, err error) {
