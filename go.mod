@@ -7,7 +7,7 @@ require (
 	github.com/BaritoLog/go-boilerplate v0.0.0-20190116075340-b95aeda121e9
 	github.com/HdrHistogram/hdrhistogram-go v1.0.1 // indirect
 	github.com/cssivision/reverseproxy v0.0.1
-	github.com/golang-jwt/jwt/v4 v4.4.2 // indirect
+	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/golang/mock v1.3.1
 	github.com/golang/protobuf v1.4.3
 	github.com/grpc-ecosystem/grpc-gateway v1.11.3
