@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -106,7 +107,8 @@ func (s *SSOClient) CreateJWTToken(email string) (string, error) {
 }
 
 func (s *SSOClient) HandleCallback(w http.ResponseWriter, r *http.Request) {
-	stateStr := r.FormValue("state")
+	stateB64 := r.FormValue("state")
+	stateStr, _ := base64.StdEncoding.DecodeString(stateB64)
 	state := &Oauth2State{}
 	json.Unmarshal([]byte(stateStr), &state)
 
@@ -155,6 +157,7 @@ func (s *SSOClient) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		Redirect: r.FormValue("redirect"),
 	}
 	stateStr, _ := json.Marshal(state)
-	url := s.oAuth2Config.AuthCodeURL(string(stateStr))
+	stateB64 := base64.StdEncoding.EncodeToString([]byte(string(stateStr)))
+	url := s.oAuth2Config.AuthCodeURL(string(stateB64))
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
