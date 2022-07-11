@@ -15,8 +15,6 @@ import (
 	"github.com/patrickmn/go-cache"
 
 	"github.com/BaritoLog/cas"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 )
 
 const (
@@ -33,15 +31,14 @@ type KibanaRouter interface {
 }
 
 type kibanaRouter struct {
-	addr           string
-	marketUrl      string
-	accessToken    string
-	profilePath    string
-	authorizePath  string
-	casAddr        string
-	allowedDomains string
-	ssoEnabled     bool
-	oAuth2Config   *oauth2.Config
+	addr          string
+	marketUrl     string
+	accessToken   string
+	profilePath   string
+	authorizePath string
+	casAddr       string
+	ssoEnabled    bool
+	ssoClient     SSOClient
 
 	cacheBag *cache.Cache
 
@@ -50,39 +47,31 @@ type kibanaRouter struct {
 }
 
 // NewKibanaRouter is a function for creating new kibana router
-func NewKibanaRouter(addr, marketUrl, accessToken, profilePath, authorizePath, casAddr string, appCtx *appcontext.AppContext) KibanaRouter {
+func NewKibanaRouter(addr, marketUrl, accessToken, profilePath, authorizePath string, appCtx *appcontext.AppContext) KibanaRouter {
 	return &kibanaRouter{
 		addr:          addr,
 		marketUrl:     marketUrl,
 		accessToken:   accessToken,
 		profilePath:   profilePath,
 		authorizePath: authorizePath,
-		casAddr:       casAddr,
 		cacheBag:      cache.New(config.CacheExpirationTimeSeconds, 2*config.CacheExpirationTimeSeconds),
 		client:        createClient(),
 		appCtx:        appCtx,
 	}
 }
 
-func NewKibanaRouterWithSSO(addr, marketUrl, accessToken, profilePath, authorizePath, redirectURL, clientID, clientSecret, allowedDomains string, appCtx *appcontext.AppContext) KibanaRouter {
+func NewKibanaRouterWithSSO(addr, marketUrl, accessToken, profilePath, authorizePath string, appCtx *appcontext.AppContext, ssoClient SSOClient) KibanaRouter {
 	return &kibanaRouter{
 		addr:          addr,
 		marketUrl:     marketUrl,
 		accessToken:   accessToken,
 		profilePath:   profilePath,
 		authorizePath: authorizePath,
+		cacheBag:      cache.New(config.CacheExpirationTimeSeconds, 2*config.CacheExpirationTimeSeconds),
+		client:        createClient(),
+		appCtx:        appCtx,
+		ssoClient:     ssoClient,
 		ssoEnabled:    true,
-		oAuth2Config: &oauth2.Config{
-			RedirectURL:  redirectURL,
-			ClientID:     clientID,
-			ClientSecret: clientSecret,
-			Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
-			Endpoint:     google.Endpoint,
-		},
-		allowedDomains: allowedDomains,
-		cacheBag:       cache.New(config.CacheExpirationTimeSeconds, 2*config.CacheExpirationTimeSeconds),
-		client:         createClient(),
-		appCtx:         appCtx,
 	}
 }
 
@@ -90,32 +79,6 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if req.URL.Path == "/ping" {
 		onPing(w)
 		return
-	}
-
-	if r.isUseSSO() {
-		RANDOM_STRING := "random-string"
-		if req.URL.Path == "/auth/callback" {
-			OnAuthCallback(w, req, RANDOM_STRING, r.allowedDomains, r.oAuth2Config)
-			return
-		}
-
-		if req.Context().Value(0) == nil {
-			url := r.oAuth2Config.AuthCodeURL(RANDOM_STRING)
-			http.Redirect(w, req, url, http.StatusTemporaryRedirect)
-			return
-		}
-	}
-
-	if r.isUseCAS() {
-		if !cas.IsAuthenticated(req) {
-			cas.RedirectToLogin(w, req)
-			return
-		}
-
-		if req.URL.Path == "/logout" {
-			cas.RedirectToLogout(w, req)
-			return
-		}
 	}
 
 	span := opentracing.StartSpan("barito_router_viewer.view_kibana")
@@ -172,24 +135,10 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func (r *kibanaRouter) Server() *http.Server {
-	if r.isUseCAS() {
-		casURL := r.casAddr
-		url, _ := url.Parse(casURL)
-
-		cookie := &http.Cookie{
-			MaxAge:   86400,
-			HttpOnly: false,
-			Secure:   false,
-			Path:     "/",
-		}
-
-		client := cas.NewClient(&cas.Options{
-			URL:    url,
-			Cookie: cookie,
-		})
+	if r.isUseSSO() {
 		return &http.Server{
 			Addr:    r.addr,
-			Handler: client.Handle(r),
+			Handler: r.ssoClient,
 		}
 	}
 

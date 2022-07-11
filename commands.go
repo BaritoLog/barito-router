@@ -51,30 +51,15 @@ func RunProducerRouter(appCtx *appcontext.AppContext) {
 }
 
 func RunKibanaRouter(appCtx *appcontext.AppContext) {
-	var kibanaRouter router.KibanaRouter
-	if config.EnableSSO {
-		kibanaRouter = router.NewKibanaRouterWithSSO(
-			config.KibanaRouterAddress,
-			config.BaritoMarketUrl,
-			config.BaritoMarketAccessToken,
-			config.ProfileApiByClusternamePath,
-			config.AuthorizeApiPath,
-			config.BaritoViewerUrl+config.SSORedirectPath,
-			config.SSOClientID,
-			config.SSOClientSecret,
-			config.AllowedDomains,
-			appCtx,
-		)
-	} else {
-		kibanaRouter = router.NewKibanaRouter(
-			config.KibanaRouterAddress,
-			config.BaritoMarketUrl,
-			config.BaritoMarketAccessToken,
-			config.ProfileApiByClusternamePath,
-			config.AuthorizeApiPath,
-			config.CasAddress,
-			appCtx,
-		)
-	}
+	ssoClient := router.NewSSOClient(config.SSOClientID, config.SSOClientSecret, config.BaritoViewerUrl+config.SSORedirectPath)
+	kibanaRouter := router.NewKibanaRouterWithSSO(
+		config.KibanaRouterAddress,
+		config.BaritoMarketUrl,
+		config.BaritoMarketAccessToken,
+		config.ProfileApiByClusternamePath,
+		config.AuthorizeApiPath,
+		appCtx,
+		*ssoClient,
+	)
 	kibanaRouter.Server().ListenAndServe()
 }
