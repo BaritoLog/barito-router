@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -32,7 +33,8 @@ const (
 )
 
 type SSOClient struct {
-	oAuth2Config *oauth2.Config
+	oAuth2Config   *oauth2.Config
+	allowedDomains string
 }
 
 type Oauth2State struct {
@@ -47,7 +49,7 @@ type OAuthData struct {
 	HD            string `json:"hd"`
 }
 
-func NewSSOClient(clientID, clientSecret, redirectURL string) *SSOClient {
+func NewSSOClient(clientID, clientSecret, redirectURL, allowedDomains string) *SSOClient {
 	return &SSOClient{
 		oAuth2Config: &oauth2.Config{
 			RedirectURL:  redirectURL,
@@ -56,6 +58,7 @@ func NewSSOClient(clientID, clientSecret, redirectURL string) *SSOClient {
 			Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
 			Endpoint:     google.Endpoint,
 		},
+		allowedDomains: allowedDomains,
 	}
 }
 
@@ -133,6 +136,19 @@ func (s *SSOClient) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	data, err := s.getUserData(code)
 	if err != nil {
 		log.Errorf("Error when getting user data: %q", err.Error())
+		w.Write([]byte(FAILED_LOGIN_ERROR_MESSAGE))
+		return
+	}
+
+	if strings.Contains(data.Email, "@") {
+		emailDomain := strings.Split(data.Email, "@")[1]
+		if !strings.Contains(s.allowedDomains, emailDomain) {
+			log.Errorf("Email domain is outside allowed domains: %q", err.Error())
+			w.Write([]byte(FAILED_LOGIN_ERROR_MESSAGE))
+			return
+		}
+	} else {
+		log.Errorf("Email is not correctly formatted: %q", err.Error())
 		w.Write([]byte(FAILED_LOGIN_ERROR_MESSAGE))
 		return
 	}

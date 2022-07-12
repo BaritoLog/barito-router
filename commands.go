@@ -54,7 +54,7 @@ func RunProducerRouter(appCtx *appcontext.AppContext) {
 }
 
 func RunKibanaRouter(appCtx *appcontext.AppContext) {
-	ssoClient := router.NewSSOClient(config.SSOClientID, config.SSOClientSecret, config.BaritoViewerUrl+config.SSORedirectPath)
+	ssoClient := router.NewSSOClient(config.SSOClientID, config.SSOClientSecret, config.BaritoViewerUrl+config.SSORedirectPath, config.AllowedDomains)
 	kibanaRouter := router.NewKibanaRouterWithSSO(
 		config.KibanaRouterAddress,
 		config.BaritoMarketUrl,
