@@ -35,7 +35,6 @@ type kibanaRouter struct {
 	accessToken   string
 	profilePath   string
 	authorizePath string
-	casAddr       string
 	ssoEnabled    bool
 	ssoClient     SSOClient
 
@@ -155,10 +154,6 @@ func getTargetScheme(srv *api.CatalogService) (scheme string) {
 	}
 
 	return scheme
-}
-
-func (r *kibanaRouter) isUseCAS() bool {
-	return r.casAddr != ""
 }
 
 func (r *kibanaRouter) isUseSSO() bool {

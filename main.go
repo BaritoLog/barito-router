@@ -30,7 +30,6 @@ func main() {
 	fmt.Printf("%s=%s\n", config.EnvBaritoProfileApiByAppGroupPath, config.ProfileApiByAppGroupPath)
 	fmt.Printf("%s=%s\n", config.EnvBaritoAuthorizeApiPath, config.AuthorizeApiPath)
 	fmt.Printf("%s=%s\n\n", config.EnvBaritoProfileApiByClusternamePath, config.ProfileApiByClusternamePath)
-	fmt.Printf("%s=%s\n", config.EnvCASAddress, config.CasAddress)
 	fmt.Printf("%s=%v\n", config.EnvEnableTracing, config.EnableTracing)
 	fmt.Printf("%s=%v\n", config.EnvEnableSSO, config.EnableSSO)
 

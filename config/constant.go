@@ -20,7 +20,6 @@ const (
 	EnvBaritoProfileApiByAppGroupPath    = "BARITO_PROFILE_API_BY_APP_GROUP_PATH"
 	EnvBaritoAuthorizeApiPath            = "BARITO_AUTHORIZE_API_PATH"
 	EnvBaritoProfileApiByClusternamePath = "BARITO_PROFILE_API_BY_CLUSTERNAME_PATH"
-	EnvCASAddress                        = "BARITO_CAS_ADDRESS"
 	EnvNewRelicAppName                   = "BARITO_NEW_RELIC_APP_NAME"
 	EnvNewRelicLicenseKey                = "BARITO_NEW_RELIC_LICENSE_KEY"
 	EnvNewRelicEnabled                   = "BARITO_NEW_RELIC_ENABLED"
@@ -28,7 +27,7 @@ const (
 	EnvBackupCacheExpirationTimeHours    = "BARITO_BACKUP_CACHE_EXPIRATION_TIME_IN_HOURS"
 	EnvEnableTracing                     = "BARITO_ENABLE_TRACING"
 	EnvEnableSSO                         = "BARITO_ENABLE_SSO"
-	EnvSSORedirectPath                   = "BARITO_SSO_REDIRECT"
+	EnvSSORedirectPath                   = "BARITO_SSO_REDIRECT_PATH"
 	EnvSSOClientID                       = "BARITO_SSO_CLIENT_ID"
 	EnvSSOClientSecret                   = "BARITO_SSO_CLIENT_SECRET"
 	EnvAllowedDomains                    = "BARITO_ALLOWED_DOMAINS"
@@ -44,7 +43,6 @@ const (
 	DefaultBaritoProfileApiByAppGroupPath    = "api/profile_by_app_group"
 	DefaultBaritoAuthorizeApiPath            = "api/authorize"
 	DefaultBaritoProfileApiByClusternamePath = "api/v2/profile_by_cluster_name"
-	DefaultCASAddress                        = ""
 	DefaultJaegerServiceName                 = "barito_router"
 	DefaultNewRelicAppName                   = "barito_router"
 	DefaultNewRelicLicenseKey                = ""
@@ -70,7 +68,6 @@ var (
 	ProfileApiByAppGroupPath       string
 	AuthorizeApiPath               string
 	ProfileApiByClusternamePath    string
-	CasAddress                     string
 	JaegerServiceName              string
 	NewRelicAppName                string
 	NewRelicLicenseKey             string
@@ -125,10 +122,6 @@ func init() {
 	ProfileApiByClusternamePath, _ = envkit.GetString(
 		EnvBaritoProfileApiByClusternamePath,
 		DefaultBaritoProfileApiByClusternamePath,
-	)
-	CasAddress, _ = envkit.GetString(
-		EnvCASAddress,
-		DefaultCASAddress,
 	)
 	JaegerServiceName, _ = envkit.GetString(
 		EnvJaegerServiceName,

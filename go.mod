@@ -3,14 +3,13 @@ module github.com/BaritoLog/barito-router
 go 1.13
 
 require (
-	github.com/BaritoLog/cas v0.0.0-20190218025122-1d0220aa6e84
 	github.com/BaritoLog/go-boilerplate v0.0.0-20190116075340-b95aeda121e9
 	github.com/HdrHistogram/hdrhistogram-go v1.0.1 // indirect
 	github.com/cssivision/reverseproxy v0.0.1
 	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/golang/mock v1.3.1
 	github.com/golang/protobuf v1.4.3
-	github.com/gorilla/mux v1.8.0 // indirect
+	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/grpc-gateway v1.11.3
 	github.com/hashicorp/consul/api v1.3.0
 	github.com/newrelic/go-agent v2.13.0+incompatible
@@ -30,5 +29,4 @@ require (
 	golang.org/x/sys v0.0.0-20211019181941-9d821ace8654 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/grpc v1.26.0
-	gopkg.in/cas.v1 v1.2.0 // indirect
 )
