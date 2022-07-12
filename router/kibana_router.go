@@ -10,11 +10,10 @@ import (
 	"github.com/BaritoLog/barito-router/config"
 	"github.com/BaritoLog/barito-router/instrumentation"
 	"github.com/BaritoLog/go-boilerplate/httpkit"
+	"github.com/gorilla/mux"
 	"github.com/hashicorp/consul/api"
 	"github.com/opentracing/opentracing-go"
 	"github.com/patrickmn/go-cache"
-
-	"github.com/BaritoLog/cas"
 )
 
 const (
@@ -26,8 +25,8 @@ const (
 )
 
 type KibanaRouter interface {
-	Server() *http.Server
 	ServeHTTP(w http.ResponseWriter, req *http.Request)
+	MustBeAuthorizedMiddleware(http.Handler) http.Handler
 }
 
 type kibanaRouter struct {
@@ -36,7 +35,8 @@ type kibanaRouter struct {
 	accessToken   string
 	profilePath   string
 	authorizePath string
-	casAddr       string
+	ssoEnabled    bool
+	ssoClient     SSOClient
 
 	cacheBag *cache.Cache
 
@@ -45,42 +45,41 @@ type kibanaRouter struct {
 }
 
 // NewKibanaRouter is a function for creating new kibana router
-func NewKibanaRouter(addr, marketUrl, accessToken, profilePath, authorizePath, casAddr string, appCtx *appcontext.AppContext) KibanaRouter {
+func NewKibanaRouter(addr, marketUrl, accessToken, profilePath, authorizePath string, appCtx *appcontext.AppContext) KibanaRouter {
 	return &kibanaRouter{
 		addr:          addr,
 		marketUrl:     marketUrl,
 		accessToken:   accessToken,
 		profilePath:   profilePath,
 		authorizePath: authorizePath,
-		casAddr:       casAddr,
 		cacheBag:      cache.New(config.CacheExpirationTimeSeconds, 2*config.CacheExpirationTimeSeconds),
 		client:        createClient(),
 		appCtx:        appCtx,
 	}
 }
 
+func NewKibanaRouterWithSSO(addr, marketUrl, accessToken, profilePath, authorizePath string, appCtx *appcontext.AppContext, ssoClient SSOClient) KibanaRouter {
+	return &kibanaRouter{
+		addr:          addr,
+		marketUrl:     marketUrl,
+		accessToken:   accessToken,
+		profilePath:   profilePath,
+		authorizePath: authorizePath,
+		cacheBag:      cache.New(config.CacheExpirationTimeSeconds, 2*config.CacheExpirationTimeSeconds),
+		client:        createClient(),
+		appCtx:        appCtx,
+		ssoClient:     ssoClient,
+		ssoEnabled:    true,
+	}
+}
+
 func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if req.URL.Path == "/ping" {
-		onPing(w)
-		return
-	}
-
-	if r.isUseCAS() {
-		if !cas.IsAuthenticated(req) {
-			cas.RedirectToLogin(w, req)
-			return
-		}
-
-		if req.URL.Path == "/logout" {
-			cas.RedirectToLogout(w, req)
-			return
-		}
-	}
-
 	span := opentracing.StartSpan("barito_router_viewer.view_kibana")
 	defer span.Finish()
 
-	clusterName := KibanaGetClustername(req)
+	params := mux.Vars(req)
+	clusterName := params["cluster_name"]
+
 	span.SetTag("app-group", clusterName)
 	profile, err := fetchProfileByClusterName(r.client, span.Context(), r.cacheBag, r.marketUrl, r.accessToken, r.profilePath, clusterName)
 	if profile != nil {
@@ -97,66 +96,45 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if r.isUseCAS() {
-		username := cas.Username(req)
-		success, err := r.isUserAuthorized(username, clusterName)
-		if err != nil {
-			return
-		}
-		if !success {
-			onAuthorizeError(w)
-			return
-		}
-	}
-
 	sourceUrl := fmt.Sprintf("%s://%s:%s", httpkit.SchemeOfRequest(req), req.Host, r.addr)
 
 	var targetUrl string
 
-	if profile.KibanaAddress != "" {
-		targetUrl = fmt.Sprintf("http://%s", profile.KibanaAddress)
-	} else {
-		srvName, _ := profile.MetaServiceName(KeyKibana)
-		srv, _, err := consulService(profile.ConsulHosts, srvName, profile.ClusterName, r.cacheBag)
-		if err != nil {
-			onConsulError(w, err)
-			return
-		}
-
-		targetUrl = fmt.Sprintf("%s://%s:%d", getTargetScheme(srv), srv.ServiceAddress, srv.ServicePort)
-	}
+	targetUrl = fmt.Sprintf("http://%s", profile.KibanaAddress)
 
 	proxy := NewKibanaProxy(sourceUrl, targetUrl)
 	proxy.ReverseProxy().ServeHTTP(w, req)
 }
 
-func (r *kibanaRouter) Server() *http.Server {
-	if r.isUseCAS() {
-		casURL := r.casAddr
-		url, _ := url.Parse(casURL)
+func (r *kibanaRouter) MustBeAuthorizedMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		// check if authorized
 
-		cookie := &http.Cookie{
-			MaxAge:   86400,
-			HttpOnly: false,
-			Secure:   false,
-			Path:     "/",
+		// get required parameters
+		params := mux.Vars(req)
+		username := strings.Split(req.Context().Value("email").(string), "@")[0]
+		clusterName := params["cluster_name"]
+
+		// check to the barito market
+		address := fmt.Sprintf("%s/%s", r.marketUrl, r.authorizePath)
+		q := url.Values{}
+		q.Add("username", username)
+		q.Add("cluster_name", clusterName)
+
+		checkReq, _ := http.NewRequest("GET", address, nil)
+		checkReq.URL.RawQuery = q.Encode()
+		res, err := r.client.Do(checkReq)
+		if err != nil {
+			onTradeError(w, err)
+			return
+		}
+		if res.StatusCode != http.StatusOK {
+			onAuthorizeError(w)
+			return
 		}
 
-		client := cas.NewClient(&cas.Options{
-			URL:    url,
-			Cookie: cookie,
-		})
-		return &http.Server{
-			Addr:    r.addr,
-			Handler: client.Handle(r),
-		}
-	}
-
-	return &http.Server{
-		Addr:    r.addr,
-		Handler: r,
-	}
-
+		next.ServeHTTP(w, req)
+	})
 }
 
 func KibanaGetClustername(req *http.Request) string {
@@ -178,28 +156,6 @@ func getTargetScheme(srv *api.CatalogService) (scheme string) {
 	return scheme
 }
 
-func (r *kibanaRouter) isUseCAS() bool {
-	return r.casAddr != ""
-}
-
-func (r *kibanaRouter) isUserAuthorized(username string, clusterName string) (success bool, err error) {
-	address := fmt.Sprintf("%s/%s", r.marketUrl, r.authorizePath)
-	q := url.Values{}
-	q.Add("username", username)
-	q.Add("cluster_name", clusterName)
-	success = false
-
-	req, _ := http.NewRequest("GET", address, nil)
-	req.URL.RawQuery = q.Encode()
-
-	res, err := r.client.Do(req)
-	if err != nil {
-		return
-	}
-
-	if res.StatusCode == http.StatusOK {
-		success = true
-	}
-
-	return
+func (r *kibanaRouter) isUseSSO() bool {
+	return r.ssoEnabled
 }
