@@ -10,6 +10,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/golang/mock v1.3.1
 	github.com/golang/protobuf v1.4.3
+	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.11.3
 	github.com/hashicorp/consul/api v1.3.0
 	github.com/newrelic/go-agent v2.13.0+incompatible

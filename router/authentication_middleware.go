@@ -24,6 +24,7 @@ const (
 	FORM_REDIRECT_KEY          = "redirect"
 	FORM_STATE_KEY             = "state"
 	GOOGLE_API_URL             = "https://www.googleapis.com/oauth2/v2/userinfo?access_token="
+	CONTEXT_EMAIL              = "email"
 	JWT_COOKIE_EMAIL_KEY       = "email"
 	JWT_COOKIE_KEY             = "token"
 	PATH_CALLBACK              = "/auth/callback"
@@ -55,27 +56,6 @@ func NewSSOClient(clientID, clientSecret, redirectURL string) *SSOClient {
 			Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
 			Endpoint:     google.Endpoint,
 		},
-	}
-}
-
-func (s SSOClient) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.URL.Path {
-	case PATH_LOGIN:
-		s.HandleLogin(w, r)
-		return
-	case PATH_CALLBACK:
-		s.HandleCallback(w, r)
-		return
-	default:
-		// check auth, if its not logged in redirect to /auth/login
-		tokenCookie, _ := r.Cookie(JWT_COOKIE_KEY)
-		email, _ := s.GetEmailFromJWTToken(tokenCookie)
-		if email == "" {
-			http.Redirect(w, r, fmt.Sprintf(PATH_LOGIN+"?redirect=%s", r.URL.Path), http.StatusFound)
-			return
-		}
-
-		fmt.Printf("Authenticated as %q to call: %q\n", email, r.URL.Path)
 	}
 }
 
@@ -116,6 +96,21 @@ func (s *SSOClient) CreateJWTToken(email string) (string, error) {
 		return "", err
 	}
 	return tokenString, nil
+}
+
+func (s *SSOClient) MustBeAuthenticatedMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// check auth, if its not logged in redirect to /auth/login
+		tokenCookie, _ := r.Cookie(JWT_COOKIE_KEY)
+		email, _ := s.GetEmailFromJWTToken(tokenCookie)
+		if email == "" {
+			http.Redirect(w, r, fmt.Sprintf(PATH_LOGIN+"?redirect=%s", r.URL.Path), http.StatusFound)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), CONTEXT_EMAIL, email)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 func (s *SSOClient) HandleLogin(w http.ResponseWriter, r *http.Request) {
