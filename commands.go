@@ -74,7 +74,7 @@ func RunKibanaRouter(appCtx *appcontext.AppContext) {
 	kibanaRoute := r.PathPrefix("/").Subrouter()
 	kibanaRoute.PathPrefix("/{cluster_name}").Handler(kibanaRouter)
 	kibanaRoute.Use(ssoClient.MustBeAuthenticatedMiddleware)
-	//kibanaRoute.Use(kibanaRouter.MustBeAuthorizedMiddleware)
+	kibanaRoute.Use(kibanaRouter.MustBeAuthorizedMiddleware)
 
 	srv := &http.Server{
 		Handler:      r,

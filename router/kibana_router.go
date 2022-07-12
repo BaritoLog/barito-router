@@ -123,7 +123,7 @@ func (r *kibanaRouter) MustBeAuthorizedMiddleware(next http.Handler) http.Handle
 		q.Add("cluster_name", clusterName)
 
 		checkReq, _ := http.NewRequest("GET", address, nil)
-		req.URL.RawQuery = q.Encode()
+		checkReq.URL.RawQuery = q.Encode()
 		res, err := r.client.Do(checkReq)
 		if err != nil {
 			onTradeError(w, err)
