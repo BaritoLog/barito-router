@@ -21,7 +21,7 @@ func TestKibanaRouter_Ping(t *testing.T) {
 	config.Enabled = false
 	appCtx := appcontext.NewAppContext(config)
 
-	router := NewKibanaRouter(":45500", marketServer.URL, "abc", "profilePath", "authorizePath", "", appCtx)
+	router := NewKibanaRouter(":45500", marketServer.URL, "abc", "profilePath", "authorizePath", appCtx)
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost/ping", strings.NewReader(""))
 	resp := RecordResponse(router.ServeHTTP, req)
 
@@ -33,7 +33,7 @@ func TestKibanaRouter_FetchError(t *testing.T) {
 	config.Enabled = false
 	appCtx := appcontext.NewAppContext(config)
 
-	router := NewKibanaRouter(":65500", "http://wrong-market", "abc", "profilePath", "authorizePath", "", appCtx)
+	router := NewKibanaRouter(":65500", "http://wrong-market", "abc", "profilePath", "authorizePath", appCtx)
 
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost", strings.NewReader(""))
 	resp := RecordResponse(router.ServeHTTP, req)
@@ -49,7 +49,7 @@ func TestKibanaRouter_NoProfile(t *testing.T) {
 	config.Enabled = false
 	appCtx := appcontext.NewAppContext(config)
 
-	router := NewKibanaRouter(":45500", marketServer.URL, "abc", "profilePath", "authorizePath", "", appCtx)
+	router := NewKibanaRouter(":45500", marketServer.URL, "abc", "profilePath", "authorizePath", appCtx)
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost", strings.NewReader(""))
 	resp := RecordResponse(router.ServeHTTP, req)
 
@@ -66,7 +66,7 @@ func TestKibanaRouter_ConsulError(t *testing.T) {
 	config.Enabled = false
 	appCtx := appcontext.NewAppContext(config)
 
-	router := NewKibanaRouter(":45500", marketServer.URL, "abc", "profilePath", "authorizePath", "", appCtx)
+	router := NewKibanaRouter(":45500", marketServer.URL, "abc", "profilePath", "authorizePath", appCtx)
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost", strings.NewReader(""))
 	resp := RecordResponse(router.ServeHTTP, req)
 
@@ -97,7 +97,7 @@ func TestKibanaRouter_LXC(t *testing.T) {
 	config.Enabled = false
 	appCtx := appcontext.NewAppContext(config)
 
-	router := NewKibanaRouter(":45500", marketServer.URL, "abc", "profilePath", "authorizePath", "", appCtx)
+	router := NewKibanaRouter(":45500", marketServer.URL, "abc", "profilePath", "authorizePath", appCtx)
 
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost", strings.NewReader(""))
 
@@ -120,7 +120,7 @@ func TestKibanaRouter_K8s(t *testing.T) {
 	config.Enabled = false
 	appCtx := appcontext.NewAppContext(config)
 
-	router := NewKibanaRouter(":45500", marketServer.URL, "abc", "profilePath", "authorizePath", "", appCtx)
+	router := NewKibanaRouter(":45500", marketServer.URL, "abc", "profilePath", "authorizePath", appCtx)
 
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost", strings.NewReader(""))
 

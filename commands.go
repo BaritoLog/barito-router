@@ -2,7 +2,11 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/BaritoLog/barito-router/config"
+	"github.com/gorilla/mux"
 
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/router"
@@ -50,14 +54,33 @@ func RunProducerRouter(appCtx *appcontext.AppContext) {
 }
 
 func RunKibanaRouter(appCtx *appcontext.AppContext) {
-	kibanaRouter := router.NewKibanaRouter(
+	ssoClient := router.NewSSOClient(config.SSOClientID, config.SSOClientSecret, config.BaritoViewerUrl+config.SSORedirectPath, config.AllowedDomains, config.HMACJWTSecretString)
+	kibanaRouter := router.NewKibanaRouterWithSSO(
 		config.KibanaRouterAddress,
 		config.BaritoMarketUrl,
 		config.BaritoMarketAccessToken,
 		config.ProfileApiByClusternamePath,
 		config.AuthorizeApiPath,
-		config.CasAddress,
 		appCtx,
+		*ssoClient,
 	)
-	kibanaRouter.Server().ListenAndServe()
+
+	r := mux.NewRouter()
+	r.HandleFunc("/ping", router.OnPing)
+
+	r.HandleFunc(router.PATH_LOGIN, ssoClient.HandleLogin)
+	r.HandleFunc(router.PATH_CALLBACK, ssoClient.HandleCallback)
+
+	kibanaRoute := r.PathPrefix("/").Subrouter()
+	kibanaRoute.PathPrefix("/{cluster_name}").Handler(kibanaRouter)
+	kibanaRoute.Use(ssoClient.MustBeAuthenticatedMiddleware)
+	kibanaRoute.Use(kibanaRouter.MustBeAuthorizedMiddleware)
+
+	srv := &http.Server{
+		Handler:      r,
+		Addr:         config.KibanaRouterAddress,
+		WriteTimeout: 60 * time.Second,
+		ReadTimeout:  60 * time.Second,
+	}
+	srv.ListenAndServe()
 }
