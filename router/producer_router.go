@@ -66,7 +66,7 @@ func (p *producerRouter) Server() *http.Server {
 func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	reqBody := []byte{}
 	if req.URL.Path == "/ping" {
-		onPing(w)
+		OnPing(w, req)
 		return
 	}
 
