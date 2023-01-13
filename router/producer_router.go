@@ -232,7 +232,6 @@ func (p *producerRouter) fetchK8sProducerAttributes(profile *Profile) producerAt
 func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr producerAttributes, profile *Profile) (*pb.ProduceResult, error) {
 	appGroupSecret := req.Header.Get(AppGroupSecretHeaderName)
 	appName := req.Header.Get(AppNameHeaderName)
-
 	producerClient := p.producerStore.GetClient(pAttr)
 	ctx := context.Background()
 
@@ -241,6 +240,7 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 
 	if req.URL.Path == "/produce_batch" {
 		timberCollection, err := ConvertBytesToTimberCollection(reqBody, timberContext)
+		instrumentation.ObserveByteIngestion(profile.ClusterName, appName, reqBody)
 		instrumentation.ObserveTimberCollection(profile.ClusterName, appName, &timberCollection)
 		if err != nil {
 			log.Errorf("%s", err.Error())
@@ -261,6 +261,7 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 	}
 	if req.URL.Path == "/produce" {
 		timber, err := ConvertBytesToTimber(reqBody, timberContext)
+		instrumentation.ObserveByteIngestion(profile.ClusterName, appName, reqBody)
 		if err != nil {
 			log.Errorf("%s", err.Error())
 			logProduceError(instrumentation.ErrorTimberConvert, profile.ClusterName, appGroupSecret, appName, req, err)

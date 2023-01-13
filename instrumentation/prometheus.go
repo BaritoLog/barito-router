@@ -19,6 +19,7 @@ var producerLengthPerMessage *prometheus.SummaryVec
 var producerLatencyToMarket prometheus.Summary
 var producerLatencyToConsul *prometheus.SummaryVec
 var producerLatencyToProducer *prometheus.SummaryVec
+var producerTotalLogBytesIngested *prometheus.CounterVec
 
 // list error message for producerRequestError metrics
 const (
@@ -76,6 +77,10 @@ func InitProducerInstrumentation() {
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		MaxAge:     1 * time.Minute,
 	}, []string{"app_group", "app_name"})
+	producerTotalLogBytesIngested = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "barito_router_produced_total_log_bytes",
+		Help: "Total log bytes being ingested by the router",
+	}, []string{"app_group", "app_name"})
 }
 
 func IncreaseProducerRequestCount(appGroup, appName string) {
@@ -125,4 +130,8 @@ func ObserveTimberCollection(appGroup, appName string, timberCollection *pb.Timb
 			WithLabelValues(appGroup, appName).
 			Observe(float64(len(timberCollection.Items[i].Content.String())))
 	}
+}
+
+func ObserveByteIngestion(appGroup, appName string, receivedByte []byte) {
+	producerTotalLogBytesIngested.WithLabelValues(appGroup, appName).Add(float64(len(receivedByte)))
 }
