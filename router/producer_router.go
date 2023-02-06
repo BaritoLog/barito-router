@@ -240,7 +240,6 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 
 	if req.URL.Path == "/produce_batch" {
 		timberCollection, err := ConvertBytesToTimberCollection(reqBody, timberContext)
-		instrumentation.ObserveByteIngestion(profile.ClusterName, appName, reqBody)
 		instrumentation.ObserveTimberCollection(profile.ClusterName, appName, &timberCollection)
 		if err != nil {
 			log.Errorf("%s", err.Error())
@@ -256,12 +255,12 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 			logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, req, err)
 			return nil, err
 		}
+		instrumentation.ObserveByteIngestion(profile.ClusterName, appName, reqBody)
 		return result, nil
 
 	}
 	if req.URL.Path == "/produce" {
 		timber, err := ConvertBytesToTimber(reqBody, timberContext)
-		instrumentation.ObserveByteIngestion(profile.ClusterName, appName, reqBody)
 		if err != nil {
 			log.Errorf("%s", err.Error())
 			logProduceError(instrumentation.ErrorTimberConvert, profile.ClusterName, appGroupSecret, appName, req, err)
@@ -276,6 +275,7 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 			logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, req, err)
 			return nil, err
 		}
+		instrumentation.ObserveByteIngestion(profile.ClusterName, appName, reqBody)
 		return result, nil
 	}
 
