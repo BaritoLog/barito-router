@@ -7,12 +7,15 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	newrelic "github.com/newrelic/go-agent"
 	"github.com/opentracing/opentracing-go"
 	"github.com/patrickmn/go-cache"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/config"
@@ -230,6 +233,81 @@ func TestProducerRouter_WithAppSecret_K8sInvalidConsul(t *testing.T) {
 	resp = RecordResponse(router.ServeHTTP, req)
 
 	FatalIfWrongResponseStatus(t, resp, http.StatusFailedDependency)
+}
+
+func TestProducerRouter_Produce_OnByteIngested(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	targetServer := NewTestServer(http.StatusOK, []byte(""))
+	defer targetServer.Close()
+	producerHost, producerPort := httpkit.HostOfRawURL(targetServer.URL)
+
+	marketServer := NewJsonTestServer(http.StatusOK, Profile{
+		ConsulHosts:     []string{},
+		ProducerAddress: fmt.Sprintf("%s:%d", producerHost, producerPort),
+	})
+	defer marketServer.Close()
+
+	router := NewTestSuccessfulProducerK8s_produce(ctrl, marketServer.URL, producerHost, producerPort)
+
+	testPayload := sampleRawTimber()
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost/produce", bytes.NewBuffer(testPayload))
+	req.Header.Add("X-App-Group-Secret", "some-secret")
+	req.Header.Add("X-App-Name", "some-name")
+	resp := RecordResponse(router.ServeHTTP, req)
+
+	FatalIfWrongResponseStatus(t, resp, http.StatusOK)
+	FatalIfWrongResponseBody(t, resp, "")
+
+	expectedByteSize := float64(len(testPayload))
+
+	expected := fmt.Sprintf(`
+		# HELP barito_router_produced_total_log_bytes Total log bytes being ingested by the router
+		# TYPE barito_router_produced_total_log_bytes counter
+		barito_router_produced_total_log_bytes{app_group="", app_name="some-name"} %f
+	`, expectedByteSize)
+
+	FatalIfError(t, testutil.GatherAndCompare(prometheus.DefaultGatherer, strings.NewReader(expected), "barito_router_produced_total_log_bytes"))
+}
+
+func TestProducerRouter_Produce_batch_OnByteIngested(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	targetServer := NewTestServer(http.StatusOK, []byte(""))
+	defer targetServer.Close()
+	producerHost, producerPort := httpkit.HostOfRawURL(targetServer.URL)
+
+	marketServer := NewJsonTestServer(http.StatusOK, Profile{
+		ConsulHosts:     []string{},
+		ProducerAddress: fmt.Sprintf("%s:%d", producerHost, producerPort),
+	})
+	defer marketServer.Close()
+
+	router := NewTestSuccessfulProducerK8s_produce_batch(ctrl, marketServer.URL, producerHost, producerPort)
+
+	testPayload := sampleRawTimberCollection()
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost/produce_batch", bytes.NewBuffer(testPayload))
+	req.Header.Add("X-App-Group-Secret", "some-secret")
+	req.Header.Add("X-App-Name", "some-name")
+	resp1 := RecordResponse(router.ServeHTTP, req)
+
+	FatalIfWrongResponseStatus(t, resp1, http.StatusOK)
+	FatalIfWrongResponseBody(t, resp1, "")
+
+	expectedByteSize := float64(len(testPayload))
+
+	expected := fmt.Sprintf(`
+		# HELP barito_router_produced_total_log_bytes Total log bytes being ingested by the router
+		# TYPE barito_router_produced_total_log_bytes counter
+		barito_router_produced_total_log_bytes{app_group="", app_name="some-name"} %f
+	`, expectedByteSize)
+
+	FatalIfError(t, testutil.GatherAndCompare(prometheus.DefaultGatherer, strings.NewReader(expected), "barito_router_produced_total_log_bytes"))
+
 }
 
 func TestProducerRouter_WithAppSecret_DoubleWrite(t *testing.T) {
@@ -500,6 +578,66 @@ func NewTestSuccessfulProducerK8s(ctrl *gomock.Controller, marketUrl string, pro
 
 	pClient := mock.NewMockProducerClient(ctrl)
 	pClient.EXPECT().Produce(gomock.Any(), gomock.Any())
+	pClient.EXPECT().ProduceBatch(gomock.Any(), gomock.Any())
+
+	pAttr := producerAttributes{
+		producerAddr: fmt.Sprintf("%s:%d", producerHost, producerPort),
+	}
+
+	router.producerStore.producerStoreMap[pAttr] = &grpcParts{
+		client: pClient,
+	}
+
+	return router
+}
+
+func NewTestSuccessfulProducerK8s_produce(ctrl *gomock.Controller, marketUrl string, producerHost string, producerPort int) ProducerRouter {
+	config := newrelic.NewConfig("barito-router", "")
+	config.Enabled = false
+	appCtx := appcontext.NewAppContext(config)
+
+	router := &producerRouter{
+		addr:                  ":45500",
+		marketUrl:             marketUrl,
+		profilePath:           "profilePath",
+		profileByAppGroupPath: "profileByAppGroupPath",
+		client:                createClient(),
+		cacheBag:              cache.New(1*time.Minute, 10*time.Minute),
+		appCtx:                appCtx,
+		producerStore:         NewProducerStore(),
+	}
+
+	pClient := mock.NewMockProducerClient(ctrl)
+	pClient.EXPECT().Produce(gomock.Any(), gomock.Any())
+
+	pAttr := producerAttributes{
+		producerAddr: fmt.Sprintf("%s:%d", producerHost, producerPort),
+	}
+
+	router.producerStore.producerStoreMap[pAttr] = &grpcParts{
+		client: pClient,
+	}
+
+	return router
+}
+
+func NewTestSuccessfulProducerK8s_produce_batch(ctrl *gomock.Controller, marketUrl string, producerHost string, producerPort int) ProducerRouter {
+	config := newrelic.NewConfig("barito-router", "")
+	config.Enabled = false
+	appCtx := appcontext.NewAppContext(config)
+
+	router := &producerRouter{
+		addr:                  ":45500",
+		marketUrl:             marketUrl,
+		profilePath:           "profilePath",
+		profileByAppGroupPath: "profileByAppGroupPath",
+		client:                createClient(),
+		cacheBag:              cache.New(1*time.Minute, 10*time.Minute),
+		appCtx:                appCtx,
+		producerStore:         NewProducerStore(),
+	}
+
+	pClient := mock.NewMockProducerClient(ctrl)
 	pClient.EXPECT().ProduceBatch(gomock.Any(), gomock.Any())
 
 	pAttr := producerAttributes{

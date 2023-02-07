@@ -232,7 +232,6 @@ func (p *producerRouter) fetchK8sProducerAttributes(profile *Profile) producerAt
 func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr producerAttributes, profile *Profile) (*pb.ProduceResult, error) {
 	appGroupSecret := req.Header.Get(AppGroupSecretHeaderName)
 	appName := req.Header.Get(AppNameHeaderName)
-
 	producerClient := p.producerStore.GetClient(pAttr)
 	ctx := context.Background()
 
@@ -256,6 +255,7 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 			logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, req, err)
 			return nil, err
 		}
+		instrumentation.ObserveByteIngestion(profile.ClusterName, appName, reqBody)
 		return result, nil
 
 	}
@@ -275,6 +275,7 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 			logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, req, err)
 			return nil, err
 		}
+		instrumentation.ObserveByteIngestion(profile.ClusterName, appName, reqBody)
 		return result, nil
 	}
 
