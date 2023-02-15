@@ -394,7 +394,6 @@ func TestProducerRouter_WithTrace(t *testing.T) {
 		// make sure the trace is there
 		for _, name := range traceHeaders {
 			FatalIf(t, r.Header.Get(name) == "", fmt.Sprintf("Header %q is not exists", name))
-			fmt.Println(r.Header.Get(name))
 		}
 
 		p := Profile{
