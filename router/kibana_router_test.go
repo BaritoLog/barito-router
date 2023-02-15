@@ -20,8 +20,9 @@ func TestKibanaRouter_Ping(t *testing.T) {
 	config := newrelic.NewConfig("barito-router", "")
 	config.Enabled = false
 	appCtx := appcontext.NewAppContext(config)
+	ssoClient := SSOClient{}
 
-	router := NewKibanaRouter(":45500", marketServer.URL, "abc", "profilePath", "authorizePath", appCtx)
+	router := NewKibanaRouterWithSSO(":45500", marketServer.URL, "abc", "profilePath", "authorizePath", appCtx, ssoClient)
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost/ping", strings.NewReader(""))
 	resp := RecordResponse(router.ServeHTTP, req)
 

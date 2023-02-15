@@ -74,6 +74,11 @@ func NewKibanaRouterWithSSO(addr, marketUrl, accessToken, profilePath, authorize
 }
 
 func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	if req.URL.Path == "/ping" {
+		OnPing(w, req)
+		return
+	}
+
 	span := opentracing.StartSpan("barito_router_viewer.view_kibana")
 	defer span.Finish()
 
@@ -96,11 +101,22 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	sourceUrl := fmt.Sprintf("%s://%s:%s", httpkit.SchemeOfRequest(req), req.Host, r.addr)
-
 	var targetUrl string
 
-	targetUrl = fmt.Sprintf("http://%s", profile.KibanaAddress)
+	if profile.KibanaAddress != "" {
+		targetUrl = fmt.Sprintf("http://%s", profile.KibanaAddress)
+	} else {
+		srvName, _ := profile.MetaServiceName(KeyKibana)
+		srv, _, err := consulService(profile.ConsulHosts, srvName, profile.ClusterName, r.cacheBag)
+		if err != nil {
+			onConsulError(w, err)
+			return
+		}
+
+		targetUrl = fmt.Sprintf("%s://%s:%d", getTargetScheme(srv), srv.ServiceAddress, srv.ServicePort)
+	}
+
+	sourceUrl := fmt.Sprintf("%s://%s:%s", httpkit.SchemeOfRequest(req), req.Host, r.addr)
 
 	proxy := NewKibanaProxy(sourceUrl, targetUrl)
 	proxy.ReverseProxy().ServeHTTP(w, req)
