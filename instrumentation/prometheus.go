@@ -1,24 +1,16 @@
 package instrumentation
 
 import (
-	"net/http"
 	"os"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	pb "github.com/vwidjaya/barito-proto/producer"
 )
 
 var disableAppNameLabelMetrics bool = false
-
-var producerRequestCount *prometheus.CounterVec
-var producerRequestError *prometheus.CounterVec
-var producerNumberMessagePerBatch *prometheus.SummaryVec
-var producerLengthPerMessage *prometheus.SummaryVec
 var producerLatencyToMarket prometheus.Summary
 var producerLatencyToConsul *prometheus.SummaryVec
-var producerLatencyToProducer *prometheus.SummaryVec
 var producerTotalLogBytesIngested *prometheus.CounterVec
 
 // list error message for producerRequestError metrics
@@ -39,26 +31,6 @@ func init() {
 }
 
 func InitProducerInstrumentation() {
-	producerRequestCount = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "barito_router_producer_request_total",
-		Help: "Number request to producer",
-	}, []string{"app_group", "app_name"})
-	producerRequestError = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "barito_router_producer_request_error_total",
-		Help: "Number error request to producer  ",
-	}, []string{"app_group", "app_name", "batch", "error"})
-	producerNumberMessagePerBatch = promauto.NewSummaryVec(prometheus.SummaryOpts{
-		Name:       "barito_producer_message_per_batch",
-		Help:       "Number message per batch",
-		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
-		MaxAge:     1 * time.Minute,
-	}, []string{"app_group", "app_name"})
-	producerLengthPerMessage = promauto.NewSummaryVec(prometheus.SummaryOpts{
-		Name:       "barito_producer_length_per_message",
-		Help:       "Number of length per message",
-		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
-		MaxAge:     1 * time.Minute,
-	}, []string{"app_group", "app_name"})
 	producerLatencyToMarket = promauto.NewSummary(prometheus.SummaryOpts{
 		Name:       "barito_producer_latency_to_market",
 		Help:       "Latency to barito market",
@@ -71,34 +43,10 @@ func InitProducerInstrumentation() {
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		MaxAge:     1 * time.Minute,
 	}, []string{"app_group", "host"})
-	producerLatencyToProducer = promauto.NewSummaryVec(prometheus.SummaryOpts{
-		Name:       "barito_producer_latency_to_producer",
-		Help:       "Latency to producer",
-		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
-		MaxAge:     1 * time.Minute,
-	}, []string{"app_group", "app_name"})
 	producerTotalLogBytesIngested = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "barito_router_produced_total_log_bytes",
 		Help: "Total log bytes being ingested by the router",
 	}, []string{"app_group", "app_name"})
-}
-
-func IncreaseProducerRequestCount(appGroup, appName string) {
-	if disableAppNameLabelMetrics {
-		appName = "GLOBAL"
-	}
-	producerRequestCount.WithLabelValues(appGroup, appName).Inc()
-}
-
-func IncreaseProducerRequestError(appGroup, appName string, r *http.Request, errorMsg string) {
-	batch := "false"
-	if r.URL.Path == "/produce_batch" {
-		batch = "true"
-	}
-	if disableAppNameLabelMetrics {
-		appName = "GLOBAL"
-	}
-	producerRequestError.WithLabelValues(appGroup, appName, batch, errorMsg).Inc()
 }
 
 func ObserveBaritoMarketLatency(timeDuration time.Duration) {
@@ -107,29 +55,6 @@ func ObserveBaritoMarketLatency(timeDuration time.Duration) {
 
 func ObserveConsulLatency(appGroup, host string, timeDuration time.Duration) {
 	producerLatencyToConsul.WithLabelValues(appGroup, host).Observe(timeDuration.Seconds())
-}
-
-func ObserveProducerLatency(appGroup, appName string, timeDuration time.Duration) {
-	if disableAppNameLabelMetrics {
-		appName = "GLOBAL"
-	}
-	producerLatencyToProducer.WithLabelValues(appGroup, appName).Observe(timeDuration.Seconds())
-}
-
-func ObserveTimberCollection(appGroup, appName string, timberCollection *pb.TimberCollection) {
-	length := len(timberCollection.Items)
-
-	if disableAppNameLabelMetrics {
-		appName = "GLOBAL"
-	}
-
-	producerNumberMessagePerBatch.WithLabelValues(appGroup, appName).Observe(float64(length))
-
-	for i := 0; i < length; i++ {
-		producerLengthPerMessage.
-			WithLabelValues(appGroup, appName).
-			Observe(float64(len(timberCollection.Items[i].Content.String())))
-	}
 }
 
 func ObserveByteIngestion(appGroup, appName string, receivedByte []byte) {
