@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/config"
@@ -77,11 +76,6 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if p.isProfileError(w, req, profile, err) {
 		return
 	}
-
-	instrumentation.IncreaseProducerRequestCount(
-		profile.ClusterName,
-		req.Header.Get(AppNameHeaderName),
-	)
 	span.SetTag("app-group", profile.ClusterName)
 
 	//Collect all results and errors for all the produce endpoints.
@@ -240,16 +234,13 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 
 	if req.URL.Path == "/produce_batch" {
 		timberCollection, err := ConvertBytesToTimberCollection(reqBody, timberContext)
-		instrumentation.ObserveTimberCollection(profile.ClusterName, appName, &timberCollection)
 		if err != nil {
 			log.Errorf("%s", err.Error())
 			logProduceError(instrumentation.ErrorTimberConvert, profile.ClusterName, appGroupSecret, appName, req, err)
 			return nil, err
 		}
 
-		startTime := time.Now()
 		result, err = producerClient.ProduceBatch(ctx, &timberCollection)
-		instrumentation.ObserveProducerLatency(profile.ClusterName, appName, time.Since(startTime))
 
 		if err != nil {
 			logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, req, err)
@@ -267,9 +258,7 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 			return nil, err
 		}
 
-		startTime := time.Now()
 		result, err = producerClient.Produce(ctx, &timber)
-		instrumentation.ObserveProducerLatency(profile.ClusterName, appName, time.Since(startTime))
 
 		if err != nil {
 			logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, req, err)

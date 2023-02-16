@@ -19,6 +19,7 @@ import (
 
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/config"
+	"github.com/BaritoLog/barito-router/instrumentation"
 	"github.com/BaritoLog/barito-router/mock"
 	"github.com/BaritoLog/go-boilerplate/httpkit"
 	. "github.com/BaritoLog/go-boilerplate/testkit"
@@ -29,6 +30,14 @@ import (
 	"github.com/uber/jaeger-client-go/zipkin"
 	"github.com/uber/jaeger-lib/metrics"
 )
+
+func resetPrometheusMetrics() {
+	registry := prometheus.NewRegistry()
+	prometheus.DefaultGatherer = registry
+	prometheus.DefaultRegisterer = registry
+
+	instrumentation.InitProducerInstrumentation()
+}
 
 func TestProducerRouter_Ping(t *testing.T) {
 	marketServer := NewTestServer(http.StatusOK, []byte(``))
@@ -236,6 +245,7 @@ func TestProducerRouter_WithAppSecret_K8sInvalidConsul(t *testing.T) {
 }
 
 func TestProducerRouter_Produce_OnByteIngested(t *testing.T) {
+	resetPrometheusMetrics()
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -273,7 +283,8 @@ func TestProducerRouter_Produce_OnByteIngested(t *testing.T) {
 }
 
 func TestProducerRouter_Produce_batch_OnByteIngested(t *testing.T) {
-
+	resetPrometheusMetrics()
+	
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -383,7 +394,6 @@ func TestProducerRouter_WithTrace(t *testing.T) {
 		// make sure the trace is there
 		for _, name := range traceHeaders {
 			FatalIf(t, r.Header.Get(name) == "", fmt.Sprintf("Header %q is not exists", name))
-			fmt.Println(r.Header.Get(name))
 		}
 
 		p := Profile{

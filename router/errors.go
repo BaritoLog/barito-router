@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/BaritoLog/barito-router/instrumentation"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/status"
@@ -76,6 +75,4 @@ func logProduceError(context, clusterName, appGroupSecret, appName string, r *ht
 	}
 	msg := fmt.Sprintf("Got error clusterName=%q, appgroupSecret=%q, appname=%q, context=%q, error=%q", clusterName, maskedAppGroupSecret, appName, context, errorMsg)
 	log.Errorf("%s", msg)
-
-	instrumentation.IncreaseProducerRequestError(clusterName, appName, r, context)
 }
