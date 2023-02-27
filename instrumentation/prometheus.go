@@ -1,6 +1,7 @@
 package instrumentation
 
 import (
+	"math"
 	"net/http"
 	"os"
 	"time"
@@ -133,5 +134,5 @@ func ObserveTimberCollection(appGroup, appName string, timberCollection *pb.Timb
 }
 
 func ObserveByteIngestion(appGroup, appName string, receivedByte []byte) {
-	producerTotalLogBytesIngested.WithLabelValues(appGroup, appName).Add(float64(len(receivedByte)))
+	producerTotalLogBytesIngested.WithLabelValues(appGroup, appName).Add(math.Round(float64(len(receivedByte))))
 }
