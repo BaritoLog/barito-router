@@ -9,6 +9,7 @@ import (
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/go-boilerplate/httpkit"
 	. "github.com/BaritoLog/go-boilerplate/testkit"
+	"github.com/hashicorp/consul/api"
 	newrelic "github.com/newrelic/go-agent"
 )
 
@@ -19,9 +20,8 @@ func TestKibanaRouter_Ping(t *testing.T) {
 	config := newrelic.NewConfig("barito-router", "")
 	config.Enabled = false
 	appCtx := appcontext.NewAppContext(config)
-	ssoClient := SSOClient{}
 
-	router := NewKibanaRouterWithSSO(":45500", marketServer.URL, "abc", "profilePath", "authorizePath", appCtx, ssoClient)
+	router := NewKibanaRouter(":45500", marketServer.URL, "abc", "profilePath", "authorizePath", appCtx)
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost/ping", strings.NewReader(""))
 	resp := RecordResponse(router.ServeHTTP, req)
 
@@ -54,6 +54,56 @@ func TestKibanaRouter_NoProfile(t *testing.T) {
 	resp := RecordResponse(router.ServeHTTP, req)
 
 	FatalIfWrongResponseStatus(t, resp, http.StatusNotFound)
+}
+
+func TestKibanaRouter_ConsulError(t *testing.T) {
+	marketServer := NewJsonTestServer(http.StatusOK, Profile{
+		ConsulHosts: []string{"wrong-consul"},
+	})
+	defer marketServer.Close()
+
+	config := newrelic.NewConfig("barito-router", "")
+	config.Enabled = false
+	appCtx := appcontext.NewAppContext(config)
+
+	router := NewKibanaRouter(":45500", marketServer.URL, "abc", "profilePath", "authorizePath", appCtx)
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost", strings.NewReader(""))
+	resp := RecordResponse(router.ServeHTTP, req)
+
+	FatalIf(t, resp.StatusCode != http.StatusFailedDependency, "Wrong response status code")
+}
+
+func TestKibanaRouter_LXC(t *testing.T) {
+
+	targetServer := NewTestServer(http.StatusTeapot, []byte("some-target"))
+	defer targetServer.Close()
+	host, port := httpkit.HostOfRawURL(targetServer.URL)
+
+	consulServer := NewJsonTestServer(http.StatusOK, []api.CatalogService{
+		{
+			ServiceAddress: host,
+			ServicePort:    port,
+		},
+	})
+	defer consulServer.Close()
+
+	host, port = httpkit.HostOfRawURL(consulServer.URL)
+	marketServer := NewJsonTestServer(http.StatusOK, Profile{
+		ConsulHosts: []string{fmt.Sprintf("%s:%d", host, port)},
+	})
+	defer marketServer.Close()
+
+	config := newrelic.NewConfig("barito-router", "")
+	config.Enabled = false
+	appCtx := appcontext.NewAppContext(config)
+
+	router := NewKibanaRouter(":45500", marketServer.URL, "abc", "profilePath", "authorizePath", appCtx)
+
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost", strings.NewReader(""))
+
+	resp := RecordResponse(router.ServeHTTP, req)
+	FatalIfWrongResponseStatus(t, resp, http.StatusTeapot)
+	FatalIfWrongResponseBody(t, resp, "some-target")
 }
 
 func TestKibanaRouter_K8s(t *testing.T) {

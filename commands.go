@@ -66,6 +66,8 @@ func RunKibanaRouter(appCtx *appcontext.AppContext) {
 	)
 
 	r := mux.NewRouter()
+	r.HandleFunc("/ping", router.OnPing)
+
 	r.HandleFunc(router.PATH_LOGIN, ssoClient.HandleLogin)
 	r.HandleFunc(router.PATH_CALLBACK, ssoClient.HandleCallback)
 
