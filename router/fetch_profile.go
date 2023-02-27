@@ -2,7 +2,7 @@ package router
 
 import (
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
@@ -76,7 +76,7 @@ func fetchProfile(client *http.Client, req *http.Request, spanContext opentracin
 	}
 
 	if res.StatusCode == http.StatusOK {
-		body, _ := io.ReadAll(res.Body)
+		body, _ := ioutil.ReadAll(res.Body)
 		profile, err = NewProfileFromBytes(body)
 	}
 
