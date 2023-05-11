@@ -23,11 +23,12 @@ var totalLogBytesIngested *prometheus.CounterVec
 
 // list error message for producerRequestError metrics
 const (
-	ErrorFetchProfile  = "fetch_profile"
-	ErrorConsulCall    = "consul_call"
-	ErrorNoProducer    = "no_producer"
-	ErrorTimberConvert = "timber_convert"
-	ErrorProducerCall  = "producer_call"
+	ErrorFetchProfile      = "fetch_profile"
+	ErrorConsulCall        = "consul_call"
+	ErrorNoProducer        = "no_producer"
+	ErrorTimberConvert     = "timber_convert"
+	ErrorProducerCall      = "producer_call"
+	ErrorGzipDecompression = "gzip_decompression"
 )
 
 func init() {
