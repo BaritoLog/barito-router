@@ -241,6 +241,8 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 
 	// Check if the request has a "Content-Encoding" header with value "gzip"
 	if req.Header.Get("Content-Encoding") == "gzip" {
+		fmt.Println("+++++ New GZIP request", req.Header.Get("X-App-Name"))
+		fmt.Println("prev reqBody", string(reqBody))
 		// Decompress the gzip-encoded request body
 		gzipReader, err := gzip.NewReader(bytes.NewReader(reqBody))
 		if err != nil {
@@ -257,6 +259,7 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 			logProduceError(instrumentation.ErrorGzipDecompression, profile.ClusterName, appGroupSecret, appName, req, err)
 			return nil, err
 		}
+		fmt.Println("after reqBody", string(reqBody))
 	}
 
 	if req.URL.Path == "/produce_batch" {
