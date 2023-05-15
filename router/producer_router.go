@@ -2,6 +2,7 @@ package router
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -237,6 +238,26 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 
 	timberContext := TimberContextFromProfile(profile)
 	var result *pb.ProduceResult
+
+	// Check if the request has a "Content-Encoding" header with value "gzip"
+	if req.Header.Get("Content-Encoding") == "gzip" {
+		// Decompress the gzip-encoded request body
+		gzipReader, err := gzip.NewReader(bytes.NewReader(reqBody))
+		if err != nil {
+			log.Errorf("%s", err.Error())
+			logProduceError(instrumentation.ErrorGzipDecompression, profile.ClusterName, appGroupSecret, appName, req, err)
+			return nil, err
+		}
+		defer gzipReader.Close()
+
+		// Read the decompressed request body into a buffer
+		reqBody, err = ioutil.ReadAll(gzipReader)
+		if err != nil {
+			log.Errorf("%s", err.Error())
+			logProduceError(instrumentation.ErrorGzipDecompression, profile.ClusterName, appGroupSecret, appName, req, err)
+			return nil, err
+		}
+	}
 
 	if req.URL.Path == "/produce_batch" {
 		timberCollection, err := ConvertBytesToTimberCollection(reqBody, timberContext)
