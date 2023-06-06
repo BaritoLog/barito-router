@@ -261,7 +261,6 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 
 	if req.URL.Path == "/produce_batch" {
 		timberCollection, err := ConvertBytesToTimberCollection(reqBody, timberContext)
-		instrumentation.ObserveTimberCollection(profile.ClusterName, appName, &timberCollection)
 		if err != nil {
 			log.Errorf("%s", err.Error())
 			logProduceError(instrumentation.ErrorTimberConvert, profile.ClusterName, appGroupSecret, appName, req, err)
