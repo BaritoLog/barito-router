@@ -13,12 +13,12 @@ import (
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/config"
 	"github.com/BaritoLog/barito-router/instrumentation"
+	"github.com/mostynb/go-grpc-compression/zstd"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
 	pb "github.com/vwidjaya/barito-proto/producer"
 	"google.golang.org/grpc"
-	encodinggzip "google.golang.org/grpc/encoding/gzip"
 )
 
 const (
@@ -242,7 +242,7 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 	var result *pb.ProduceResult
 
 	var grpcCallOption []grpc.CallOption
-	grpcCallOption = append(grpcCallOption, grpc.UseCompressor(encodinggzip.Name))
+	grpcCallOption = append(grpcCallOption, grpc.UseCompressor(zstd.Name))
 
 	// Check if the request has a "Content-Encoding" header with value "gzip"
 	if req.Header.Get("Content-Encoding") == "gzip" {
