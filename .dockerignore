@@ -5,3 +5,4 @@
 !go.sum
 **/_test.go
 bin
+.git
