@@ -17,6 +17,8 @@ import (
 	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
 	pb "github.com/vwidjaya/barito-proto/producer"
+	"google.golang.org/grpc"
+	encodinggzip "google.golang.org/grpc/encoding/gzip"
 )
 
 const (
@@ -239,6 +241,9 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 	timberContext := TimberContextFromProfile(profile)
 	var result *pb.ProduceResult
 
+	var grpcCallOption []grpc.CallOption
+	grpcCallOption = append(grpcCallOption, grpc.UseCompressor(encodinggzip.Name))
+
 	// Check if the request has a "Content-Encoding" header with value "gzip"
 	if req.Header.Get("Content-Encoding") == "gzip" {
 		// Decompress the gzip-encoded request body
@@ -268,7 +273,7 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 		}
 
 		startTime := time.Now()
-		result, err = producerClient.ProduceBatch(ctx, &timberCollection)
+		result, err = producerClient.ProduceBatch(ctx, &timberCollection, grpcCallOption...)
 		instrumentation.ObserveProducerLatency(profile.ClusterName, appName, time.Since(startTime))
 
 		if err != nil {
@@ -288,7 +293,7 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 		}
 
 		startTime := time.Now()
-		result, err = producerClient.Produce(ctx, &timber)
+		result, err = producerClient.Produce(ctx, &timber, grpcCallOption...)
 		instrumentation.ObserveProducerLatency(profile.ClusterName, appName, time.Since(startTime))
 
 		if err != nil {
