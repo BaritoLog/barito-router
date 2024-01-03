@@ -11,6 +11,8 @@ import (
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/router"
 	"github.com/BaritoLog/go-boilerplate/srvkit"
+
+	_ "net/http/pprof"
 )
 
 func CmdKibana(appCtx *appcontext.AppContext) {
