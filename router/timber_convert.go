@@ -1,18 +1,19 @@
 package router
 
 import (
-	"bytes"
 	"encoding/json"
 
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/ptypes/struct"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/structpb"
+
+	spb "github.com/golang/protobuf/ptypes/struct"
 	pb "github.com/vwidjaya/barito-proto/producer"
 )
 
 func ConvertBytesToTimber(b []byte, context pb.TimberContext) (timber pb.Timber, err error) {
-	var content structpb.Struct
+	var content spb.Struct
 
-	err = jsonpb.Unmarshal(bytes.NewBuffer(b), &content)
+	err = protojson.Unmarshal(b, &content)
 	if err != nil {
 		return
 	}
@@ -30,9 +31,11 @@ func ConvertBytesToTimberCollection(b []byte, context pb.TimberContext) (timberC
 	}
 
 	for _, timberMap := range timberColMap["items"].([]interface{}) {
-		b, _ := json.Marshal(timberMap)
-		timber, _ := ConvertBytesToTimber(b, pb.TimberContext{})
-		timberCol.Items = append(timberCol.Items, &timber)
+		timberContent, _ := structpb.NewValue(timberMap)
+		timberCol.Items = append(timberCol.Items, &pb.Timber{
+			Context: &pb.TimberContext{},
+			Content: timberContent.GetStructValue(),
+		})
 	}
 
 	timberCol.Context = &context
