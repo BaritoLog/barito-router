@@ -19,7 +19,11 @@ func TestConvertBytesToTimberCollection(t *testing.T) {
 	rawTimberCol := sampleRawTimberCollection()
 	timberCol, _ := ConvertBytesToTimberCollection(rawTimberCol, pb.TimberContext{})
 	ok := proto.Equal(&timberCol, sampleContextlessTimberCollection())
-	FatalIf(t, !ok, "wrong timber collection proto generated")
+	if !ok {
+		t.Log("expected: ", sampleContextlessTimberCollection())
+		t.Log("actual: ", &timberCol)
+		t.Fatal("wrong timber collection proto generated")
+	}
 }
 
 func sampleRawTimber() []byte {
@@ -57,5 +61,14 @@ func sampleContextlessTimberCollection() *pb.TimberCollection {
 			sampleContextlessTimber(),
 			sampleContextlessTimber(),
 		},
+	}
+}
+
+func BenchmarkConvertBytesToTimberCollection(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, err := ConvertBytesToTimberCollection(sampleRawTimberCollection(), pb.TimberContext{})
+		if err != nil {
+			panic(err)
+		}
 	}
 }
