@@ -7,8 +7,8 @@ The REST API is run automatically by calling grpc-gateway which is set in barito
 Barito router consists of 2 routers; producer router and Kibana router.
 
 producer router is responsible to retract profile from barito market based on request header,
-to be used as basic information to call the right barito flow client, so timber can arrive to 
-the right app group. Keep note that the incoming request to barito router producer is REST and 
+to be used as basic information to call the right barito flow client, so timber can arrive to
+the right app group. Keep note that the incoming request to barito router producer is REST and
 will be converted to protobuf just before calling barito flow produce API.
 
 Kibana router responsible to create Kibana reserve proxy to serve the request.
@@ -30,6 +30,24 @@ or
 ```sh
 go get github.com/BaritoLog/barito-router
 $GOPATH/bin/barito-router
+```
+
+### Run Unit Tests
+
+```sh
+make test
+```
+
+### Check Vulnerability
+
+```sh
+make vuln
+```
+
+### Check Deadcode
+
+```sh
+make deadcode
 ```
 
 ### Env
