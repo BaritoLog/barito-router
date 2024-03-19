@@ -18,3 +18,12 @@ tag:
 
 push:
 	docker push $(DOCKER_REMOTE_TARGET)
+
+test:
+	go test -v ./router
+
+vuln:
+	go run golang.org/x/vuln/cmd/govulncheck@latest .
+
+deadcode:
+	go run golang.org/x/tools/cmd/deadcode@latest .
