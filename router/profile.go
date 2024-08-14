@@ -5,18 +5,19 @@ import (
 )
 
 type Profile struct {
-	ID              int         `json:"id"`
-	Name            string      `json:"name"`
-	AppSecret       string      `json:"app_secret"`
-	AppGroup        string      `json:"app_group_name"`
-	MaxTps          int         `json:"max_tps"`
-	ClusterName     string      `json:"cluster_name"`
-	ConsulHost      string      `json:"consul_host"`
-	ConsulHosts     []string    `json:"consul_hosts"`
-	ProducerAddress string      `json:"producer_address"`
-	KibanaAddress   string      `json:"kibana_address"`
-	AppStatus       string      `json:"status"`
-	Meta            ProfileMeta `json:"meta"`
+	ID                  int         `json:"id"`
+	Name                string      `json:"name"`
+	AppSecret           string      `json:"app_secret"`
+	AppGroup            string      `json:"app_group_name"`
+	MaxTps              int         `json:"max_tps"`
+	ClusterName         string      `json:"cluster_name"`
+	ConsulHost          string      `json:"consul_host"`
+	ConsulHosts         []string    `json:"consul_hosts"`
+	ProducerAddress     string      `json:"producer_address"`
+	ProducerMtlsEnabled bool        `json:"producer_mtls_enabled"`
+	KibanaAddress       string      `json:"kibana_address"`
+	AppStatus           string      `json:"status"`
+	Meta                ProfileMeta `json:"meta"`
 }
 
 type ProfileMeta struct {

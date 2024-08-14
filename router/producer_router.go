@@ -224,10 +224,11 @@ func (p *producerRouter) fetchK8sProducerAttributes(profile *Profile) producerAt
 	producerName, _ := profile.MetaServiceName(KeyProducer)
 
 	pAttr := producerAttributes{
-		consulAddr:   "",
-		producerAddr: profile.ProducerAddress,
-		producerName: producerName,
-		appSecret:    profile.AppSecret,
+		consulAddr:          "",
+		producerAddr:        profile.ProducerAddress,
+		producerMtlsEnabled: profile.ProducerMtlsEnabled,
+		producerName:        producerName,
+		appSecret:           profile.AppSecret,
 	}
 	return pAttr
 }
