@@ -84,6 +84,7 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	instrumentation.IncreaseProducerRequestCount(
 		profile.ClusterName,
 		req.Header.Get(AppNameHeaderName),
+		profile.ProducerAddress,
 	)
 	span.SetTag("app-group", profile.ClusterName)
 
@@ -171,13 +172,13 @@ func (p *producerRouter) isProfileError(w http.ResponseWriter, req *http.Request
 	appName := req.Header.Get(AppNameHeaderName)
 	if err != nil {
 		onTradeError(w, err)
-		logProduceError(instrumentation.ErrorFetchProfile, "", appGroupSecret, appName, req, err)
+		logProduceError(instrumentation.ErrorFetchProfile, "", appGroupSecret, appName, profile.ProducerAddress, req, err)
 		return true
 	}
 
 	if profile == nil {
 		onNoProfile(w)
-		logProduceError(instrumentation.ErrorFetchProfile, "", appGroupSecret, appName, req, err)
+		logProduceError(instrumentation.ErrorFetchProfile, "", appGroupSecret, appName, profile.ProducerAddress, req, err)
 		instrumentation.RunTransaction(p.appCtx.NewRelicApp(), AppNoProfilePath, w, req)
 		return true
 	}
@@ -193,13 +194,13 @@ func (p *producerRouter) fetchProducerAttributesFromConsul(w http.ResponseWriter
 	srv, consulAddr, err := consulService(profile.ConsulHosts, producerName, profile.ClusterName, p.cacheBag)
 	if err != nil {
 		onConsulError(w, err)
-		logProduceError(instrumentation.ErrorConsulCall, profile.ClusterName, appGroupSecret, appName, req, err)
+		logProduceError(instrumentation.ErrorConsulCall, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
 		return producerAttributes{}, err
 	}
 	if srv == nil {
 		err = fmt.Errorf("Can't find service from consul: %s", KeyProducer)
 		onConsulError(w, err)
-		logProduceError(instrumentation.ErrorNoProducer, profile.ClusterName, appGroupSecret, appName, req, err)
+		logProduceError(instrumentation.ErrorNoProducer, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
 		return producerAttributes{}, err
 	}
 
@@ -251,7 +252,7 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 		gzipReader, err := gzip.NewReader(bytes.NewReader(reqBody))
 		if err != nil {
 			log.Errorf("%s", err.Error())
-			logProduceError(instrumentation.ErrorGzipDecompression, profile.ClusterName, appGroupSecret, appName, req, err)
+			logProduceError(instrumentation.ErrorGzipDecompression, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
 			return nil, err
 		}
 		defer gzipReader.Close()
@@ -260,7 +261,7 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 		reqBody, err = ioutil.ReadAll(gzipReader)
 		if err != nil {
 			log.Errorf("%s", err.Error())
-			logProduceError(instrumentation.ErrorGzipDecompression, profile.ClusterName, appGroupSecret, appName, req, err)
+			logProduceError(instrumentation.ErrorGzipDecompression, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
 			return nil, err
 		}
 	}
@@ -269,19 +270,19 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 		timberCollection, err := ConvertBytesToTimberCollection(reqBody, timberContext)
 		if err != nil {
 			log.Errorf("%s", err.Error())
-			logProduceError(instrumentation.ErrorTimberConvert, profile.ClusterName, appGroupSecret, appName, req, err)
+			logProduceError(instrumentation.ErrorTimberConvert, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
 			return nil, err
 		}
 
 		startTime := time.Now()
 		result, err = producerClient.ProduceBatch(ctx, &timberCollection, grpcCallOption...)
-		instrumentation.ObserveProducerLatency(profile.ClusterName, appName, time.Since(startTime))
+		instrumentation.ObserveProducerLatency(profile.ClusterName, appName, pAttr.producerAddr, time.Since(startTime))
 
 		if err != nil {
-			logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, req, err)
+			logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
 			return nil, err
 		}
-		instrumentation.ObserveByteIngestion(profile.ClusterName, appName, reqBody)
+		instrumentation.ObserveByteIngestion(profile.ClusterName, appName, pAttr.producerAddr, reqBody)
 		return result, nil
 
 	}
@@ -289,19 +290,19 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 		timber, err := ConvertBytesToTimber(reqBody, timberContext)
 		if err != nil {
 			log.Errorf("%s", err.Error())
-			logProduceError(instrumentation.ErrorTimberConvert, profile.ClusterName, appGroupSecret, appName, req, err)
+			logProduceError(instrumentation.ErrorTimberConvert, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
 			return nil, err
 		}
 
 		startTime := time.Now()
 		result, err = producerClient.Produce(ctx, &timber, grpcCallOption...)
-		instrumentation.ObserveProducerLatency(profile.ClusterName, appName, time.Since(startTime))
+		instrumentation.ObserveProducerLatency(profile.ClusterName, appName, pAttr.producerAddr, time.Since(startTime))
 
 		if err != nil {
-			logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, req, err)
+			logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
 			return nil, err
 		}
-		instrumentation.ObserveByteIngestion(profile.ClusterName, appName, reqBody)
+		instrumentation.ObserveByteIngestion(profile.ClusterName, appName, pAttr.producerAddr, reqBody)
 		return result, nil
 	}
 
