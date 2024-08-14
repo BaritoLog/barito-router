@@ -3,7 +3,9 @@ package router
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"os"
+	"strings"
 	"sync"
 
 	pb "github.com/vwidjaya/barito-proto/producer"
@@ -63,9 +65,11 @@ func (s *ProducerStore) createGrpcConnection(attr producerAttributes) (conn *grp
 			return nil, err
 		}
 
+		// need to remove port from producerAddr
+		serverName := strings.Split(attr.producerAddr, ":")[0]
 		// Create the credentials and dial options
 		creds := credentials.NewTLS(&tls.Config{
-			ServerName:         attr.producerAddr,
+			ServerName:         serverName,
 			Certificates:       []tls.Certificate{clientCert},
 			RootCAs:            caCertPool,
 			InsecureSkipVerify: true,
@@ -74,7 +78,6 @@ func (s *ProducerStore) createGrpcConnection(attr producerAttributes) (conn *grp
 		conn, err = grpc.Dial(
 			attr.producerAddr,
 			grpc.WithTransportCredentials(creds),
-			grpc.WithAuthority(attr.producerAddr),
 		)
 		return conn, err
 	} else {
@@ -90,7 +93,10 @@ func (s *ProducerStore) GetClient(attr producerAttributes) pb.ProducerClient {
 		defer s.producerStoreMutex.Unlock()
 
 		if value, ok = s.producerStoreMap[attr]; !ok {
-			conn, _ := s.createGrpcConnection(attr)
+			conn, err := s.createGrpcConnection(attr)
+			if err != nil {
+				fmt.Println("Failed to create grpc connection", err)
+			}
 
 			value = &grpcParts{
 				conn:   conn,
