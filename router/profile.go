@@ -16,6 +16,7 @@ type Profile struct {
 	ProducerAddress     string      `json:"producer_address"`
 	ProducerMtlsEnabled bool        `json:"producer_mtls_enabled"`
 	KibanaAddress       string      `json:"kibana_address"`
+	KibanaMtlsEnabled   bool        `json:"kibana_mtls_enabled"`
 	AppStatus           string      `json:"status"`
 	Meta                ProfileMeta `json:"meta"`
 }
