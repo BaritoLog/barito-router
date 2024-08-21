@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"net/http"
+	"net/url"
 	"os"
 
 	"github.com/cssivision/reverseproxy"
@@ -54,8 +55,12 @@ func (p *kibanaProxy) getTransport() (transport *http.Transport) {
 		return
 	}
 
+	parsedTargetURL, err := url.Parse(p.target)
+	if err != nil {
+		return
+	}
 	tlsConfig := &tls.Config{
-		ServerName:         "kibana.rada.s-go-sy-primary-gke-01.internal.barito.gtflabs.io",
+		ServerName:         parsedTargetURL.Hostname(),
 		Certificates:       []tls.Certificate{clientCert},
 		RootCAs:            caCertPool,
 		InsecureSkipVerify: true,
