@@ -65,7 +65,7 @@ func onRpcSuccess(w http.ResponseWriter, message string) {
 	w.Write([]byte(message))
 }
 
-func logProduceError(context, clusterName, appGroupSecret, appName string, r *http.Request, err error) {
+func logProduceError(context, clusterName, appGroupSecret, appName, producerAddr string, r *http.Request, err error) {
 	maskedAppGroupSecret := appGroupSecret
 	if len(maskedAppGroupSecret) > 6 {
 		maskedAppGroupSecret = appGroupSecret[0:6]
@@ -77,5 +77,5 @@ func logProduceError(context, clusterName, appGroupSecret, appName string, r *ht
 	msg := fmt.Sprintf("Got error clusterName=%q, appgroupSecret=%q, appname=%q, context=%q, error=%q", clusterName, maskedAppGroupSecret, appName, context, errorMsg)
 	log.Errorf("%s", msg)
 
-	instrumentation.IncreaseProducerRequestError(clusterName, appName, r, context)
+	instrumentation.IncreaseProducerRequestError(clusterName, appName, producerAddr, r, context)
 }
