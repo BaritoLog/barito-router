@@ -16,7 +16,11 @@ func (h KibanaProxyHandler) Director(req *http.Request) {
 	targetQuery := target.RawQuery
 
 	req.URL.Scheme = target.Scheme
-	req.URL.Host = target.Hostname()
+	if target.Scheme == "https" {
+		req.URL.Host = target.Hostname()
+	} else {
+		req.URL.Host = target.Host
+	}
 	req.URL.Path = singleJoiningSlash(target.Path, req.URL.Path)
 
 	// If Host is empty, the Request.Write method uses
