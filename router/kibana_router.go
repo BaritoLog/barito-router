@@ -103,8 +103,11 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	sourceUrl := fmt.Sprintf("%s://%s:%s", httpkit.SchemeOfRequest(req), req.Host, r.addr)
 	targetUrl := fmt.Sprintf("http://%s", profile.KibanaAddress)
+	if profile.KibanaMtlsEnabled {
+		targetUrl = fmt.Sprintf("https://%s", profile.KibanaAddress)
+	}
 
-	proxy := NewKibanaProxy(sourceUrl, targetUrl)
+	proxy := NewKibanaProxy(sourceUrl, targetUrl, profile.KibanaMtlsEnabled)
 	proxy.ReverseProxy().ServeHTTP(w, req)
 }
 

@@ -43,11 +43,11 @@ func InitProducerInstrumentation() {
 	producerRequestCount = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "barito_router_producer_request_total",
 		Help: "Number request to producer",
-	}, []string{"app_group", "app_name"})
+	}, []string{"app_group", "app_name", "producer_address"})
 	producerRequestError = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "barito_router_producer_request_error_total",
 		Help: "Number error request to producer  ",
-	}, []string{"app_group", "app_name", "batch", "error"})
+	}, []string{"app_group", "app_name", "batch", "error", "producer_address"})
 	latencyToMarket = promauto.NewSummary(prometheus.SummaryOpts{
 		Name:       "barito_router_latency_to_market",
 		Help:       "Latency to barito market",
@@ -65,21 +65,21 @@ func InitProducerInstrumentation() {
 		Help:       "Latency to producer",
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		MaxAge:     1 * time.Minute,
-	}, []string{"app_group", "app_name"})
+	}, []string{"app_group", "app_name", "producer_address"})
 	totalLogBytesIngested = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "barito_router_produced_total_log_bytes",
 		Help: "Total log bytes being ingested by the router",
-	}, []string{"app_group", "app_name"})
+	}, []string{"app_group", "app_name", "producer_address"})
 }
 
-func IncreaseProducerRequestCount(appGroup, appName string) {
+func IncreaseProducerRequestCount(appGroup, appName, producerAddress string) {
 	if disableAppNameLabelMetrics {
 		appName = "GLOBAL"
 	}
-	producerRequestCount.WithLabelValues(appGroup, appName).Inc()
+	producerRequestCount.WithLabelValues(appGroup, appName, producerAddress).Inc()
 }
 
-func IncreaseProducerRequestError(appGroup, appName string, r *http.Request, errorMsg string) {
+func IncreaseProducerRequestError(appGroup, appName, producerAddress string, r *http.Request, errorMsg string) {
 	batch := "false"
 	if r.URL.Path == "/produce_batch" {
 		batch = "true"
@@ -87,7 +87,7 @@ func IncreaseProducerRequestError(appGroup, appName string, r *http.Request, err
 	if disableAppNameLabelMetrics {
 		appName = "GLOBAL"
 	}
-	producerRequestError.WithLabelValues(appGroup, appName, batch, errorMsg).Inc()
+	producerRequestError.WithLabelValues(appGroup, appName, batch, errorMsg, producerAddress).Inc()
 }
 
 func ObserveBaritoMarketLatency(timeDuration time.Duration) {
@@ -98,13 +98,13 @@ func ObserveConsulLatency(appGroup, host string, timeDuration time.Duration) {
 	latencyToConsul.WithLabelValues(appGroup, host).Observe(timeDuration.Seconds())
 }
 
-func ObserveProducerLatency(appGroup, appName string, timeDuration time.Duration) {
+func ObserveProducerLatency(appGroup, appName, producerAddress string, timeDuration time.Duration) {
 	if disableAppNameLabelMetrics {
 		appName = "GLOBAL"
 	}
-	latencyToProducer.WithLabelValues(appGroup, appName).Observe(timeDuration.Seconds())
+	latencyToProducer.WithLabelValues(appGroup, appName, producerAddress).Observe(timeDuration.Seconds())
 }
 
-func ObserveByteIngestion(appGroup, appName string, receivedByte []byte) {
-	totalLogBytesIngested.WithLabelValues(appGroup, appName).Add(math.Round(float64(len(receivedByte))))
+func ObserveByteIngestion(appGroup, appName, producerAddress string, receivedByte []byte) {
+	totalLogBytesIngested.WithLabelValues(appGroup, appName, producerAddress).Add(math.Round(float64(len(receivedByte))))
 }
