@@ -178,7 +178,7 @@ func (p *producerRouter) isProfileError(w http.ResponseWriter, req *http.Request
 
 	if profile == nil {
 		onNoProfile(w)
-		logProduceError(instrumentation.ErrorFetchProfile, "", appGroupSecret, appName, profile.ProducerAddress, req, err)
+		logProduceError(instrumentation.ErrorFetchProfile, "", appGroupSecret, appName, "", req, err)
 		instrumentation.RunTransaction(p.appCtx.NewRelicApp(), AppNoProfilePath, w, req)
 		return true
 	}
