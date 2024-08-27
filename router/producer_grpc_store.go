@@ -49,9 +49,7 @@ func (s *ProducerStore) read(attr producerAttributes) (value *grpcParts, ok bool
 }
 
 func (s *ProducerStore) createGrpcConnection(attr producerAttributes) (conn *grpc.ClientConn, err error) {
-	fmt.Println("Creating grpc connection")
 	if attr.producerMtlsEnabled {
-		fmt.Println("MTLS enabled", "using prefix", s.mtlsCertsPathPrefix)
 		caCert, err := os.ReadFile(s.mtlsCertsPathPrefix + "/ca.crt")
 		if err != nil {
 			return nil, err
@@ -83,7 +81,6 @@ func (s *ProducerStore) createGrpcConnection(attr producerAttributes) (conn *grp
 		)
 		return conn, err
 	} else {
-		fmt.Println("MTLS disabled")
 		conn, err = grpc.Dial(attr.producerAddr, grpc.WithInsecure())
 	}
 	return
