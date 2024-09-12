@@ -41,7 +41,6 @@ func (api *elasticsearchAPI) ExecuteAPI(w http.ResponseWriter, req *http.Request
 
 	span.SetTag("app-group", clusterName)
 
-	// Fetch profile for the given cluster
 	profile, err := fetchProfileByClusterName(api.client, span.Context(), api.cacheBag, api.marketUrl, api.accessToken, api.profilePath, clusterName)
 	if err != nil {
 		onTradeError(w, err)
@@ -52,30 +51,25 @@ func (api *elasticsearchAPI) ExecuteAPI(w http.ResponseWriter, req *http.Request
 		return
 	}
 
-	// Block DELETE and POST requests
 	if req.Method == http.MethodPost || req.Method == http.MethodDelete {
 		http.Error(w, "POST and DELETE requests are not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Build the target Elasticsearch URL based on the endpoint
 	targetUrl := fmt.Sprintf("http://%s/%s", profile.ElasticsearchAddress, esEndpoint)
 
-	// Create and execute the request to Elasticsearch
 	esReq, err := http.NewRequest(req.Method, targetUrl, req.Body)
 	if err != nil {
 		onTradeError(w, err)
 		return
 	}
 
-	// Copy headers from the original request
 	for name, values := range req.Header {
 		for _, value := range values {
 			esReq.Header.Add(name, value)
 		}
 	}
 
-	// Send request to Elasticsearch and handle response
 	esRes, err := api.client.Do(esReq)
 	if err != nil {
 		onTradeError(w, err)
@@ -83,7 +77,6 @@ func (api *elasticsearchAPI) ExecuteAPI(w http.ResponseWriter, req *http.Request
 	}
 	defer esRes.Body.Close()
 
-	// Forward Elasticsearch response back to the client
 	body, err := ioutil.ReadAll(esRes.Body)
 	if err != nil {
 		onTradeError(w, err)
