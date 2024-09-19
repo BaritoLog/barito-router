@@ -9,6 +9,7 @@ type Profile struct {
 	Name                 string      `json:"name"`
 	AppSecret            string      `json:"app_secret"`
 	AppGroup             string      `json:"app_group_name"`
+	AppGroupSecret       string      `json:"app_group_secret"`
 	MaxTps               int         `json:"max_tps"`
 	ClusterName          string      `json:"cluster_name"`
 	ConsulHost           string      `json:"consul_host"`
