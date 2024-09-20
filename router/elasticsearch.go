@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"golang.org/x/time/rate"
 
@@ -41,19 +42,18 @@ func NewElasticsearchAPI(marketUrl, accessToken, profilePath string, appCtx *app
 }
 
 func (api *elasticsearchAPI) Elasticsearch(w http.ResponseWriter, req *http.Request, clusterName, esEndpoint string) {
+	startTime := time.Now()
 	span := opentracing.StartSpan("barito_router_viewer.elasticsearch")
 	defer span.Finish()
 
 	span.SetTag("app-group", clusterName)
 
-	// Extract App-Secret from the request header
 	appSecret := req.Header.Get("App-Secret")
 	if appSecret == "" {
 		http.Error(w, "App-Secret header is required", http.StatusUnauthorized)
 		return
 	}
 
-	// Validate the appSecret against Barito Market using fetchProfileByClusterName
 	profile, err := fetchProfileByClusterName(api.client, span.Context(), api.cacheBag, api.marketUrl, api.profilePath, clusterName, api.accessToken)
 	if err != nil || profile == nil || profile.AppGroupSecret != appSecret {
 		http.Error(w, "Invalid app secret or cluster name", http.StatusUnauthorized)
@@ -98,7 +98,7 @@ func (api *elasticsearchAPI) Elasticsearch(w http.ResponseWriter, req *http.Requ
 
 	esReq, err := http.NewRequest(req.Method, targetUrl, req.Body)
 	if err != nil {
-		onTradeError(w, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -112,7 +112,7 @@ func (api *elasticsearchAPI) Elasticsearch(w http.ResponseWriter, req *http.Requ
 
 	esRes, err := api.client.Do(esReq)
 	if err != nil {
-		onTradeError(w, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer esRes.Body.Close()
@@ -125,4 +125,8 @@ func (api *elasticsearchAPI) Elasticsearch(w http.ResponseWriter, req *http.Requ
 
 	w.WriteHeader(esRes.StatusCode)
 	w.Write(body)
+
+	// Log the audit information
+	duration := time.Since(startTime)
+	LogAudit(req, esRes, body, appSecret, clusterName, duration)
 }
