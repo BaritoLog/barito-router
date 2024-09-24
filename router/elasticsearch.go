@@ -60,6 +60,11 @@ func (api *elasticsearchAPI) Elasticsearch(w http.ResponseWriter, req *http.Requ
 		return
 	}
 
+	if profile.ElasticsearchStatus != "ACTIVE" {
+		http.Error(w, "Elasticsearch cluster is not active", http.StatusServiceUnavailable)
+		return
+	}
+
 	if req.Method != http.MethodGet && req.Method != http.MethodPost {
 		http.Error(w, "Only GET and POST requests are allowed", http.StatusMethodNotAllowed)
 		return
@@ -93,8 +98,8 @@ func (api *elasticsearchAPI) Elasticsearch(w http.ResponseWriter, req *http.Requ
 		http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
 		return
 	}
-
-	targetUrl := fmt.Sprintf("http://%s/%s", profile.ElasticsearchAddress, esEndpoint)
+	esPort := 9200
+	targetUrl := fmt.Sprintf("http://%s/%s", profile.ElasticsearchAddress, esPort, esEndpoint)
 
 	esReq, err := http.NewRequest(req.Method, targetUrl, req.Body)
 	if err != nil {
@@ -126,7 +131,6 @@ func (api *elasticsearchAPI) Elasticsearch(w http.ResponseWriter, req *http.Requ
 	w.WriteHeader(esRes.StatusCode)
 	w.Write(body)
 
-	// Log the audit information
 	duration := time.Since(startTime)
 	LogAudit(req, esRes, body, appSecret, clusterName, duration)
 }

@@ -19,6 +19,7 @@ type Profile struct {
 	KibanaAddress        string      `json:"kibana_address"`
 	KibanaMtlsEnabled    bool        `json:"kibana_mtls_enabled"`
 	ElasticsearchAddress string      `json:"elasticsearch_address"`
+	ElasticsearchStatus  string      `json:"elasticsearch_status"`
 	AppStatus            string      `json:"status"`
 	Meta                 ProfileMeta `json:"meta"`
 }
