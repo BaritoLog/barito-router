@@ -7,6 +7,7 @@ import (
 
 	"github.com/BaritoLog/barito-router/config"
 	"github.com/gorilla/mux"
+	"golang.org/x/time/rate"
 
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/router"
@@ -56,6 +57,8 @@ func RunProducerRouter(appCtx *appcontext.AppContext) {
 }
 
 func RunKibanaRouter(appCtx *appcontext.AppContext) {
+	limiter := rate.NewLimiter(1, 5)
+
 	ssoClient := router.NewSSOClient(config.SSOClientID, config.SSOClientSecret, config.BaritoViewerUrl+config.SSORedirectPath, config.AllowedDomains, config.HMACJWTSecretString)
 	kibanaRouter := router.NewKibanaRouterWithSSO(
 		config.KibanaRouterAddress,
@@ -72,6 +75,12 @@ func RunKibanaRouter(appCtx *appcontext.AppContext) {
 
 	r.HandleFunc(router.PATH_LOGIN, ssoClient.HandleLogin)
 	r.HandleFunc(router.PATH_CALLBACK, ssoClient.HandleCallback)
+
+	elasticsearchRoute := r.PathPrefix("/{cluster_name}").Subrouter()
+	elasticsearchRoute.Use(router.NormalizePath)
+	elasticsearchRoute.PathPrefix("/elasticsearch/{es_endpoint:.*}").Handler(
+		router.RateLimiter(limiter)(http.HandlerFunc(kibanaRouter.ServeElasticsearch)),
+	)
 
 	kibanaRoute := r.PathPrefix("/").Subrouter()
 	kibanaRoute.PathPrefix("/{cluster_name}").Handler(kibanaRouter)
