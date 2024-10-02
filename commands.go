@@ -77,7 +77,6 @@ func RunKibanaRouter(appCtx *appcontext.AppContext) {
 	r.HandleFunc(router.PATH_CALLBACK, ssoClient.HandleCallback)
 
 	elasticsearchRoute := r.PathPrefix("/{cluster_name}").Subrouter()
-	elasticsearchRoute.Use(router.NormalizePath)
 	elasticsearchRoute.PathPrefix("/elasticsearch/{es_endpoint:.*}").Handler(
 		router.RateLimiter(limiter)(http.HandlerFunc(kibanaRouter.ServeElasticsearch)),
 	)

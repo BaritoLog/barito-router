@@ -84,12 +84,6 @@ func NewKibanaRouterWithSSO(addr, marketUrl, accessToken, profilePath, authorize
 }
 
 func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-
-	if strings.HasPrefix(req.URL.Path, "/elasticsearch") {
-		r.ServeElasticsearch(w, req)
-		return
-	}
-
 	if req.URL.Path == "/ping" {
 		OnPing(w, req)
 		return
@@ -179,9 +173,9 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 	}
 	span.SetTag("app-group", clusterName)
 
-	appSecret := req.Header.Get("App-Secret")
+	appSecret := req.Header.Get("App-Group-Secret")
 	if appSecret == "" {
-		http.Error(w, "App-Secret header is required", http.StatusUnauthorized)
+		http.Error(w, "App-Group-Secret header is required", http.StatusUnauthorized)
 		return
 	}
 
@@ -197,7 +191,7 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 	}
 
 	if req.Method != http.MethodGet && req.Method != http.MethodPost {
-		http.Error(w, "Only GET and POST requests are allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "DELETE requests are not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
