@@ -1,13 +1,16 @@
 module github.com/BaritoLog/barito-router
 
-go 1.20
+go 1.21
+
+toolchain go1.22.3
 
 require (
 	github.com/BaritoLog/go-boilerplate v0.0.0-20190116075340-b95aeda121e9
+	github.com/bentol/barito-proto v0.0.0-20241002033123-9950f2edca81
 	github.com/cssivision/reverseproxy v0.0.1
 	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/golang/mock v1.3.1
-	github.com/golang/protobuf v1.5.3
+	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/grpc-gateway v1.11.3
 	github.com/hashicorp/consul/api v1.3.0
@@ -20,14 +23,14 @@ require (
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
 	github.com/uber/jaeger-lib v2.4.0+incompatible
 	github.com/urfave/cli v1.22.1
-	github.com/vwidjaya/barito-proto v0.0.0-20190830092336-8ebe7cb28fe1
-	golang.org/x/oauth2 v0.7.0
-	google.golang.org/grpc v1.52.0-dev
-	google.golang.org/protobuf v1.32.0
+	golang.org/x/oauth2 v0.18.0
+	google.golang.org/grpc v1.64.0
+	google.golang.org/protobuf v1.33.0
 )
 
 require (
-	cloud.google.com/go/compute/metadata v0.2.0 // indirect
+	cloud.google.com/go/compute v1.25.1 // indirect
+	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	github.com/HdrHistogram/hdrhistogram-go v1.0.1 // indirect
 	github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -52,10 +55,11 @@ require (
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/stretchr/testify v1.8.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
-	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
-	golang.org/x/net v0.10.0 // indirect
-	golang.org/x/sys v0.8.0 // indirect
-	golang.org/x/text v0.9.0 // indirect
-	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 // indirect
+	golang.org/x/net v0.28.0 // indirect
+	golang.org/x/sys v0.24.0 // indirect
+	golang.org/x/text v0.17.0 // indirect
+	google.golang.org/appengine v1.6.8 // indirect
+	google.golang.org/genproto v0.0.0-20240213162025-012b6fc9bca9 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240318140521-94a12d6c2237 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 // indirect
 )

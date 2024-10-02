@@ -13,11 +13,11 @@ import (
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/config"
 	"github.com/BaritoLog/barito-router/instrumentation"
+	pb "github.com/bentol/barito-proto/producer"
 	"github.com/mostynb/go-grpc-compression/zstd"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
-	pb "github.com/vwidjaya/barito-proto/producer"
 	"google.golang.org/grpc"
 )
 
