@@ -1,8 +1,6 @@
 module github.com/BaritoLog/barito-router
 
-go 1.21
-
-toolchain go1.22.3
+go 1.20
 
 require (
 	github.com/BaritoLog/go-boilerplate v0.0.0-20190116075340-b95aeda121e9
