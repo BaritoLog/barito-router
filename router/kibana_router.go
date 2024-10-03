@@ -136,7 +136,6 @@ func RateLimiter(limiter *rate.Limiter) func(http.Handler) http.Handler {
 func NormalizePath(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r.URL.Path = strings.ReplaceAll(r.URL.Path, "//", "/")
-		log.Printf("Normalized path: %s", r.URL.Path)
 		next.ServeHTTP(w, r)
 	})
 }
@@ -146,17 +145,12 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 	span := opentracing.StartSpan("barito_router_viewer.elasticsearch")
 	defer span.Finish()
 
-	log.Println("ServeElasticsearch: Received request")
-
 	vars := mux.Vars(req)
 	clusterName := vars["cluster_name"]
 	esEndpoint := vars["es_endpoint"]
 
-	log.Printf("ServeElasticsearch: clusterName=%s, esEndpoint=%s", clusterName, esEndpoint)
-
 	if strings.Contains(esEndpoint, "//") {
 		esEndpoint = strings.ReplaceAll(esEndpoint, "//", "/")
-		log.Printf("Normalized endpoint: %s", esEndpoint)
 	}
 
 	decodedEndpoint, err := url.PathUnescape(esEndpoint)
@@ -165,7 +159,6 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 		return
 	}
 	normalizedEndpoint := path.Clean(decodedEndpoint)
-	log.Printf("ServeElasticsearch: normalizedEndpoint: %s", normalizedEndpoint)
 
 	if clusterName == "" {
 		http.Error(w, "clusterName is required", http.StatusBadRequest)
@@ -200,6 +193,7 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 		"_search/scroll",
 		"_doc",
 		"_cat/indices",
+		"_cat/health",
 		"_eql/search",
 		"_mget",
 		"_index",
@@ -262,6 +256,7 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 	}
 
 	w.WriteHeader(esRes.StatusCode)
+	w.Write([]byte("Elasticsearch route works\n"))
 	w.Write(body)
 
 	duration := time.Since(startTime)
