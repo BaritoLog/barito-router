@@ -10,6 +10,8 @@ type Profile struct {
 	AppSecret           string      `json:"app_secret"`
 	AppGroup            string      `json:"app_group_name"`
 	MaxTps              int         `json:"max_tps"`
+	AppGroupMaxTps      int         `json:"app_group_max_tps"`
+	DisableAppTps       bool        `json:"disable_app_tps"`
 	ClusterName         string      `json:"cluster_name"`
 	ConsulHost          string      `json:"consul_host"`
 	ConsulHosts         []string    `json:"consul_hosts"`

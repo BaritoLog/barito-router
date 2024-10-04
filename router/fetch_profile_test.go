@@ -21,13 +21,15 @@ func (s roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) {
 func TestFetchProfileWithCache(t *testing.T) {
 
 	p := Profile{
-		ID:          99,
-		ClusterName: "some-cluster-name",
-		Name:        "some-name",
-		ConsulHosts: []string{"some-consul-host"},
-		AppGroup:    "some-app-group",
-		MaxTps:      9999,
-		AppStatus:   "App-status",
+		ID:             99,
+		ClusterName:    "some-cluster-name",
+		Name:           "some-name",
+		ConsulHosts:    []string{"some-consul-host"},
+		AppGroup:       "some-app-group",
+		MaxTps:         9999,
+		AppStatus:      "App-status",
+		AppGroupMaxTps: 18888,
+		DisableAppTps:  true,
 	}
 
 	client := createClient()
@@ -51,6 +53,8 @@ func TestFetchProfileWithCache(t *testing.T) {
 	FatalIf(t, p.AppGroup != profile.AppGroup, "%s != %s", p.AppGroup, profile.AppGroup)
 	FatalIf(t, p.MaxTps != profile.MaxTps, "%d != %d", p.MaxTps, profile.MaxTps)
 	FatalIf(t, p.AppStatus != profile.AppStatus, "%s != %s", p.AppStatus, profile.AppStatus)
+	FatalIf(t, p.AppGroupMaxTps != profile.AppGroupMaxTps, "%d != %d", p.AppGroupMaxTps, profile.AppGroupMaxTps)
+	FatalIf(t, p.DisableAppTps != profile.DisableAppTps, "%t != %t", p.DisableAppTps, profile.DisableAppTps)
 }
 
 func TestFetchProfileWithExpiredCacheShouldCallToBaritoMarket(t *testing.T) {

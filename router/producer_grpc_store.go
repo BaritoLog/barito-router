@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	pb "github.com/vwidjaya/barito-proto/producer"
+	pb "github.com/bentol/barito-proto/producer"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )

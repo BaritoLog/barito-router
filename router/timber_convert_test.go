@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	. "github.com/BaritoLog/go-boilerplate/testkit"
+	pb "github.com/bentol/barito-proto/producer"
 	"github.com/golang/protobuf/proto"
-	pb "github.com/vwidjaya/barito-proto/producer"
 )
 
 func TestConvertBytesToTimber(t *testing.T) {
