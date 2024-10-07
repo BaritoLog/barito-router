@@ -1,6 +1,7 @@
 package router
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -63,7 +64,7 @@ func NewKibanaRouter(addr, marketUrl, accessToken, profilePath, authorizePath st
 		cacheBag:      cache.New(config.CacheExpirationTimeSeconds, 2*config.CacheExpirationTimeSeconds),
 		client:        createClient(),
 		appCtx:        appCtx,
-		limiter:       rate.NewLimiter(rate.Every(time.Second), 1),
+		limiter:       rate.NewLimiter(rate.Every(time.Second), 5),
 	}
 }
 
@@ -79,7 +80,7 @@ func NewKibanaRouterWithSSO(addr, marketUrl, accessToken, profilePath, authorize
 		appCtx:        appCtx,
 		ssoClient:     ssoClient,
 		ssoEnabled:    true,
-		limiter:       rate.NewLimiter(rate.Every(time.Second), 1),
+		limiter:       rate.NewLimiter(rate.Every(time.Second), 5),
 	}
 }
 
@@ -140,6 +141,27 @@ func NormalizePath(next http.Handler) http.Handler {
 	})
 }
 
+func isAllowedEndpoint(endpoint string) bool {
+	allowedEndpoints := strings.Split(config.DefaultAllowedEndpoints, ",")
+	for _, allowed := range allowedEndpoints {
+		if matchEndpoint(endpoint, allowed) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchEndpoint(endpoint, pattern string) bool {
+	if strings.Contains(pattern, "*") {
+		parts := strings.Split(pattern, "*")
+		if len(parts) != 2 {
+			return false
+		}
+		return strings.HasPrefix(endpoint, parts[0]) && strings.HasSuffix(endpoint, parts[1])
+	}
+	return endpoint == pattern
+}
+
 func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Request) {
 	startTime := time.Now()
 	span := opentracing.StartSpan("barito_router_viewer.elasticsearch")
@@ -188,27 +210,7 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	allowedEndpoints := []string{
-		"_search",
-		"_search/scroll",
-		"_doc",
-		"_cat/indices",
-		"_cat/health",
-		"_eql/search",
-		"_mget",
-		"_index",
-		"_ingest/pipeline",
-	}
-
-	isAllowed := false
-	for _, allowed := range allowedEndpoints {
-		if normalizedEndpoint == allowed || strings.HasPrefix(normalizedEndpoint, allowed+"/") {
-			isAllowed = true
-			break
-		}
-	}
-
-	if !isAllowed {
+	if !isAllowedEndpoint(normalizedEndpoint) {
 		http.Error(w, "This endpoint is not allowed", http.StatusForbidden)
 		return
 	}
@@ -255,9 +257,29 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	w.WriteHeader(esRes.StatusCode)
-	w.Write([]byte("Elasticsearch route works\n"))
-	w.Write(body)
+	w.Header().Set("Content-Type", "application/json")
+
+	if json.Valid(body) {
+		// Forward the JSON response as is
+		w.WriteHeader(esRes.StatusCode)
+		w.Write([]byte("OK\n"))
+		w.Write(body)
+	} else {
+		// Wrap the response in a JSON object
+		response := map[string]interface{}{
+			"status":  "OK",
+			"message": string(body),
+		}
+
+		responseJSON, err := json.Marshal(response)
+		if err != nil {
+			http.Error(w, "Failed to marshal JSON response", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(esRes.StatusCode)
+		w.Write(responseJSON)
+	}
 
 	duration := time.Since(startTime)
 	LogAudit(req, esRes, body, appSecret, clusterName, duration)

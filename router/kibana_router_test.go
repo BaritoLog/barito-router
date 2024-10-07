@@ -2,14 +2,19 @@ package router
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/go-boilerplate/httpkit"
 	. "github.com/BaritoLog/go-boilerplate/testkit"
+	"github.com/gorilla/mux"
 	newrelic "github.com/newrelic/go-agent"
+	"golang.org/x/time/rate"
 )
 
 func TestKibanaRouter_Ping(t *testing.T) {
@@ -83,4 +88,147 @@ func TestGetClustername(t *testing.T) {
 
 	cluster_name := KibanaGetClustername(req)
 	FatalIf(t, cluster_name != "path", "%s != %s", cluster_name, "path")
+}
+func TestRateLimiter(t *testing.T) {
+	limiter := rate.NewLimiter(rate.Every(time.Second), 1)
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	limitedHandler := RateLimiter(limiter)(handler)
+
+	// Test when the limiter allows the request
+	req1, _ := http.NewRequest(http.MethodGet, "http://localhost", nil)
+	resp1 := httptest.NewRecorder()
+	limitedHandler.ServeHTTP(resp1, req1)
+
+	if resp1.Code != http.StatusOK {
+		t.Errorf("Expected status code %d, but got %d", http.StatusOK, resp1.Code)
+	}
+
+	// Test when the limiter blocks the request
+	req2, _ := http.NewRequest(http.MethodGet, "http://localhost", nil)
+	resp2 := httptest.NewRecorder()
+	limitedHandler.ServeHTTP(resp2, req2)
+
+	if resp2.Code != http.StatusTooManyRequests {
+		t.Errorf("Expected status code %d, but got %d", http.StatusTooManyRequests, resp2.Code)
+	}
+}
+func TestNormalizePath(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	normalizedHandler := NormalizePath(handler)
+
+	// Test when the URL path contains double slashes
+	req1, _ := http.NewRequest(http.MethodGet, "http://localhost//path", nil)
+	resp1 := httptest.NewRecorder()
+	normalizedHandler.ServeHTTP(resp1, req1)
+
+	if resp1.Code != http.StatusOK {
+		t.Errorf("Expected status code %d, but got %d", http.StatusOK, resp1.Code)
+	}
+
+	// Test when the URL path does not contain double slashes
+	req2, _ := http.NewRequest(http.MethodGet, "http://localhost/path", nil)
+	resp2 := httptest.NewRecorder()
+	normalizedHandler.ServeHTTP(resp2, req2)
+
+	if resp2.Code != http.StatusOK {
+		t.Errorf("Expected status code %d, but got %d", http.StatusOK, resp2.Code)
+	}
+}
+
+func TestKibanaRouter_ServeElasticsearch(t *testing.T) {
+	targetServer := NewTestServer(http.StatusTeapot, []byte("elasticsearch response"))
+	defer targetServer.Close()
+	host, port := httpkit.HostOfRawURL(targetServer.URL)
+
+	marketServer := NewJsonTestServer(http.StatusOK, Profile{
+		ElasticsearchAddress: fmt.Sprintf("%s:%d", host, port),
+		ElasticsearchStatus:  "ACTIVE",
+		AppGroupSecret:       "mock-secret",
+	})
+	defer marketServer.Close()
+
+	config := newrelic.NewConfig("barito-router", "")
+	config.Enabled = false
+	appCtx := appcontext.NewAppContext(config)
+
+	router := NewKibanaRouter(":45500", marketServer.URL, "abc", "profilePath", "authorizePath", appCtx)
+
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost/elasticsearch/my_cluster/_search", strings.NewReader(""))
+	req.Header.Set("App-Group-Secret", "mock-secret")
+
+	r := mux.NewRouter()
+	r.HandleFunc("/elasticsearch/{cluster_name}/{es_endpoint:.*}", router.ServeElasticsearch)
+	resp := RecordResponse(r.ServeHTTP, req)
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	bodyStr := string(body)
+
+	if resp.StatusCode != http.StatusTeapot && resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("Expected status code %d or %d, but got %d. Response body: %s", http.StatusTeapot, http.StatusInternalServerError, resp.StatusCode, bodyStr)
+	}
+
+	expectedBody := "elasticsearch response"
+	if bodyStr != expectedBody && bodyStr != "Elasticsearch is unreachable\n" {
+		t.Fatalf("Expected response body %q or 'Elasticsearch is unreachable', but got %q", expectedBody, bodyStr)
+	}
+}
+func TestIsAllowedEndpoint(t *testing.T) {
+	// Test when the endpoint is allowed
+	endpoint := "/_search"
+	isAllowed := isAllowedEndpoint(endpoint)
+
+	if !isAllowed {
+		t.Errorf("Expected endpoint %q to be allowed, but it is not", endpoint)
+	}
+
+	// Test when the endpoint is allowed with wildcard
+	endpoint = "/my_index_name/_search"
+	isAllowed = isAllowedEndpoint(endpoint)
+
+	if !isAllowed {
+		t.Errorf("Expected endpoint %q to be allowed, but it is not", endpoint)
+	}
+
+	// Test when the endpoint is not allowed
+	endpoint = "/api/log"
+	isAllowed = isAllowedEndpoint(endpoint)
+
+	if isAllowed {
+		t.Errorf("Expected endpoint %q to not be allowed, but it is", endpoint)
+	}
+}
+func TestMatchEndpoint(t *testing.T) {
+	// Test when the endpoint matches the pattern
+	endpoint := "/_search"
+	pattern := "/_search"
+	isMatched := matchEndpoint(endpoint, pattern)
+
+	if !isMatched {
+		t.Errorf("Expected endpoint %q to match pattern %q, but it didn't", endpoint, pattern)
+	}
+
+	// Test when the endpoint doesn't match the pattern
+	endpoint = "/api/log"
+	pattern = "/_search"
+	isMatched = matchEndpoint(endpoint, pattern)
+
+	if isMatched {
+		t.Errorf("Expected endpoint %q to not match pattern %q, but it did", endpoint, pattern)
+	}
+
+	// Test when the pattern contains a wildcard
+	endpoint = "/my_index_name/_search"
+	pattern = "/*/_search"
+	isMatched = matchEndpoint(endpoint, pattern)
+
+	if !isMatched {
+		t.Errorf("Expected endpoint %q to match pattern %q, but it didn't", endpoint, pattern)
+	}
 }
