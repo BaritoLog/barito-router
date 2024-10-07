@@ -41,7 +41,7 @@ const (
 	DefaultProducerPort                      = ""
 	DefaultBaritoMarketUrl                   = "http://localhost:8080"
 	DefaultBaritoViewerUrl                   = "http://localhost:8083"
-	DefaultBaritoMarketAccessToken           = "WbyAVVCk73CG6LX9mfN89MNvF8NTmsn1YLEjAc9p8duNNGR4hPZ2wsWiOBqb4xE4"
+	DefaultBaritoMarketAccessToken           = ""
 	DefaultBaritoProfileApiPath              = "api/profile"
 	DefaultBaritoProfileApiByAppGroupPath    = "api/profile_by_app_group"
 	DefaultBaritoAuthorizeApiPath            = "api/authorize"
