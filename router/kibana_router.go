@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 
@@ -152,18 +153,19 @@ func isAllowedEndpoint(endpoint string) bool {
 }
 
 func matchEndpoint(endpoint, pattern string) bool {
-	if strings.Contains(pattern, "*") {
-		parts := strings.Split(pattern, "*")
-		if len(parts) != 2 {
-			return false
-		}
-		return strings.HasPrefix(endpoint, parts[0]) && strings.HasSuffix(endpoint, parts[1])
+	pattern = regexp.QuoteMeta(pattern)
+	pattern = strings.ReplaceAll(pattern, "\\*", ".*")
+	re, err := regexp.Compile("^" + pattern + "$")
+	if err != nil {
+		return false
 	}
-	return endpoint == pattern
+	return re.MatchString(endpoint)
 }
 
 func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Request) {
 	startTime := time.Now()
+	esPort := 9200
+	var targetUrl string
 	span := opentracing.StartSpan("barito_router_viewer.elasticsearch")
 	defer span.Finish()
 
@@ -205,11 +207,11 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	if req.Method != http.MethodGet && req.Method != http.MethodPost {
+	if req.Method != http.MethodGet && req.Method != http.MethodPost && req.Method != http.MethodPut {
 		http.Error(w, "DELETE requests are not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
+	log.Printf("Checking endpoint: %s", normalizedEndpoint)
 	if !isAllowedEndpoint(normalizedEndpoint) {
 		http.Error(w, "This endpoint is not allowed", http.StatusForbidden)
 		return
@@ -225,9 +227,19 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 		http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
 		return
 	}
-
-	esPort := 9200
-	targetUrl := fmt.Sprintf("http://%s:%d/%s", profile.ElasticsearchAddress, esPort, normalizedEndpoint)
+	if strings.HasPrefix(normalizedEndpoint, "create_index/") {
+		// Handle create_index endpoint differently
+		normalizedEndpoint = strings.TrimPrefix(normalizedEndpoint, "create_index/")
+		log.Printf("After trimming prefix 'create_index/': %s", normalizedEndpoint)
+		targetUrl = fmt.Sprintf("http://%s:%d/%s", profile.ElasticsearchAddress, esPort, normalizedEndpoint)
+	} else {
+		// Handle other endpoints
+		if !isAllowedEndpoint(normalizedEndpoint) {
+			http.Error(w, "This endpoint is not allowed", http.StatusForbidden)
+			return
+		}
+		targetUrl = fmt.Sprintf("http://%s:%d/%s", profile.ElasticsearchAddress, esPort, normalizedEndpoint)
+	}
 	log.Printf("Extracted cluster_name: %s, es_endpoint: %s, es_address: %s, normalized_endpoint: %s, target_url: %s", clusterName, esEndpoint, profile.ElasticsearchAddress, normalizedEndpoint, targetUrl)
 
 	esReq, err := http.NewRequest(req.Method, targetUrl, req.Body)
