@@ -59,7 +59,7 @@ const (
 	DefaultNewRelicEnabled                   = false
 	DefaultCacheExpirationTimeSeconds        = 60
 	DefaultBackupCacheExpirationTimeHours    = 48
-	DefaultAllowedEndpoints                  = "_search,*/_search,_search/scroll,_doc,_cat/indices,_cat/health,_eql/search,_mget,_index,_ingest/pipeline"
+	DefaultAllowedEndpoints                  = "_search,*/_search,_search/scroll,_doc,*/_doc,_cat/indices,_cat/health,_eql/search,_mget,/_index_template,_ingest/pipeline,/_count,*/_count,/_mapping,*/_mapping,/_update_by_query,*/_update_by_query,/_alias"
 )
 
 var (
