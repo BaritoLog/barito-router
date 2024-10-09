@@ -1,14 +1,11 @@
 package router
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
-	"path"
-	"regexp"
 	"strings"
 	"time"
 
@@ -127,7 +124,7 @@ func RateLimiter(limiter *rate.Limiter) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !limiter.Allow() {
-				http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
+				http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -135,54 +132,15 @@ func RateLimiter(limiter *rate.Limiter) func(http.Handler) http.Handler {
 	}
 }
 
-func NormalizePath(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r.URL.Path = strings.ReplaceAll(r.URL.Path, "//", "/")
-		next.ServeHTTP(w, r)
-	})
-}
-
-func isAllowedEndpoint(endpoint string) bool {
-	allowedEndpoints := strings.Split(config.DefaultAllowedEndpoints, ",")
-	for _, allowed := range allowedEndpoints {
-		if matchEndpoint(endpoint, allowed) {
-			return true
-		}
-	}
-	return false
-}
-
-func matchEndpoint(endpoint, pattern string) bool {
-	pattern = regexp.QuoteMeta(pattern)
-	pattern = strings.ReplaceAll(pattern, "\\*", ".*")
-	re, err := regexp.Compile("^" + pattern + "$")
-	if err != nil {
-		return false
-	}
-	return re.MatchString(endpoint)
-}
-
 func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Request) {
 	startTime := time.Now()
 	esPort := 9200
-	var targetUrl string
 	span := opentracing.StartSpan("barito_router_viewer.elasticsearch")
 	defer span.Finish()
 
 	vars := mux.Vars(req)
 	clusterName := vars["cluster_name"]
 	esEndpoint := vars["es_endpoint"]
-
-	if strings.Contains(esEndpoint, "//") {
-		esEndpoint = strings.ReplaceAll(esEndpoint, "//", "/")
-	}
-
-	decodedEndpoint, err := url.PathUnescape(esEndpoint)
-	if err != nil {
-		http.Error(w, "Invalid URL", http.StatusBadRequest)
-		return
-	}
-	normalizedEndpoint := path.Clean(decodedEndpoint)
 
 	if clusterName == "" {
 		http.Error(w, "clusterName is required", http.StatusBadRequest)
@@ -203,17 +161,12 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 	}
 
 	if profile.ElasticsearchStatus != "ACTIVE" {
-		http.Error(w, "Elasticsearch cluster is not active", http.StatusServiceUnavailable)
+		http.Error(w, "Elasticsearch API is not active", http.StatusServiceUnavailable)
 		return
 	}
 
 	if req.Method != http.MethodGet && req.Method != http.MethodPost && req.Method != http.MethodPut {
 		http.Error(w, "DELETE requests are not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	log.Printf("Checking endpoint: %s", normalizedEndpoint)
-	if !isAllowedEndpoint(normalizedEndpoint) {
-		http.Error(w, "This endpoint is not allowed", http.StatusForbidden)
 		return
 	}
 
@@ -227,20 +180,14 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 		http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
 		return
 	}
-	if strings.HasPrefix(normalizedEndpoint, "create_index/") {
-		// Handle create_index endpoint differently
-		normalizedEndpoint = strings.TrimPrefix(normalizedEndpoint, "create_index/")
-		log.Printf("After trimming prefix 'create_index/': %s", normalizedEndpoint)
-		targetUrl = fmt.Sprintf("http://%s:%d/%s", profile.ElasticsearchAddress, esPort, normalizedEndpoint)
-	} else {
-		// Handle other endpoints
-		if !isAllowedEndpoint(normalizedEndpoint) {
-			http.Error(w, "This endpoint is not allowed", http.StatusForbidden)
-			return
-		}
-		targetUrl = fmt.Sprintf("http://%s:%d/%s", profile.ElasticsearchAddress, esPort, normalizedEndpoint)
+
+	query := req.URL.RawQuery
+	if query != "" {
+		esEndpoint = fmt.Sprintf("%s?%s", esEndpoint, query)
 	}
-	log.Printf("Extracted cluster_name: %s, es_endpoint: %s, es_address: %s, normalized_endpoint: %s, target_url: %s", clusterName, esEndpoint, profile.ElasticsearchAddress, normalizedEndpoint, targetUrl)
+
+	targetUrl := fmt.Sprintf("http://%s:%d/%s", profile.ElasticsearchAddress, esPort, esEndpoint)
+	//log.Printf("Extracted cluster_name: %s, es_address: %s, es_endpoint: %s, target_url: %s", clusterName, profile.ElasticsearchAddress, esEndpoint, targetUrl)
 
 	esReq, err := http.NewRequest(req.Method, targetUrl, req.Body)
 	if err != nil {
@@ -269,29 +216,8 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-
-	if json.Valid(body) {
-		// Forward the JSON response as is
-		w.WriteHeader(esRes.StatusCode)
-		w.Write([]byte("OK\n"))
-		w.Write(body)
-	} else {
-		// Wrap the response in a JSON object
-		response := map[string]interface{}{
-			"status":  "OK",
-			"message": string(body),
-		}
-
-		responseJSON, err := json.Marshal(response)
-		if err != nil {
-			http.Error(w, "Failed to marshal JSON response", http.StatusInternalServerError)
-			return
-		}
-
-		w.WriteHeader(esRes.StatusCode)
-		w.Write(responseJSON)
-	}
+	w.WriteHeader(esRes.StatusCode)
+	w.Write(body)
 
 	duration := time.Since(startTime)
 	LogAudit(req, esRes, body, appSecret, clusterName, duration)

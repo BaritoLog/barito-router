@@ -2,9 +2,12 @@ package router
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
+	"os"
+	"strings"
 	"time"
+
+	"log/slog"
 )
 
 type AuditLog struct {
@@ -22,13 +25,15 @@ type AuditLog struct {
 	ResponseSize    int    `json:"response_size"`
 }
 
+var logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
+
 func LogAudit(req *http.Request, esRes *http.Response, body []byte, appSecret, clusterName string, duration time.Duration) {
 	auditLog := AuditLog{
 		Type:            "audit",
 		Timestamp:       time.Now().UTC().Format(time.RFC3339),
 		RequestHost:     req.Host,
 		RequestMethod:   req.Method,
-		RequestPath:     req.URL.Path,
+		RequestPath:     req.URL.RequestURI(),
 		AppSecret:       maskAppSecret(appSecret),
 		ClusterName:     clusterName,
 		Status:          esRes.StatusCode,
@@ -39,15 +44,12 @@ func LogAudit(req *http.Request, esRes *http.Response, body []byte, appSecret, c
 	}
 	auditLogJSON, err := json.Marshal(auditLog)
 	if err != nil {
-		log.Printf("Failed to marshal audit log: %v", err)
+		logger.Error("Failed to marshal audit log", slog.String("error", err.Error()))
 		return
 	}
-	log.Println(string(auditLogJSON))
+	logger.Info(string(auditLogJSON))
 }
 
 func maskAppSecret(appSecret string) string {
-	if len(appSecret) > 4 {
-		return appSecret[:4] + "*****"
-	}
-	return appSecret
+	return strings.Repeat("*", len(appSecret))
 }

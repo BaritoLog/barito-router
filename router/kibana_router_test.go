@@ -116,31 +116,6 @@ func TestRateLimiter(t *testing.T) {
 		t.Errorf("Expected status code %d, but got %d", http.StatusTooManyRequests, resp2.Code)
 	}
 }
-func TestNormalizePath(t *testing.T) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-
-	normalizedHandler := NormalizePath(handler)
-
-	// Test when the URL path contains double slashes
-	req1, _ := http.NewRequest(http.MethodGet, "http://localhost//path", nil)
-	resp1 := httptest.NewRecorder()
-	normalizedHandler.ServeHTTP(resp1, req1)
-
-	if resp1.Code != http.StatusOK {
-		t.Errorf("Expected status code %d, but got %d", http.StatusOK, resp1.Code)
-	}
-
-	// Test when the URL path does not contain double slashes
-	req2, _ := http.NewRequest(http.MethodGet, "http://localhost/path", nil)
-	resp2 := httptest.NewRecorder()
-	normalizedHandler.ServeHTTP(resp2, req2)
-
-	if resp2.Code != http.StatusOK {
-		t.Errorf("Expected status code %d, but got %d", http.StatusOK, resp2.Code)
-	}
-}
 
 func TestKibanaRouter_ServeElasticsearch(t *testing.T) {
 	targetServer := NewTestServer(http.StatusTeapot, []byte("elasticsearch response"))
@@ -177,58 +152,5 @@ func TestKibanaRouter_ServeElasticsearch(t *testing.T) {
 	expectedBody := "elasticsearch response"
 	if bodyStr != expectedBody && bodyStr != "Elasticsearch is unreachable\n" {
 		t.Fatalf("Expected response body %q or 'Elasticsearch is unreachable', but got %q", expectedBody, bodyStr)
-	}
-}
-func TestIsAllowedEndpoint(t *testing.T) {
-	// Test when the endpoint is allowed
-	endpoint := "/_search"
-	isAllowed := isAllowedEndpoint(endpoint)
-
-	if !isAllowed {
-		t.Errorf("Expected endpoint %q to be allowed, but it is not", endpoint)
-	}
-
-	// Test when the endpoint is allowed with wildcard
-	endpoint = "/my_index_name/_search"
-	isAllowed = isAllowedEndpoint(endpoint)
-
-	if !isAllowed {
-		t.Errorf("Expected endpoint %q to be allowed, but it is not", endpoint)
-	}
-
-	// Test when the endpoint is not allowed
-	endpoint = "/api/log"
-	isAllowed = isAllowedEndpoint(endpoint)
-
-	if isAllowed {
-		t.Errorf("Expected endpoint %q to not be allowed, but it is", endpoint)
-	}
-}
-func TestMatchEndpoint(t *testing.T) {
-	// Test when the endpoint matches the pattern
-	endpoint := "/_search"
-	pattern := "/_search"
-	isMatched := matchEndpoint(endpoint, pattern)
-
-	if !isMatched {
-		t.Errorf("Expected endpoint %q to match pattern %q, but it didn't", endpoint, pattern)
-	}
-
-	// Test when the endpoint doesn't match the pattern
-	endpoint = "/api/log"
-	pattern = "/_search"
-	isMatched = matchEndpoint(endpoint, pattern)
-
-	if isMatched {
-		t.Errorf("Expected endpoint %q to not match pattern %q, but it did", endpoint, pattern)
-	}
-
-	// Test when the pattern contains a wildcard
-	endpoint = "/my_index_name/_search"
-	pattern = "/*/_search"
-	isMatched = matchEndpoint(endpoint, pattern)
-
-	if !isMatched {
-		t.Errorf("Expected endpoint %q to match pattern %q, but it didn't", endpoint, pattern)
 	}
 }

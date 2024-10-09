@@ -1,7 +1,6 @@
 package config
 
 import (
-	"strings"
 	"time"
 
 	"github.com/BaritoLog/go-boilerplate/envkit"
@@ -34,7 +33,6 @@ const (
 	EnvHMACJWTSecretString               = "BARITO_HMAC_JWT_SECRET_STRING"
 	EnvAllowedDomains                    = "BARITO_ALLOWED_DOMAINS"
 	EnvJaegerServiceName                 = "BARITO_JAEGER_SERVICE_NAME"
-	EnvAllowedEndpoints                  = "BARITO_ALLOWED_ENDPOINTS"
 
 	DefaultProducerRouterAddress             = ":8081"
 	DefaultKibanaRouterAddress               = ":8083"
@@ -59,7 +57,6 @@ const (
 	DefaultNewRelicEnabled                   = false
 	DefaultCacheExpirationTimeSeconds        = 60
 	DefaultBackupCacheExpirationTimeHours    = 48
-	DefaultAllowedEndpoints                  = "_search,*/_search,_search/scroll,_doc,*/_doc,*/_doc/*,_cat/indices/*,_cat/health,_eql/search,_mget,_index_template,_ingest/pipeline,_count,*/_count,_mapping,*/_mapping,_update_by_query,*/_update_by_query,_alias,create_index/*"
 )
 
 var (
@@ -86,7 +83,6 @@ var (
 	AllowedDomains                 string
 	CacheExpirationTimeSeconds     time.Duration
 	BackupCacheExpirationTimeHours time.Duration
-	AllowedEndpoints               []string
 )
 
 func init() {
@@ -185,10 +181,4 @@ func init() {
 		DefaultBackupCacheExpirationTimeHours,
 	)
 	BackupCacheExpirationTimeHours = time.Duration(temp) * time.Hour
-
-	allowedEndpointsStr, _ := envkit.GetString(
-		EnvAllowedEndpoints,
-		DefaultAllowedEndpoints,
-	)
-	AllowedEndpoints = strings.Split(allowedEndpointsStr, ",")
 }
