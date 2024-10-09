@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"log/slog"
@@ -16,7 +15,6 @@ type AuditLog struct {
 	RequestHost     string `json:"request_host"`
 	RequestMethod   string `json:"request_method"`
 	RequestPath     string `json:"request_path"`
-	AppSecret       string `json:"app_group_secret"`
 	ClusterName     string `json:"cluster_name"`
 	Status          int    `json:"status"`
 	RemoteIP        string `json:"remote_ip"`
@@ -34,7 +32,6 @@ func LogAudit(req *http.Request, esRes *http.Response, body []byte, appSecret, c
 		RequestHost:     req.Host,
 		RequestMethod:   req.Method,
 		RequestPath:     req.URL.RequestURI(),
-		AppSecret:       maskAppSecret(appSecret),
 		ClusterName:     clusterName,
 		Status:          esRes.StatusCode,
 		RemoteIP:        req.RemoteAddr,
@@ -48,8 +45,4 @@ func LogAudit(req *http.Request, esRes *http.Response, body []byte, appSecret, c
 		return
 	}
 	logger.Info(string(auditLogJSON))
-}
-
-func maskAppSecret(appSecret string) string {
-	return strings.Repeat("*", len(appSecret))
 }
