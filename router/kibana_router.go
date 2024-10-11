@@ -2,7 +2,7 @@ package router
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -210,17 +210,14 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 	}
 	defer esRes.Body.Close()
 
-	body, err := ioutil.ReadAll(esRes.Body)
-	if err != nil {
-		onTradeError(w, err)
+	w.WriteHeader(esRes.StatusCode)
+	if _, err := io.Copy(w, esRes.Body); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(esRes.StatusCode)
-	w.Write(body)
-
 	duration := time.Since(startTime)
-	LogAudit(req, esRes, body, appSecret, clusterName, duration)
+	LogAudit(req, esRes, nil, appSecret, clusterName, duration)
 }
 
 func (r *kibanaRouter) MustBeAuthorizedMiddleware(next http.Handler) http.Handler {
