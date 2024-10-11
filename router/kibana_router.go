@@ -3,7 +3,7 @@ package router
 import (
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -171,7 +171,7 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 	}
 
 	if r.limiter == nil {
-		log.Println("Limiter is nil")
+		slog.Error("Limiter is nil")
 		http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
 		return
 	}
@@ -187,7 +187,6 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 	}
 
 	targetUrl := fmt.Sprintf("http://%s:%d/%s", profile.ElasticsearchAddress, esPort, esEndpoint)
-	//log.Printf("Extracted cluster_name: %s, es_address: %s, es_endpoint: %s, target_url: %s", clusterName, profile.ElasticsearchAddress, esEndpoint, targetUrl)
 
 	esReq, err := http.NewRequest(req.Method, targetUrl, req.Body)
 	if err != nil {
