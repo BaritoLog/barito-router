@@ -165,8 +165,8 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	if req.Method != http.MethodGet && req.Method != http.MethodPost && req.Method != http.MethodPut {
-		http.Error(w, "DELETE requests are not allowed", http.StatusMethodNotAllowed)
+	if req.Method == http.MethodDelete || req.Method == http.MethodPatch {
+		http.Error(w, "DELETE AND PATCH requests are not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -177,7 +177,7 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 	}
 
 	if !r.limiter.Allow() {
-		http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
+		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 		return
 	}
 
@@ -205,7 +205,7 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 
 	esRes, err := r.client.Do(esReq)
 	if err != nil {
-		http.Error(w, "Elasticsearch is unreachable", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 	defer esRes.Body.Close()
