@@ -6,12 +6,11 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	spb "github.com/golang/protobuf/ptypes/struct"
-	pb "github.com/vwidjaya/barito-proto/producer"
+	pb "github.com/bentol/barito-proto/producer"
 )
 
 func ConvertBytesToTimber(b []byte, context pb.TimberContext) (timber pb.Timber, err error) {
-	var content spb.Struct
+	var content structpb.Struct
 
 	err = protojson.Unmarshal(b, &content)
 	if err != nil {
@@ -51,5 +50,7 @@ func TimberContextFromProfile(profile *Profile) pb.TimberContext {
 		EsDocumentType:         profile.Meta.Elasticsearch.DocumentType,
 		AppMaxTps:              int32(profile.MaxTps),
 		AppSecret:              profile.AppSecret,
+		DisableAppTps:          profile.DisableAppTps,
+		AppGroupMaxTps:         int32(profile.AppGroupMaxTps),
 	}
 }

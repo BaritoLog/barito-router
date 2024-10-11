@@ -5,23 +5,25 @@ import (
 )
 
 type Profile struct {
-	ID                   int         `json:"id"`
-	Name                 string      `json:"name"`
-	AppSecret            string      `json:"app_secret"`
-	AppGroup             string      `json:"app_group_name"`
-	AppGroupSecret       string      `json:"app_group_secret"`
-	MaxTps               int         `json:"max_tps"`
-	ClusterName          string      `json:"cluster_name"`
-	ConsulHost           string      `json:"consul_host"`
-	ConsulHosts          []string    `json:"consul_hosts"`
-	ProducerAddress      string      `json:"producer_address"`
-	ProducerMtlsEnabled  bool        `json:"producer_mtls_enabled"`
-	KibanaAddress        string      `json:"kibana_address"`
-	KibanaMtlsEnabled    bool        `json:"kibana_mtls_enabled"`
-	ElasticsearchAddress string      `json:"elasticsearch_address"`
+	ID                  int         `json:"id"`
+	Name                string      `json:"name"`
+	AppSecret           string      `json:"app_secret"`
+	AppGroup            string      `json:"app_group_name"`
+  AppGroupSecret       string      `json:"app_group_secret"`
+	MaxTps              int         `json:"max_tps"`
+	AppGroupMaxTps      int         `json:"app_group_max_tps"`
+	DisableAppTps       bool        `json:"disable_app_tps"`
+	ClusterName         string      `json:"cluster_name"`
+	ConsulHost          string      `json:"consul_host"`
+	ConsulHosts         []string    `json:"consul_hosts"`
+	ProducerAddress     string      `json:"producer_address"`
+	ProducerMtlsEnabled bool        `json:"producer_mtls_enabled"`
+	KibanaAddress       string      `json:"kibana_address"`
+	KibanaMtlsEnabled   bool        `json:"kibana_mtls_enabled"`
+  ElasticsearchAddress string      `json:"elasticsearch_address"`
 	ElasticsearchStatus  string      `json:"elasticsearch_status"`
-	AppStatus            string      `json:"status"`
-	Meta                 ProfileMeta `json:"meta"`
+	AppStatus           string      `json:"status"`
+	Meta                ProfileMeta `json:"meta"`
 }
 
 type ProfileMeta struct {
