@@ -150,7 +150,7 @@ func TestKibanaRouter_ServeElasticsearch(t *testing.T) {
 	}
 
 	expectedBody := "elasticsearch response"
-	if bodyStr != expectedBody && bodyStr != "Elasticsearch is unreachable\n" {
-		t.Fatalf("Expected response body %q or 'Elasticsearch is unreachable', but got %q", expectedBody, bodyStr)
+	if bodyStr != expectedBody && bodyStr != "Internal Server Error\n" {
+		t.Fatalf("Expected response body %q or 'Internal Server Error', it means you already reach the es address, but got %q", expectedBody, bodyStr)
 	}
 }
