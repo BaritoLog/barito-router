@@ -8,7 +8,7 @@ COPY . .
 RUN mkdir -p bin && \
   go build -o bin/ ./...
 
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 
 RUN useradd -m -U -d /app app
 RUN apt update && apt install -y --no-install-recommends \
