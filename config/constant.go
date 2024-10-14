@@ -37,7 +37,7 @@ const (
 	DefaultProducerRouterAddress             = ":8081"
 	DefaultKibanaRouterAddress               = ":8083"
 	DefaultProducerPort                      = ""
-	DefaultBaritoMarketUrl                   = "http://localhost:3000"
+	DefaultBaritoMarketUrl                   = "http://localhost:8080"
 	DefaultBaritoViewerUrl                   = "http://localhost:8083"
 	DefaultBaritoMarketAccessToken           = ""
 	DefaultBaritoProfileApiPath              = "api/profile"

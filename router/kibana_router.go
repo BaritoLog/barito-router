@@ -2,9 +2,12 @@ package router
 
 import (
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/BaritoLog/barito-router/appcontext"
 	"github.com/BaritoLog/barito-router/config"
@@ -14,6 +17,7 @@ import (
 	"github.com/hashicorp/consul/api"
 	"github.com/opentracing/opentracing-go"
 	"github.com/patrickmn/go-cache"
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -27,6 +31,7 @@ const (
 type KibanaRouter interface {
 	ServeHTTP(w http.ResponseWriter, req *http.Request)
 	MustBeAuthorizedMiddleware(http.Handler) http.Handler
+	ServeElasticsearch(w http.ResponseWriter, req *http.Request)
 }
 
 type kibanaRouter struct {
@@ -42,6 +47,8 @@ type kibanaRouter struct {
 
 	client *http.Client
 	appCtx *appcontext.AppContext
+
+	limiter *rate.Limiter
 }
 
 // NewKibanaRouter is a function for creating new kibana router
@@ -55,6 +62,7 @@ func NewKibanaRouter(addr, marketUrl, accessToken, profilePath, authorizePath st
 		cacheBag:      cache.New(config.CacheExpirationTimeSeconds, 2*config.CacheExpirationTimeSeconds),
 		client:        createClient(),
 		appCtx:        appCtx,
+		limiter:       rate.NewLimiter(rate.Every(time.Second), 5),
 	}
 }
 
@@ -70,6 +78,7 @@ func NewKibanaRouterWithSSO(addr, marketUrl, accessToken, profilePath, authorize
 		appCtx:        appCtx,
 		ssoClient:     ssoClient,
 		ssoEnabled:    true,
+		limiter:       rate.NewLimiter(rate.Every(time.Second), 5),
 	}
 }
 
@@ -109,6 +118,105 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	proxy := NewKibanaProxy(sourceUrl, targetUrl, profile.KibanaMtlsEnabled)
 	proxy.ReverseProxy().ServeHTTP(w, req)
+}
+
+func RateLimiter(limiter *rate.Limiter) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !limiter.Allow() {
+				http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Request) {
+	startTime := time.Now()
+	esPort := 9200
+	span := opentracing.StartSpan("barito_router_viewer.elasticsearch")
+	defer span.Finish()
+
+	vars := mux.Vars(req)
+	clusterName := vars["cluster_name"]
+	esEndpoint := vars["es_endpoint"]
+
+	if clusterName == "" {
+		http.Error(w, "clusterName is required", http.StatusBadRequest)
+		return
+	}
+	span.SetTag("app-group", clusterName)
+
+	appSecret := req.Header.Get("App-Group-Secret")
+	if appSecret == "" {
+		http.Error(w, "App-Group-Secret header is required", http.StatusUnauthorized)
+		return
+	}
+
+	profile, err := fetchProfileByClusterName(r.client, span.Context(), r.cacheBag, r.marketUrl, r.accessToken, r.profilePath, clusterName)
+	if err != nil || profile == nil || profile.AppGroupSecret != appSecret {
+		http.Error(w, "Invalid app secret or cluster name", http.StatusUnauthorized)
+		return
+	}
+
+	if profile.ElasticsearchStatus != "ACTIVE" {
+		http.Error(w, "Elasticsearch API is not active", http.StatusServiceUnavailable)
+		return
+	}
+
+	if req.Method == http.MethodDelete || req.Method == http.MethodPatch {
+		http.Error(w, "DELETE AND PATCH requests are not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if r.limiter == nil {
+		slog.Error("Limiter is nil")
+		http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	if !r.limiter.Allow() {
+		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		return
+	}
+
+	query := req.URL.RawQuery
+	if query != "" {
+		esEndpoint = fmt.Sprintf("%s?%s", esEndpoint, query)
+	}
+
+	targetUrl := fmt.Sprintf("http://%s:%d/%s", profile.ElasticsearchAddress, esPort, esEndpoint)
+
+	esReq, err := http.NewRequest(req.Method, targetUrl, req.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	for name, values := range req.Header {
+		for _, value := range values {
+			esReq.Header.Add(name, value)
+		}
+	}
+
+	esReq.Header.Add("App-Secret", appSecret)
+
+	esRes, err := r.client.Do(esReq)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	defer esRes.Body.Close()
+
+	w.WriteHeader(esRes.StatusCode)
+	if _, err := io.Copy(w, esRes.Body); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	duration := time.Since(startTime)
+	LogAudit(req, esRes, nil, appSecret, clusterName, duration)
 }
 
 func (r *kibanaRouter) MustBeAuthorizedMiddleware(next http.Handler) http.Handler {
