@@ -228,20 +228,31 @@ func (r *kibanaRouter) MustBeAuthorizedMiddleware(next http.Handler) http.Handle
 		username := strings.Split(req.Context().Value("email").(string), "@")[0]
 		clusterName := params["cluster_name"]
 
+		slog.Info(fmt.Sprintf("MustBeAuthorizedMiddleware: username=%s clusterName=%s", username, clusterName))
+
 		// check to the barito market
 		address := fmt.Sprintf("%s/%s", r.marketUrl, r.authorizePath)
 		q := url.Values{}
 		q.Add("username", username)
 		q.Add("cluster_name", clusterName)
 
-		checkReq, _ := http.NewRequest("GET", address, nil)
+		checkReq, err := http.NewRequest("GET", address, nil)
+		if err != nil {
+			slog.Error(fmt.Sprintf("Failed to create request: %s", err.Error()))
+			http.Error(w, "Failed to create request", http.StatusInternalServerError)
+			return
+		}
 		checkReq.URL.RawQuery = q.Encode()
 		res, err := r.client.Do(checkReq)
 		if err != nil {
+			slog.Error(fmt.Sprintf("Error during request execution: url=%s error=%s", address, err.Error()))
 			onTradeError(w, err)
 			return
 		}
+		defer res.Body.Close()
+
 		if res.StatusCode != http.StatusOK {
+			slog.Error("Authorization failed, status code: " + fmt.Sprintf("%d", res.StatusCode))
 			onAuthorizeError(w)
 			return
 		}
