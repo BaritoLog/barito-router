@@ -18,8 +18,10 @@ type Profile struct {
 	ConsulHosts          []string    `json:"consul_hosts"`
 	ProducerAddress      string      `json:"producer_address"`
 	ProducerMtlsEnabled  bool        `json:"producer_mtls_enabled"`
+	ProducerLocation     string      `json:"producer_location"`
 	KibanaAddress        string      `json:"kibana_address"`
 	KibanaMtlsEnabled    bool        `json:"kibana_mtls_enabled"`
+	KibanaLocation       string      `json:"kibana_location"`
 	ElasticsearchAddress string      `json:"elasticsearch_address"`
 	ElasticsearchStatus  string      `json:"elasticsearch_status"`
 	AppStatus            string      `json:"status"`

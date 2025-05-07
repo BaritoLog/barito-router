@@ -12,6 +12,8 @@ import (
 
 var disableAppNameLabelMetrics bool = false
 
+var forwardToOtherRouterSuccess *prometheus.CounterVec
+var forwardToOtherRouterFailed *prometheus.CounterVec
 var producerRequestCount *prometheus.CounterVec
 var producerRequestError *prometheus.CounterVec
 var producerNumberMessagePerBatch *prometheus.SummaryVec
@@ -40,6 +42,14 @@ func init() {
 }
 
 func InitProducerInstrumentation() {
+	forwardToOtherRouterSuccess = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "barito_router_forward_to_other_router_success_total",
+		Help: "Number of success request forwarded to other router",
+	}, []string{"app_group", "app_name", "router_address"})
+	forwardToOtherRouterFailed = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "barito_router_forward_to_other_router_failed_total",
+		Help: "Number of failed request forwarded to other router",
+	}, []string{"app_group", "app_name", "router_address"})
 	producerRequestCount = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "barito_router_producer_request_total",
 		Help: "Number request to producer",
@@ -88,6 +98,14 @@ func IncreaseProducerRequestError(appGroup, appName, producerAddress string, r *
 		appName = "GLOBAL"
 	}
 	producerRequestError.WithLabelValues(appGroup, appName, batch, errorMsg, producerAddress).Inc()
+}
+
+func IncreaseForwardToOtherRouterSuccess(appGroup, appName, routerAddress string) {
+	forwardToOtherRouterSuccess.WithLabelValues(appGroup, appName, routerAddress).Inc()
+}
+
+func IncreaseForwardToOtherRouterFailed(appGroup, appName, routerAddress string) {
+	forwardToOtherRouterFailed.WithLabelValues(appGroup, appName, routerAddress).Inc()
 }
 
 func ObserveBaritoMarketLatency(timeDuration time.Duration) {

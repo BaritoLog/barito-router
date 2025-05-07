@@ -5,7 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -36,26 +36,28 @@ type ProducerRouter interface {
 }
 
 type producerRouter struct {
-	addr                  string
-	marketUrl             string
-	profilePath           string
-	profileByAppGroupPath string
-	cacheBag              *cache.Cache
-	client                *http.Client
-	appCtx                *appcontext.AppContext
-	producerStore         *ProducerStore
+	addr                              string
+	marketUrl                         string
+	profilePath                       string
+	profileByAppGroupPath             string
+	cacheBag                          *cache.Cache
+	client                            *http.Client
+	appCtx                            *appcontext.AppContext
+	producerStore                     *ProducerStore
+	isRouterLocationForwardingEnabled bool
 }
 
 func NewProducerRouter(addr, marketUrl, profilePath string, profileByAppGroupPath string, appCtx *appcontext.AppContext) ProducerRouter {
 	return &producerRouter{
-		addr:                  addr,
-		marketUrl:             marketUrl,
-		profilePath:           profilePath,
-		profileByAppGroupPath: profileByAppGroupPath,
-		cacheBag:              cache.New(config.CacheExpirationTimeSeconds, 2*config.CacheExpirationTimeSeconds),
-		client:                createClient(),
-		appCtx:                appCtx,
-		producerStore:         NewProducerStore(),
+		addr:                              addr,
+		marketUrl:                         marketUrl,
+		profilePath:                       profilePath,
+		profileByAppGroupPath:             profileByAppGroupPath,
+		cacheBag:                          cache.New(config.CacheExpirationTimeSeconds, 2*config.CacheExpirationTimeSeconds),
+		client:                            createClient(),
+		appCtx:                            appCtx,
+		producerStore:                     NewProducerStore(),
+		isRouterLocationForwardingEnabled: len(config.RouterLocationForwardingMap) > 0,
 	}
 }
 
@@ -88,13 +90,37 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	)
 	span.SetTag("app-group", profile.ClusterName)
 
+	if req.Body != nil {
+		reqBody, _ = io.ReadAll(req.Body)
+	}
+
+	// check if the router enable routerLocationForwarding
+	if p.isRouterLocationForwardingEnabled {
+		host, found := p.isEligibleForRouterLocationForwarding(profile)
+		if found {
+			resp, err := p.forwardToOtherRouter(host, req, reqBody, profile.ClusterName)
+			if err != nil {
+				log.Errorf("Error forwarding to other router: %s", err.Error())
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			defer resp.Body.Close() // Ensure the response body is closed after reading
+
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				log.Errorf("Error reading response body: %s", err.Error())
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(resp.StatusCode)
+			w.Write(body)
+			return
+		}
+	}
+
 	//Collect all results and errors for all the produce endpoints.
 	var produceResults []*pb.ProduceResult
 	var produceErrors []error
-
-	if req.Body != nil {
-		reqBody, _ = ioutil.ReadAll(req.Body)
-	}
 
 	// ConsulHosts are only used in the legacy infrastructure(LXC containers).
 	if len(profile.ConsulHosts) > 0 {
@@ -258,7 +284,7 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 		defer gzipReader.Close()
 
 		// Read the decompressed request body into a buffer
-		reqBody, err = ioutil.ReadAll(gzipReader)
+		reqBody, err = io.ReadAll(gzipReader)
 		if err != nil {
 			log.Errorf("%s", err.Error())
 			logProduceError(instrumentation.ErrorGzipDecompression, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
@@ -307,6 +333,36 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 	}
 
 	return nil, fmt.Errorf("Invalid URL called - %s", req.URL.Path)
+}
+
+func (p *producerRouter) isEligibleForRouterLocationForwarding(profile *Profile) (string, bool) {
+	host, found := config.RouterLocationForwardingMap[profile.ProducerLocation]
+	return host, found
+}
+
+func (p *producerRouter) forwardToOtherRouter(host string, req *http.Request, reqBody []byte, appGroupName string) (*http.Response, error) {
+	// Create a new request to the other router
+	appName := req.Header.Get(AppNameHeaderName)
+	newReq, err := http.NewRequest(req.Method, host+req.URL.Path, bytes.NewBuffer(reqBody))
+	if err != nil {
+		return nil, err
+	}
+
+	// Copy headers from the original request to the new request
+	for key, values := range req.Header {
+		for _, value := range values {
+			newReq.Header.Add(key, value)
+		}
+	}
+
+	// Send the request to the other router
+	resp, err := p.client.Do(newReq)
+	if err != nil {
+		instrumentation.IncreaseForwardToOtherRouterFailed(appGroupName, appName, host)
+	} else {
+		instrumentation.IncreaseForwardToOtherRouterSuccess(appGroupName, appName, host)
+	}
+	return resp, err
 }
 
 func checkProduceResultsAndRespond(w http.ResponseWriter, results []*pb.ProduceResult, errors []error) {
