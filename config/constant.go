@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"time"
 
 	"github.com/BaritoLog/go-boilerplate/envkit"
@@ -32,6 +33,7 @@ const (
 	EnvSSOClientSecret                   = "BARITO_SSO_CLIENT_SECRET"
 	EnvHMACJWTSecretString               = "BARITO_HMAC_JWT_SECRET_STRING"
 	EnvAllowedDomains                    = "BARITO_ALLOWED_DOMAINS"
+	EnvRouterLocationForwardingMap       = "BARITO_ROUTER_LOCATION_FORWARDING_MAP"
 	EnvJaegerServiceName                 = "BARITO_JAEGER_SERVICE_NAME"
 
 	DefaultProducerRouterAddress             = ":8081"
@@ -44,6 +46,7 @@ const (
 	DefaultBaritoProfileApiByAppGroupPath    = "api/profile_by_app_group"
 	DefaultBaritoAuthorizeApiPath            = "api/authorize"
 	DefaultBaritoProfileApiByClusternamePath = "api/v2/profile_by_cluster_name"
+	DefaultRouterLocationForwardingMap       = ""
 	DefaultJaegerServiceName                 = "barito_router"
 	DefaultNewRelicAppName                   = "barito_router"
 	DefaultNewRelicLicenseKey                = ""
@@ -81,6 +84,7 @@ var (
 	SSOClientSecret                string
 	HMACJWTSecretString            string
 	AllowedDomains                 string
+	RouterLocationForwardingMap    map[string]string
 	CacheExpirationTimeSeconds     time.Duration
 	BackupCacheExpirationTimeHours time.Duration
 )
@@ -181,4 +185,20 @@ func init() {
 		DefaultBackupCacheExpirationTimeHours,
 	)
 	BackupCacheExpirationTimeHours = time.Duration(temp) * time.Hour
+
+	RouterLocationForwardingMap = make(map[string]string)
+	routerLocationMapsString, _ := envkit.GetString(
+		EnvRouterLocationForwardingMap,
+		DefaultRouterLocationForwardingMap,
+	)
+	for _, v := range strings.Split(routerLocationMapsString, ",") {
+		if v == "" {
+			continue
+		}
+		s := strings.Split(v, "=")
+		if len(s) != 2 {
+			continue
+		}
+		RouterLocationForwardingMap[s[0]] = s[1]
+	}
 }

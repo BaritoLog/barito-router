@@ -21,17 +21,30 @@ import (
 	jaegerlog "github.com/uber/jaeger-client-go/log"
 )
 
-func main() {
+func printConfig() {
 	fmt.Printf("%s=%s\n", config.EnvProducerRouterAddress, config.RouterAddress)
 	fmt.Printf("%s=%s\n", config.EnvKibanaRouterAddress, config.KibanaRouterAddress)
+	fmt.Printf("%s=%s\n", config.EnvProducerPort, config.ProducerPort)
 	fmt.Printf("%s=%s\n", config.EnvBaritoMarketUrl, config.BaritoMarketUrl)
-	fmt.Printf("%s=%s\n", config.EnvBaritoMarketAccessToken, config.BaritoMarketAccessToken)
+	fmt.Printf("%s=%s\n", config.EnvBaritoViewerUrl, config.BaritoViewerUrl)
 	fmt.Printf("%s=%s\n", config.EnvBaritoProfileApiPath, config.ProfileApiPath)
 	fmt.Printf("%s=%s\n", config.EnvBaritoProfileApiByAppGroupPath, config.ProfileApiByAppGroupPath)
 	fmt.Printf("%s=%s\n", config.EnvBaritoAuthorizeApiPath, config.AuthorizeApiPath)
-	fmt.Printf("%s=%s\n\n", config.EnvBaritoProfileApiByClusternamePath, config.ProfileApiByClusternamePath)
-	fmt.Printf("%s=%v\n", config.EnvEnableTracing, config.EnableTracing)
-	fmt.Printf("%s=%v\n", config.EnvEnableSSO, config.EnableSSO)
+	fmt.Printf("%s=%s\n", config.EnvBaritoProfileApiByClusternamePath, config.ProfileApiByClusternamePath)
+	fmt.Printf("%s=%s\n", config.EnvNewRelicAppName, config.NewRelicAppName)
+	fmt.Printf("%s=%s\n", config.EnvNewRelicEnabled, config.NewRelicEnabled)
+	fmt.Printf("%s=%s\n", config.EnvCacheExpirationTimeSeconds, config.CacheExpirationTimeSeconds)
+	fmt.Printf("%s=%s\n", config.EnvBackupCacheExpirationTimeHours, config.BackupCacheExpirationTimeHours)
+	fmt.Printf("%s=%s\n", config.EnvEnableTracing, config.EnableTracing)
+	fmt.Printf("%s=%s\n", config.EnvEnableSSO, config.EnableSSO)
+	fmt.Printf("%s=%s\n", config.EnvSSORedirectPath, config.SSORedirectPath)
+	fmt.Printf("%s=%s\n", config.EnvAllowedDomains, config.AllowedDomains)
+	fmt.Printf("%s=%s\n", config.EnvRouterLocationForwardingMap, config.RouterLocationForwardingMap)
+	fmt.Printf("%s=%s\n", config.EnvJaegerServiceName, config.JaegerServiceName)
+}
+
+func main() {
+	printConfig()
 
 	newRelicConfig := newrelic.NewConfig(config.NewRelicAppName, config.NewRelicLicenseKey)
 	newRelicConfig.Enabled = config.NewRelicEnabled
