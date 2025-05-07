@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 	"time"
@@ -99,7 +98,7 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if p.isRouterLocationForwardingEnabled {
 		host, found := p.isEligibleForRouterLocationForwarding(profile)
 		if found {
-			resp, err := p.forwardToOtherRouter(host, req, reqBody)
+			resp, err := p.forwardToOtherRouter(host, req, reqBody, profile.ClusterName)
 			if err != nil {
 				log.Errorf("Error forwarding to other router: %s", err.Error())
 				w.WriteHeader(http.StatusInternalServerError)
@@ -285,7 +284,7 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 		defer gzipReader.Close()
 
 		// Read the decompressed request body into a buffer
-		reqBody, err = ioutil.ReadAll(gzipReader)
+		reqBody, err = io.ReadAll(gzipReader)
 		if err != nil {
 			log.Errorf("%s", err.Error())
 			logProduceError(instrumentation.ErrorGzipDecompression, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
@@ -341,9 +340,9 @@ func (p *producerRouter) isEligibleForRouterLocationForwarding(profile *Profile)
 	return host, found
 }
 
-func (p *producerRouter) forwardToOtherRouter(host string, req *http.Request, reqBody []byte) (*http.Response, error) {
-	fmt.Println("Forwarding to other router: ", host)
+func (p *producerRouter) forwardToOtherRouter(host string, req *http.Request, reqBody []byte, appGroupName string) (*http.Response, error) {
 	// Create a new request to the other router
+	appName := req.Header.Get(AppNameHeaderName)
 	newReq, err := http.NewRequest(req.Method, host+req.URL.Path, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, err
@@ -358,6 +357,11 @@ func (p *producerRouter) forwardToOtherRouter(host string, req *http.Request, re
 
 	// Send the request to the other router
 	resp, err := p.client.Do(newReq)
+	if err != nil {
+		instrumentation.IncreaseForwardToOtherRouterFailed(appGroupName, appName, host)
+	} else {
+		instrumentation.IncreaseForwardToOtherRouterSuccess(appGroupName, appName, host)
+	}
 	return resp, err
 }
 
