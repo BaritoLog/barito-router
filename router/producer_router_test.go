@@ -495,6 +495,77 @@ func TestProducerRouter_WithAppGroupSecret_K8s(t *testing.T) {
 	FatalIfWrongResponseBody(t, resp, "")
 }
 
+func TestProducerRouter_WithAppGroupSecret_K8s_Forwarding(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	targetServer := NewTestServer(http.StatusOK, []byte("arrived-on-router-b"))
+	defer targetServer.Close()
+
+	marketServer := NewJsonTestServer(http.StatusOK, Profile{
+		ProducerLocation: "dc-cluster-b",
+	})
+	defer marketServer.Close()
+
+	router := NewTestSuccessfulProducerK8sWithForwarding(ctrl, marketServer.URL)
+
+	testPayload := sampleRawTimber()
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost/produce", bytes.NewBuffer(testPayload))
+	req.Header.Add("X-App-Group-Secret", "some-secret")
+	req.Header.Add("X-App-Name", "some-name")
+	config.RouterLocationForwardingMap = map[string]string{
+		"dc-cluster-b": "https://localhost:45500",
+	}
+	resp := RecordResponse(router.ServeHTTP, req)
+
+	FatalIfWrongResponseStatus(t, resp, http.StatusOK)
+	FatalIfWrongResponseBody(t, resp, "arrived-on-router-b")
+
+	testPayload = sampleRawTimberCollection()
+	req, _ = http.NewRequest(http.MethodGet, "http://localhost/produce_batch", bytes.NewBuffer(testPayload))
+	req.Header.Add("X-App-Secret", "some-secret")
+	resp = RecordResponse(router.ServeHTTP, req)
+
+	FatalIfWrongResponseStatus(t, resp, http.StatusOK)
+	FatalIfWrongResponseBody(t, resp, "arrived-on-router-b")
+}
+func TestProducerRouter_WithAppGroupSecret_K8s_DoubleForwarding(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	targetServer := NewTestServer(http.StatusOK, []byte("arrived-on-router-b"))
+	defer targetServer.Close()
+
+	marketServer := NewJsonTestServer(http.StatusOK, Profile{
+		ProducerLocation: "dc-cluster-b",
+	})
+	defer marketServer.Close()
+
+	router := NewTestSuccessfulProducerK8sWithForwarding(ctrl, marketServer.URL)
+
+	testPayload := sampleRawTimber()
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost/produce", bytes.NewBuffer(testPayload))
+	req.Header.Add("X-App-Group-Secret", "some-secret")
+	req.Header.Add("X-App-Name", "some-name")
+	req.Header.Add(RouterForwardingHeaderName, "1")
+	config.RouterLocationForwardingMap = map[string]string{
+		"dc-cluster-b": "https://localhost:45500",
+	}
+	resp := RecordResponse(router.ServeHTTP, req)
+
+	FatalIfWrongResponseStatus(t, resp, http.StatusInternalServerError)
+	FatalIfWrongResponseBody(t, resp, "")
+
+	testPayload = sampleRawTimberCollection()
+	req, _ = http.NewRequest(http.MethodGet, "http://localhost/produce_batch", bytes.NewBuffer(testPayload))
+	req.Header.Add("X-App-Secret", "some-secret")
+	req.Header.Add(RouterForwardingHeaderName, "1")
+	resp = RecordResponse(router.ServeHTTP, req)
+
+	FatalIfWrongResponseStatus(t, resp, http.StatusInternalServerError)
+	FatalIfWrongResponseBody(t, resp, "")
+}
+
 func TestProducerRouter_WithAppGroupSecret_DoubleWrite(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
@@ -597,6 +668,26 @@ func NewTestSuccessfulProducerK8s(ctrl *gomock.Controller, marketUrl string, pro
 
 	router.producerStore.producerStoreMap[pAttr] = &grpcParts{
 		client: pClient,
+	}
+
+	return router
+}
+
+func NewTestSuccessfulProducerK8sWithForwarding(ctrl *gomock.Controller, marketUrl string) ProducerRouter {
+	config := newrelic.NewConfig("barito-router", "")
+	config.Enabled = false
+	appCtx := appcontext.NewAppContext(config)
+
+	router := &producerRouter{
+		addr:                              ":45500",
+		marketUrl:                         marketUrl,
+		profilePath:                       "profilePath",
+		profileByAppGroupPath:             "profileByAppGroupPath",
+		client:                            createClient(),
+		cacheBag:                          cache.New(1*time.Minute, 10*time.Minute),
+		appCtx:                            appCtx,
+		producerStore:                     NewProducerStore(),
+		isRouterLocationForwardingEnabled: true,
 	}
 
 	return router

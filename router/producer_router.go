@@ -22,12 +22,13 @@ import (
 )
 
 const (
-	AppSecretHeaderName      = "X-App-Secret"
-	AppGroupSecretHeaderName = "X-App-Group-Secret"
-	AppNameHeaderName        = "X-App-Name"
-	KeyProducer              = "producer"
-	AppNoProfilePath         = "api/producer_no_profile"
-	AppNoSecretPath          = "api/no_secret"
+	AppSecretHeaderName        = "X-App-Secret"
+	AppGroupSecretHeaderName   = "X-App-Group-Secret"
+	RouterForwardingHeaderName = "X-Barito-Router-Forwarded"
+	AppNameHeaderName          = "X-App-Name"
+	KeyProducer                = "producer"
+	AppNoProfilePath           = "api/producer_no_profile"
+	AppNoSecretPath            = "api/no_secret"
 )
 
 type ProducerRouter interface {
@@ -96,8 +97,16 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// check if the router enable routerLocationForwarding
 	if p.isRouterLocationForwardingEnabled {
-		host, found := p.isEligibleForRouterLocationForwarding(profile)
-		if found {
+		// make sure the request is not forwarded from another router
+		if req.Header.Get(RouterForwardingHeaderName) == "1" {
+			log.Infof("Request already forwarded from another router, skipping forwarding again.")
+			instrumentation.IncreaseDoubleRouterForward(profile.ClusterName, req.Header.Get(AppNameHeaderName))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		host, isEligible := p.isEligibleForRouterLocationForwarding(profile)
+		if isEligible {
 			resp, err := p.forwardToOtherRouter(host, req, reqBody, profile.ClusterName)
 			if err != nil {
 				log.Errorf("Error forwarding to other router: %s", err.Error())
@@ -336,8 +345,8 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 }
 
 func (p *producerRouter) isEligibleForRouterLocationForwarding(profile *Profile) (string, bool) {
-	host, found := config.RouterLocationForwardingMap[profile.ProducerLocation]
-	return host, found
+	host, isEligible := config.RouterLocationForwardingMap[profile.ProducerLocation]
+	return host, isEligible
 }
 
 func (p *producerRouter) forwardToOtherRouter(host string, req *http.Request, reqBody []byte, appGroupName string) (*http.Response, error) {
@@ -354,6 +363,7 @@ func (p *producerRouter) forwardToOtherRouter(host string, req *http.Request, re
 			newReq.Header.Add(key, value)
 		}
 	}
+	newReq.Header.Set(RouterForwardingHeaderName, "1")
 
 	// Send the request to the other router
 	resp, err := p.client.Do(newReq)
