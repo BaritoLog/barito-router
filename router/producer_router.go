@@ -80,6 +80,7 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	defer span.Finish()
 
 	profile, err := p.getProfile(w, req, span)
+	fmt.Println("Profile:", profile)
 	if p.isProfileError(w, req, profile, err) {
 		return
 	}
@@ -179,11 +180,13 @@ func (p *producerRouter) getProfile(w http.ResponseWriter, req *http.Request, sp
 	appGroupSecret := req.Header.Get(AppGroupSecretHeaderName)
 	appName := req.Header.Get(AppNameHeaderName)
 
+	fmt.Println("getProfile appSecret:", appSecret, "appGroupSecret:", appGroupSecret, "appName:", appName)
 	if isAppSecretAvailable(appSecret) {
 		profile, err = fetchProfileByAppSecret(p.client, span.Context(), p.cacheBag, p.marketUrl, p.profilePath, appSecret)
 		if profile != nil {
 			instrumentation.RunTransaction(p.appCtx.NewRelicApp(), p.profileByAppGroupPath, w, req)
 		}
+		fmt.Println("failed to get profile by app secret", err)
 		return profile, err
 	}
 
@@ -192,6 +195,7 @@ func (p *producerRouter) getProfile(w http.ResponseWriter, req *http.Request, sp
 		if profile != nil {
 			instrumentation.RunTransaction(p.appCtx.NewRelicApp(), p.profileByAppGroupPath, w, req)
 		}
+		fmt.Println("failed to get profile by app group secret", err)
 		return profile, err
 
 	}

@@ -51,6 +51,7 @@ func fetchProfileByAppGroupSecret(client *http.Client, spanContext opentracing.S
 		q.Add("app_name", appName)
 		req, _ := http.NewRequest("GET", address, nil)
 
+		fmt.Println("fetchProfileByAppGroupSecret", address, appGroupSecret, appName)
 		req.URL.RawQuery = q.Encode()
 
 		return fetchProfile(client, req, spanContext)
@@ -75,6 +76,7 @@ func fetchProfile(client *http.Client, req *http.Request, spanContext opentracin
 		return
 	}
 
+	fmt.Println("fetchProfile", req.URL.String(), res.StatusCode)
 	if res.StatusCode == http.StatusOK {
 		body, _ := ioutil.ReadAll(res.Body)
 		profile, err = NewProfileFromBytes(body)
