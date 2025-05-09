@@ -363,7 +363,9 @@ func (p *producerRouter) forwardToOtherRouter(host string, req *http.Request, re
 			newReq.Header.Add(key, value)
 		}
 	}
-	newReq.Header.Set(RouterForwardingHeaderName, "1")
+	newReq.Header.Add(RouterForwardingHeaderName, "1")
+	fmt.Println("Forwarding to other router:", host+req.URL.Path)
+	fmt.Println("Headers:", newReq.Header)
 
 	// Send the request to the other router
 	resp, err := p.client.Do(newReq)
