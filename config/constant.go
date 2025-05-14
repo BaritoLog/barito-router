@@ -34,6 +34,7 @@ const (
 	EnvHMACJWTSecretString               = "BARITO_HMAC_JWT_SECRET_STRING"
 	EnvAllowedDomains                    = "BARITO_ALLOWED_DOMAINS"
 	EnvRouterLocationForwardingMap       = "BARITO_ROUTER_LOCATION_FORWARDING_MAP"
+	EnvViewerLocationForwardingMap       = "BARITO_VIEWER_LOCATION_FORWARDING_MAP"
 	EnvJaegerServiceName                 = "BARITO_JAEGER_SERVICE_NAME"
 
 	DefaultProducerRouterAddress             = ":8081"
@@ -47,6 +48,7 @@ const (
 	DefaultBaritoAuthorizeApiPath            = "api/authorize"
 	DefaultBaritoProfileApiByClusternamePath = "api/v2/profile_by_cluster_name"
 	DefaultRouterLocationForwardingMap       = ""
+	DefaultViewerLocationForwardingMap       = ""
 	DefaultJaegerServiceName                 = "barito_router"
 	DefaultNewRelicAppName                   = "barito_router"
 	DefaultNewRelicLicenseKey                = ""
@@ -85,6 +87,7 @@ var (
 	HMACJWTSecretString            string
 	AllowedDomains                 string
 	RouterLocationForwardingMap    map[string]string
+	ViewerLocationForwardingMap    map[string]string
 	CacheExpirationTimeSeconds     time.Duration
 	BackupCacheExpirationTimeHours time.Duration
 )
@@ -200,5 +203,21 @@ func init() {
 			continue
 		}
 		RouterLocationForwardingMap[s[0]] = s[1]
+	}
+
+	ViewerLocationForwardingMap = make(map[string]string)
+	viewerLocationMapsString, _ := envkit.GetString(
+		EnvViewerLocationForwardingMap,
+		DefaultViewerLocationForwardingMap,
+	)
+	for _, v := range strings.Split(viewerLocationMapsString, ",") {
+		if v == "" {
+			continue
+		}
+		s := strings.Split(v, "=")
+		if len(s) != 2 {
+			continue
+		}
+		ViewerLocationForwardingMap[s[0]] = s[1]
 	}
 }
