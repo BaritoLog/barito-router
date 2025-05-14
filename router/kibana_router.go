@@ -314,7 +314,6 @@ func (r *kibanaRouter) onEligibleForwarding(w http.ResponseWriter, req *http.Req
 		return
 	}
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
 
 	for key, values := range resp.Header {
 		for _, value := range values {
@@ -323,7 +322,9 @@ func (r *kibanaRouter) onEligibleForwarding(w http.ResponseWriter, req *http.Req
 	}
 
 	w.WriteHeader(resp.StatusCode)
-	w.Write(body)
+	if _, err := io.Copy(w, resp.Body); err != nil {
+		slog.Error("Error copying response body", "error", err)
+	}
 }
 
 func KibanaGetClustername(req *http.Request) string {
