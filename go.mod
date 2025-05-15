@@ -1,6 +1,6 @@
 module github.com/BaritoLog/barito-router
 
-go 1.23
+go 1.23.0
 
 toolchain go1.23.2
 
@@ -23,6 +23,7 @@ require (
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
 	github.com/uber/jaeger-lib v2.4.0+incompatible
 	github.com/urfave/cli v1.22.1
+	golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6
 	golang.org/x/oauth2 v0.18.0
 	google.golang.org/grpc v1.64.0
 	google.golang.org/protobuf v1.33.0
