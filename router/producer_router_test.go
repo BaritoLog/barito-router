@@ -514,7 +514,7 @@ func TestProducerRouter_WithAppGroupSecret_K8s_Forwarding(t *testing.T) {
 	req.Header.Add("X-App-Group-Secret", "some-secret")
 	req.Header.Add("X-App-Name", "some-name")
 	config.RouterLocationForwardingMap = map[string]string{
-		"dc-cluster-b": "https://localhost:45500",
+		"dc-cluster-b": targetServer.URL,
 	}
 	resp := RecordResponse(router.ServeHTTP, req)
 
@@ -549,12 +549,12 @@ func TestProducerRouter_WithAppGroupSecret_K8s_DoubleForwarding(t *testing.T) {
 	req.Header.Add("X-App-Name", "some-name")
 	req.Header.Add(RouterForwardingHeaderName, "1")
 	config.RouterLocationForwardingMap = map[string]string{
-		"dc-cluster-b": "https://localhost:45500",
+		"dc-cluster-b": targetServer.URL,
 	}
 	resp := RecordResponse(router.ServeHTTP, req)
 
 	FatalIfWrongResponseStatus(t, resp, http.StatusInternalServerError)
-	FatalIfWrongResponseBody(t, resp, "")
+	FatalIfWrongResponseBody(t, resp, ErrorDoubleRouterForward)
 
 	testPayload = sampleRawTimberCollection()
 	req, _ = http.NewRequest(http.MethodGet, "http://localhost/produce_batch", bytes.NewBuffer(testPayload))
@@ -563,7 +563,7 @@ func TestProducerRouter_WithAppGroupSecret_K8s_DoubleForwarding(t *testing.T) {
 	resp = RecordResponse(router.ServeHTTP, req)
 
 	FatalIfWrongResponseStatus(t, resp, http.StatusInternalServerError)
-	FatalIfWrongResponseBody(t, resp, "")
+	FatalIfWrongResponseBody(t, resp, ErrorDoubleRouterForward)
 }
 
 func TestProducerRouter_WithAppGroupSecret_DoubleWrite(t *testing.T) {

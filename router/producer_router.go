@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -29,6 +30,8 @@ const (
 	KeyProducer                = "producer"
 	AppNoProfilePath           = "api/producer_no_profile"
 	AppNoSecretPath            = "api/no_secret"
+
+	ErrorDoubleRouterForward = "Request already forwarded from another router, skipping forwarding again."
 )
 
 type ProducerRouter interface {
@@ -97,32 +100,15 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// check if the router enable routerLocationForwarding
 	if p.isRouterLocationForwardingEnabled {
-		// make sure the request is not forwarded from another router
-		if req.Header.Get(RouterForwardingHeaderName) == "1" {
-			log.Infof("Request already forwarded from another router, skipping forwarding again.")
-			instrumentation.IncreaseDoubleRouterForward(profile.ClusterName, req.Header.Get(AppNameHeaderName))
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		host, isEligible := p.isEligibleForRouterLocationForwarding(profile)
-		if isEligible {
-			resp, err := p.forwardToOtherRouter(host, req, reqBody, profile.ClusterName)
-			if err != nil {
-				log.Errorf("Error forwarding to other router: %s", err.Error())
-				w.WriteHeader(http.StatusInternalServerError)
+		// check if the router is eligible for forwarding, based on producer_location & this router env variables
+		if host, isEligible := p.isEligibleForRouterLocationForwarding(profile); isEligible {
+			// make sure the request is not forwarded from another router
+			if req.Header.Get(RouterForwardingHeaderName) != "" {
+				p.onDoubleRouterForward(w, req, profile.ClusterName)
 				return
 			}
-			defer resp.Body.Close() // Ensure the response body is closed after reading
 
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				log.Errorf("Error reading response body: %s", err.Error())
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			w.WriteHeader(resp.StatusCode)
-			w.Write(body)
+			p.onEligibleForwarding(w, req, host, profile.ClusterName, reqBody)
 			return
 		}
 	}
@@ -351,7 +337,6 @@ func (p *producerRouter) isEligibleForRouterLocationForwarding(profile *Profile)
 
 func (p *producerRouter) forwardToOtherRouter(host string, req *http.Request, reqBody []byte, appGroupName string) (*http.Response, error) {
 	// Create a new request to the other router
-	appName := req.Header.Get(AppNameHeaderName)
 	newReq, err := http.NewRequest(req.Method, host+req.URL.Path, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, err
@@ -364,15 +349,40 @@ func (p *producerRouter) forwardToOtherRouter(host string, req *http.Request, re
 		}
 	}
 	newReq.Header.Set(RouterForwardingHeaderName, "1")
+	newReq.Header.Set("Accept-Encoding", "")
 
 	// Send the request to the other router
-	resp, err := p.client.Do(newReq)
+	return p.client.Do(newReq)
+}
+
+func (p *producerRouter) onDoubleRouterForward(w http.ResponseWriter, req *http.Request, clusterName string) {
+	slog.Error(ErrorDoubleRouterForward)
+	instrumentation.IncreaseDoubleRouterForward(clusterName, req.Header.Get(AppNameHeaderName))
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte(ErrorDoubleRouterForward))
+}
+
+func (p *producerRouter) onEligibleForwarding(w http.ResponseWriter, req *http.Request, otherRouterHost, clusterName string, reqBody []byte) {
+	appName := req.Header.Get(AppNameHeaderName)
+	resp, err := p.forwardToOtherRouter(otherRouterHost, req, reqBody, clusterName)
 	if err != nil {
-		instrumentation.IncreaseForwardToOtherRouterFailed(appGroupName, appName, host)
-	} else {
-		instrumentation.IncreaseForwardToOtherRouterSuccess(appGroupName, appName, host)
+		slog.Error("Error forwarding to other router", slog.String("error", err.Error()))
+		instrumentation.IncreaseForwardToOtherRouterFailed(clusterName, appName, otherRouterHost)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-	return resp, err
+	defer resp.Body.Close()
+
+	fmt.Println("Response from other router:", resp.StatusCode)
+	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+	w.WriteHeader(resp.StatusCode)
+	_, err = io.Copy(w, resp.Body)
+	if err != nil {
+		slog.Error("Error copying response body", slog.String("error", err.Error()))
+		instrumentation.IncreaseForwardToOtherRouterFailed(clusterName, appName, otherRouterHost)
+		return
+	}
+	instrumentation.IncreaseForwardToOtherRouterSuccess(clusterName, appName, otherRouterHost)
 }
 
 func checkProduceResultsAndRespond(w http.ResponseWriter, results []*pb.ProduceResult, errors []error) {
