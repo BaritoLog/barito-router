@@ -15,6 +15,9 @@ var disableAppNameLabelMetrics bool = false
 var forwardToOtherRouterSuccess *prometheus.CounterVec
 var forwardToOtherRouterFailed *prometheus.CounterVec
 var doubleRouterForward *prometheus.CounterVec
+var forwardToOtherViewerSuccess *prometheus.CounterVec
+var forwardToOtherViewerFailed *prometheus.CounterVec
+var doubleViewerForward *prometheus.CounterVec
 var producerRequestCount *prometheus.CounterVec
 var producerRequestError *prometheus.CounterVec
 var producerNumberMessagePerBatch *prometheus.SummaryVec
@@ -55,6 +58,18 @@ func InitProducerInstrumentation() {
 		Name: "barito_router_forward_to_other_router_failed_total",
 		Help: "Number of failed request forwarded to other router",
 	}, []string{"app_group", "app_name", "router_address"})
+	doubleViewerForward = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "barito_viewer_double_viewer_forward_total",
+		Help: "Number of request forwarded to other viewer",
+	}, []string{"app_group"})
+	forwardToOtherViewerSuccess = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "barito_viewer_forward_to_other_viewer_success_total",
+		Help: "Number of success request forwarded to other viewer",
+	}, []string{"app_group", "viewer_address"})
+	forwardToOtherViewerFailed = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "barito_viewer_forward_to_other_viewer_failed_total",
+		Help: "Number of failed request forwarded to other viewer",
+	}, []string{"app_group", "viewer_address"})
 	producerRequestCount = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "barito_router_producer_request_total",
 		Help: "Number request to producer",
@@ -115,6 +130,18 @@ func IncreaseForwardToOtherRouterFailed(appGroup, appName, routerAddress string)
 
 func IncreaseDoubleRouterForward(appGroup, appName string) {
 	doubleRouterForward.WithLabelValues(appGroup, appName).Inc()
+}
+
+func IncreaseForwardToOtherViewerSuccess(appGroup, viewerAddress string) {
+	forwardToOtherViewerSuccess.WithLabelValues(appGroup, viewerAddress).Inc()
+}
+
+func IncreaseForwardToOtherViewerFailed(appGroup, viewerAddress string) {
+	forwardToOtherViewerFailed.WithLabelValues(appGroup, viewerAddress).Inc()
+}
+
+func IncreaseDoubleViewerForward(appGroup string) {
+	doubleViewerForward.WithLabelValues(appGroup).Inc()
 }
 
 func ObserveBaritoMarketLatency(timeDuration time.Duration) {
