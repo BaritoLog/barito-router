@@ -28,6 +28,7 @@ const (
 	// AppKibanaNoProfilePath is path to register when server returned no profile
 	AppKibanaNoProfilePath     = "api/kibana_no_profile"
 	ViewerForwardingHeaderName = "X-Barito-Viewer-Forwarded"
+	ErrorViewerDoubleForward   = "Request already forwarded by another viewer, skipping forwarding again"
 )
 
 type KibanaRouter interface {
@@ -167,13 +168,14 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 
 	// check if the viewer enable viewerLocationForwarding
 	if r.isViewerLocationForwardingEnabled {
-		if req.Header.Get(ViewerForwardingHeaderName) != "" {
-			r.onDoubleViewerForward(w, req, clusterName)
-			return
-		}
+		if host, isEligible := r.isEligibleForViewerLocationForwarding(profile); isEligible {
+			// make sure not double forward
+			if req.Header.Get(ViewerForwardingHeaderName) != "" {
+				r.onDoubleViewerForward(w, req, clusterName)
+				return
+			}
 
-		host, isEligible := r.isEligibleForViewerLocationForwarding(profile)
-		if isEligible {
+			// do forwarding here
 			r.onEligibleForwarding(w, req, host, clusterName)
 			return
 		}
@@ -270,7 +272,7 @@ func (r *kibanaRouter) MustBeAuthorizedMiddleware(next http.Handler) http.Handle
 }
 
 func (r *kibanaRouter) isEligibleForViewerLocationForwarding(profile *Profile) (string, bool) {
-	host, isEligible := config.ViewerLocationForwardingMap[profile.ProducerLocation]
+	host, isEligible := config.ViewerLocationForwardingMap[profile.KibanaLocation]
 	return host, isEligible
 }
 
@@ -289,19 +291,14 @@ func (r *kibanaRouter) forwardToOtherViewer(host string, req *http.Request, reqB
 	}
 	newReq.Header.Set(ViewerForwardingHeaderName, "1")
 	newReq.Header.Set("Accept-Encoding", "")
-	resp, err := r.client.Do(newReq)
-	if err != nil {
-		instrumentation.IncreaseForwardToOtherViewerFailed(appGroupName, host)
-	} else {
-		instrumentation.IncreaseForwardToOtherViewerSuccess(appGroupName, host)
-	}
-	return resp, err
+	return r.client.Do(newReq)
 }
 
 func (r *kibanaRouter) onDoubleViewerForward(w http.ResponseWriter, req *http.Request, clusterName string) {
-	slog.Error("Request already forwarded by another viewer, skipping forwarding again")
+	slog.Error(ErrorViewerDoubleForward)
 	instrumentation.IncreaseDoubleViewerForward(clusterName)
 	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte(ErrorViewerDoubleForward))
 }
 
 func (r *kibanaRouter) onEligibleForwarding(w http.ResponseWriter, req *http.Request, otherViewerHost, clusterName string) {
@@ -309,6 +306,7 @@ func (r *kibanaRouter) onEligibleForwarding(w http.ResponseWriter, req *http.Req
 	defer req.Body.Close()
 	resp, err := r.forwardToOtherViewer(otherViewerHost, req, originalBody, clusterName)
 	if err != nil {
+		instrumentation.IncreaseForwardToOtherViewerFailed(clusterName, otherViewerHost)
 		slog.Error("Error forwarding to other viewer")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -323,8 +321,11 @@ func (r *kibanaRouter) onEligibleForwarding(w http.ResponseWriter, req *http.Req
 
 	w.WriteHeader(resp.StatusCode)
 	if _, err := io.Copy(w, resp.Body); err != nil {
+		instrumentation.IncreaseForwardToOtherViewerFailed(clusterName, otherViewerHost)
 		slog.Error("Error copying response body", "error", err)
+		return
 	}
+	instrumentation.IncreaseForwardToOtherViewerSuccess(clusterName, otherViewerHost)
 }
 
 func KibanaGetClustername(req *http.Request) string {
