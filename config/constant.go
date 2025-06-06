@@ -21,6 +21,7 @@ const (
 	EnvBaritoProfileApiByAppGroupPath    = "BARITO_PROFILE_API_BY_APP_GROUP_PATH"
 	EnvBaritoAuthorizeApiPath            = "BARITO_AUTHORIZE_API_PATH"
 	EnvBaritoProfileApiByClusternamePath = "BARITO_PROFILE_API_BY_CLUSTERNAME_PATH"
+	EnvBaritoJsonProtocolAppGroupList    = "BARITO_JSON_PROTOCOL_APP_GROUP_LIST"
 	EnvNewRelicAppName                   = "BARITO_NEW_RELIC_APP_NAME"
 	EnvNewRelicLicenseKey                = "BARITO_NEW_RELIC_LICENSE_KEY"
 	EnvNewRelicEnabled                   = "BARITO_NEW_RELIC_ENABLED"
@@ -47,6 +48,7 @@ const (
 	DefaultBaritoProfileApiByAppGroupPath    = "api/profile_by_app_group"
 	DefaultBaritoAuthorizeApiPath            = "api/authorize"
 	DefaultBaritoProfileApiByClusternamePath = "api/v2/profile_by_cluster_name"
+	DefaultBaritoJsonProtocolAppGroupList    = ""
 	DefaultRouterLocationForwardingMap       = ""
 	DefaultViewerLocationForwardingMap       = ""
 	DefaultJaegerServiceName                 = "barito_router"
@@ -75,6 +77,7 @@ var (
 	ProfileApiByAppGroupPath       string
 	AuthorizeApiPath               string
 	ProfileApiByClusternamePath    string
+	JsonProtocolAppGroupList       map[string]bool
 	JaegerServiceName              string
 	NewRelicAppName                string
 	NewRelicLicenseKey             string
@@ -133,6 +136,14 @@ func init() {
 		EnvBaritoProfileApiByClusternamePath,
 		DefaultBaritoProfileApiByClusternamePath,
 	)
+	JsonProtocolAppGroupList = map[string]bool{}
+	list, _ := envkit.GetString(EnvBaritoJsonProtocolAppGroupList, DefaultBaritoJsonProtocolAppGroupList)
+	for _, v := range strings.Split(list, ",") {
+		v = strings.TrimSpace(v)
+		if v != "" {
+			JsonProtocolAppGroupList[v] = true
+		}
+	}
 	JaegerServiceName, _ = envkit.GetString(
 		EnvJaegerServiceName,
 		DefaultJaegerServiceName,

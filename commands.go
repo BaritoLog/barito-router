@@ -50,10 +50,10 @@ func RunProducerRouter(appCtx *appcontext.AppContext) {
 		config.BaritoMarketUrl,
 		config.ProfileApiPath,
 		config.ProfileApiByAppGroupPath,
+		config.JsonProtocolAppGroupList,
 		appCtx,
 	)
 	produceRouter.Server().ListenAndServe()
-
 }
 
 func RunKibanaRouter(appCtx *appcontext.AppContext) {

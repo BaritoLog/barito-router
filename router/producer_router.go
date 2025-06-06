@@ -8,7 +8,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/BaritoLog/barito-router/appcontext"
@@ -44,14 +43,16 @@ type producerRouter struct {
 	marketUrl                         string
 	profilePath                       string
 	profileByAppGroupPath             string
+	JsonProtocolAppGroupList          map[string]bool
 	cacheBag                          *cache.Cache
 	client                            *http.Client
 	appCtx                            *appcontext.AppContext
 	producerStore                     *ProducerStore
 	isRouterLocationForwardingEnabled bool
+	producerClient                    ProducerClient
 }
 
-func NewProducerRouter(addr, marketUrl, profilePath string, profileByAppGroupPath string, appCtx *appcontext.AppContext) ProducerRouter {
+func NewProducerRouter(addr, marketUrl, profilePath string, profileByAppGroupPath string, JsonProtocolAppGroupList map[string]bool, appCtx *appcontext.AppContext) ProducerRouter {
 	return &producerRouter{
 		addr:                              addr,
 		marketUrl:                         marketUrl,
@@ -62,6 +63,8 @@ func NewProducerRouter(addr, marketUrl, profilePath string, profileByAppGroupPat
 		appCtx:                            appCtx,
 		producerStore:                     NewProducerStore(),
 		isRouterLocationForwardingEnabled: len(config.RouterLocationForwardingMap) > 0,
+		producerClient:                    NewProducerClientFromEnv(),
+		JsonProtocolAppGroupList:          JsonProtocolAppGroupList,
 	}
 }
 
@@ -117,23 +120,17 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var produceResults []*pb.ProduceResult
 	var produceErrors []error
 
-	// ConsulHosts are only used in the legacy infrastructure(LXC containers).
-	if len(profile.ConsulHosts) > 0 {
-		pAttrConsul, err := p.fetchProducerAttributesFromConsul(w, req, profile)
-		if err == nil {
-			result, err := p.handleProduce(req, reqBody, pAttrConsul, profile)
-
-			produceResults = append(produceResults, result)
-			produceErrors = append(produceErrors, err)
-		} else {
-			produceErrors = append(produceErrors, err)
-		}
-	}
-
 	// profile.ProducerAddress is used only for the K8s infrastructure.
 	if profile.ProducerAddress != "" {
 		pAttrK8s := p.fetchK8sProducerAttributes(profile)
-		result, err := p.handleProduce(req, reqBody, pAttrK8s, profile)
+		var result *pb.ProduceResult
+		if _, ok := p.JsonProtocolAppGroupList[profile.ClusterName]; ok {
+			// If the app group is in the JsonProtocolAppGroupList, we handle it using JSON protocol.
+			result, err = p.handleProduceUseJSON(req, reqBody, pAttrK8s, profile)
+		} else {
+			// otherwise, we handle it using the grpc produce method.
+			result, err = p.handleProduce(req, reqBody, pAttrK8s, profile)
+		}
 
 		produceResults = append(produceResults, result)
 		produceErrors = append(produceErrors, err)
@@ -206,41 +203,6 @@ func (p *producerRouter) isProfileError(w http.ResponseWriter, req *http.Request
 	return false
 }
 
-func (p *producerRouter) fetchProducerAttributesFromConsul(w http.ResponseWriter, req *http.Request, profile *Profile) (producerAttributes, error) {
-
-	appGroupSecret := req.Header.Get(AppGroupSecretHeaderName)
-	appName := req.Header.Get(AppNameHeaderName)
-	producerName, _ := profile.MetaServiceName(KeyProducer)
-
-	srv, consulAddr, err := consulService(profile.ConsulHosts, producerName, profile.ClusterName, p.cacheBag)
-	if err != nil {
-		onConsulError(w, err)
-		logProduceError(instrumentation.ErrorConsulCall, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
-		return producerAttributes{}, err
-	}
-	if srv == nil {
-		err = fmt.Errorf("Can't find service from consul: %s", KeyProducer)
-		onConsulError(w, err)
-		logProduceError(instrumentation.ErrorNoProducer, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
-		return producerAttributes{}, err
-	}
-
-	if config.ProducerPort != "" {
-		port, err := strconv.Atoi(config.ProducerPort)
-		if err == nil {
-			srv.ServicePort = port
-		}
-	}
-
-	pAttr := producerAttributes{
-		consulAddr:   consulAddr,
-		producerAddr: fmt.Sprintf("%s:%d", srv.ServiceAddress, srv.ServicePort),
-		producerName: producerName,
-		appSecret:    profile.AppSecret,
-	}
-	return pAttr, nil
-}
-
 func (p *producerRouter) fetchK8sProducerAttributes(profile *Profile) producerAttributes {
 
 	producerName, _ := profile.MetaServiceName(KeyProducer)
@@ -253,6 +215,17 @@ func (p *producerRouter) fetchK8sProducerAttributes(profile *Profile) producerAt
 		appSecret:           profile.AppSecret,
 	}
 	return pAttr
+}
+
+func (p *producerRouter) handleProduceUseJSON(req *http.Request, reqBody []byte, pAttr producerAttributes, profile *Profile) (*pb.ProduceResult, error) {
+	appGroupSecret := req.Header.Get(AppGroupSecretHeaderName)
+	appName := req.Header.Get(AppNameHeaderName)
+	_, err := p.producerClient.Send(req, reqBody, profile)
+	if err != nil {
+		logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
+		return nil, err
+	}
+	return &pb.ProduceResult{Topic: appName}, nil
 }
 
 func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr producerAttributes, profile *Profile) (*pb.ProduceResult, error) {
