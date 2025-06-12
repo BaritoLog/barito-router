@@ -23,6 +23,7 @@ func fetchProfileByClusterName(client *http.Client, spanContext opentracing.Span
 		q.Add("access_token", accessToken)
 		q.Add("cluster_name", clusterName)
 
+		fmt.Println("fetchingProfile", address, q)
 		req, _ := http.NewRequest("GET", address, nil)
 		req.URL.RawQuery = q.Encode()
 
