@@ -154,20 +154,23 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 	}
 	span.SetTag("app-group", clusterName)
 
-	appSecret := req.Header.Get("App-Group-Secret")
-	if appSecret == "" {
+	appGroupSecret := req.Header.Get("App-Group-Secret")
+	if appGroupSecret == "" {
 		http.Error(w, "App-Group-Secret header is required", http.StatusUnauthorized)
 		return
 	}
 
 	profile, err := fetchProfileByClusterName(r.client, span.Context(), r.cacheBag, r.marketUrl, r.accessToken, r.profilePath, clusterName)
-	if err != nil || profile == nil || profile.AppGroupSecret != appSecret {
+	if err != nil || profile == nil || profile.AppGroupSecret != appGroupSecret {
+		fmt.Println("Profile not found or invalid app secret for cluster:", clusterName, "Error:", err, appGroupSecret)
 		http.Error(w, "Invalid app secret or cluster name", http.StatusUnauthorized)
 		return
 	}
+	fmt.Println("Profile found for cluster:", clusterName, profile)
 
 	// check if the viewer enable viewerLocationForwarding
 	if r.isViewerLocationForwardingEnabled {
+		fmt.Println("Viewer location forwarding is enabled for cluster:", clusterName)
 		if host, isEligible := r.isEligibleForViewerLocationForwarding(profile); isEligible {
 			// make sure not double forward
 			if req.Header.Get(ViewerForwardingHeaderName) != "" {
@@ -208,6 +211,7 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 	}
 
 	targetUrl := fmt.Sprintf("http://%s:%d/%s", profile.ElasticsearchAddress, esPort, esEndpoint)
+	fmt.Println("Target URL:", targetUrl)
 
 	esReq, err := http.NewRequest(req.Method, targetUrl, req.Body)
 	if err != nil {
@@ -221,7 +225,7 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 		}
 	}
 
-	esReq.Header.Add("App-Secret", appSecret)
+	esReq.Header.Add("App-Secret", appGroupSecret)
 
 	esRes, err := r.client.Do(esReq)
 	if err != nil {
@@ -237,7 +241,7 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 	}
 
 	duration := time.Since(startTime)
-	LogAudit(req, esRes, nil, appSecret, clusterName, duration)
+	LogAudit(req, esRes, nil, appGroupSecret, clusterName, duration)
 }
 
 func (r *kibanaRouter) MustBeAuthorizedMiddleware(next http.Handler) http.Handler {
