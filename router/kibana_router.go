@@ -154,14 +154,14 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 	}
 	span.SetTag("app-group", clusterName)
 
-	appSecret := req.Header.Get("App-Group-Secret")
-	if appSecret == "" {
+	appGroupSecret := req.Header.Get("App-Group-Secret")
+	if appGroupSecret == "" {
 		http.Error(w, "App-Group-Secret header is required", http.StatusUnauthorized)
 		return
 	}
 
 	profile, err := fetchProfileByClusterName(r.client, span.Context(), r.cacheBag, r.marketUrl, r.accessToken, r.profilePath, clusterName)
-	if err != nil || profile == nil || profile.AppGroupSecret != appSecret {
+	if err != nil || profile == nil || profile.AppGroupSecret != appGroupSecret {
 		http.Error(w, "Invalid app secret or cluster name", http.StatusUnauthorized)
 		return
 	}
@@ -221,7 +221,7 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 		}
 	}
 
-	esReq.Header.Add("App-Secret", appSecret)
+	esReq.Header.Add("App-Secret", appGroupSecret)
 
 	esRes, err := r.client.Do(esReq)
 	if err != nil {
@@ -237,7 +237,7 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 	}
 
 	duration := time.Since(startTime)
-	LogAudit(req, esRes, nil, appSecret, clusterName, duration)
+	LogAudit(req, esRes, nil, appGroupSecret, clusterName, duration)
 }
 
 func (r *kibanaRouter) MustBeAuthorizedMiddleware(next http.Handler) http.Handler {
