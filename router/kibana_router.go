@@ -222,7 +222,6 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 	}
 
 	esReq.Header.Add("App-Secret", appGroupSecret)
-	esReq.Header.Add("Accept-Encoding", "")
 
 	esRes, err := r.client.Do(esReq)
 	if err != nil {
@@ -291,7 +290,7 @@ func (r *kibanaRouter) forwardToOtherViewer(host string, req *http.Request, reqB
 		}
 	}
 	newReq.Header.Set(ViewerForwardingHeaderName, "1")
-	newReq.Header.Set("Accept-Encoding", "")
+	newReq.Header.Set("Accept-Encoding", "text/plain")
 	return r.client.Do(newReq)
 }
 
