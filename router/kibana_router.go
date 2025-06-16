@@ -222,6 +222,7 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 	}
 
 	esReq.Header.Add("App-Secret", appGroupSecret)
+	esReq.Header.Add("Accept-Encoding", "")
 
 	esRes, err := r.client.Do(esReq)
 	if err != nil {
