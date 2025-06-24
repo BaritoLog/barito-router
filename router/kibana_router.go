@@ -116,6 +116,21 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// check if the viewer enable viewerLocationForwarding
+	if r.isViewerLocationForwardingEnabled {
+		if host, isEligible := r.isEligibleForViewerLocationForwarding(profile); isEligible {
+			// make sure not double forward
+			if req.Header.Get(ViewerForwardingHeaderName) != "" {
+				r.onDoubleViewerForward(w, req, clusterName)
+				return
+			}
+
+			// do forwarding here
+			r.onEligibleForwarding(w, req, host, clusterName)
+			return
+		}
+	}
+
 	sourceUrl := fmt.Sprintf("%s://%s:%s", httpkit.SchemeOfRequest(req), req.Host, r.addr)
 	targetUrl := fmt.Sprintf("http://%s", profile.KibanaAddress)
 	if profile.KibanaMtlsEnabled {
