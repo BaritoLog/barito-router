@@ -1,7 +1,6 @@
 package router
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"log/slog"
@@ -126,7 +125,7 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			}
 
 			// do forwarding here
-			r.onEligibleForwarding(w, req, host, clusterName)
+			r.onEligibleForwarding(w, req, host)
 			return
 		}
 	}
@@ -191,7 +190,7 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 			}
 
 			// do forwarding here
-			r.onEligibleForwarding(w, req, host, clusterName)
+			r.onEligibleForwarding(w, req, host)
 			return
 		}
 	}
@@ -291,24 +290,6 @@ func (r *kibanaRouter) isEligibleForViewerLocationForwarding(profile *Profile) (
 	return host, isEligible
 }
 
-func (r *kibanaRouter) forwardToOtherViewer(host string, req *http.Request, reqBody []byte, appGroupName string) (*http.Response, error) {
-	// Create a new request to the other router
-	newReq, err := http.NewRequest(req.Method, host+req.URL.Path, bytes.NewBuffer(reqBody))
-	if err != nil {
-		return nil, err
-	}
-
-	// Copy headers from the original request to the new request
-	for key, values := range req.Header {
-		for _, value := range values {
-			newReq.Header.Add(key, value)
-		}
-	}
-	newReq.Header.Set(ViewerForwardingHeaderName, "1")
-	newReq.Header.Set("Accept-Encoding", "text/plain")
-	return r.client.Do(newReq)
-}
-
 func (r *kibanaRouter) onDoubleViewerForward(w http.ResponseWriter, req *http.Request, clusterName string) {
 	slog.Error(ErrorViewerDoubleForward)
 	instrumentation.IncreaseDoubleViewerForward(clusterName)
@@ -316,31 +297,10 @@ func (r *kibanaRouter) onDoubleViewerForward(w http.ResponseWriter, req *http.Re
 	w.Write([]byte(ErrorViewerDoubleForward))
 }
 
-func (r *kibanaRouter) onEligibleForwarding(w http.ResponseWriter, req *http.Request, otherViewerHost, clusterName string) {
-	originalBody, _ := io.ReadAll(req.Body)
-	defer req.Body.Close()
-	resp, err := r.forwardToOtherViewer(otherViewerHost, req, originalBody, clusterName)
-	if err != nil {
-		instrumentation.IncreaseForwardToOtherViewerFailed(clusterName, otherViewerHost)
-		slog.Error("Error forwarding to other viewer")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer resp.Body.Close()
-
-	for key, values := range resp.Header {
-		for _, value := range values {
-			w.Header().Add(key, value)
-		}
-	}
-
-	w.WriteHeader(resp.StatusCode)
-	if _, err := io.Copy(w, resp.Body); err != nil {
-		instrumentation.IncreaseForwardToOtherViewerFailed(clusterName, otherViewerHost)
-		slog.Error("Error copying response body", "error", err)
-		return
-	}
-	instrumentation.IncreaseForwardToOtherViewerSuccess(clusterName, otherViewerHost)
+func (r *kibanaRouter) onEligibleForwarding(w http.ResponseWriter, req *http.Request, otherViewerHost string) {
+	req.Header.Set("Accept-Encoding", "text/plain")
+	proxy := NewKibanaProxy(req.Host, otherViewerHost, false)
+	proxy.ReverseProxy().ServeHTTP(w, req)
 }
 
 func KibanaGetClustername(req *http.Request) string {
