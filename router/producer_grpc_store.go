@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	pb "github.com/bentol/barito-proto/producer"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -78,10 +79,15 @@ func (s *ProducerStore) createGrpcConnection(attr producerAttributes) (conn *grp
 		conn, err = grpc.Dial(
 			attr.producerAddr,
 			grpc.WithTransportCredentials(creds),
+			grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 		)
 		return conn, err
 	} else {
-		conn, err = grpc.Dial(attr.producerAddr, grpc.WithInsecure())
+		conn, err = grpc.Dial(
+			attr.producerAddr,
+			grpc.WithInsecure(),
+			grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+		)
 	}
 	return
 }

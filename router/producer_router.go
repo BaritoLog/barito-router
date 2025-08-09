@@ -222,8 +222,9 @@ func (p *producerRouter) handleProduce(ctx context.Context, req *http.Request, r
 	producerClient := p.producerStore.GetClient(pAttr)
 
 	ctx, span := ProducerTracer.Start(ctx, "handleProduce", trace.WithAttributes(
-		attribute.String("appGroupSecret", appGroupSecret),
 		attribute.String("appName", appName),
+		attribute.String("producerAddress", pAttr.producerAddr),
+		attribute.String("producerName", pAttr.producerName),
 	))
 	defer span.End()
 
