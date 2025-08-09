@@ -1,22 +1,24 @@
 package router
 
 import (
+	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/BaritoLog/barito-router/config"
 	"github.com/BaritoLog/barito-router/instrumentation"
-	"github.com/opentracing/opentracing-go"
 	"github.com/patrickmn/go-cache"
-	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const ProfileBackupCachePrefix = "profile_backup_cache_"
 
-func fetchProfileByClusterName(client *http.Client, spanContext opentracing.SpanContext, cacheBag *cache.Cache, marketUrl, accessToken, path, clusterName string) (*Profile, error) {
+func fetchProfileByClusterName(ctx context.Context, client *http.Client, cacheBag *cache.Cache, marketUrl, accessToken, path, clusterName string) (*Profile, error) {
 	return fetchUsingCache(cacheBag, accessToken+"_"+clusterName, func() (profile *Profile, err error) {
 		address := fmt.Sprintf("%s/%s", marketUrl, path)
 		q := url.Values{}
@@ -26,11 +28,11 @@ func fetchProfileByClusterName(client *http.Client, spanContext opentracing.Span
 		req, _ := http.NewRequest("GET", address, nil)
 		req.URL.RawQuery = q.Encode()
 
-		return fetchProfile(client, req, spanContext)
+		return fetchProfile(ctx, client, req)
 	})
 }
 
-func fetchProfileByAppSecret(client *http.Client, spanContext opentracing.SpanContext, cacheBag *cache.Cache, marketUrl, path, appSecret string) (*Profile, error) {
+func fetchProfileByAppSecret(ctx context.Context, client *http.Client, cacheBag *cache.Cache, marketUrl, path, appSecret string) (*Profile, error) {
 	return fetchUsingCache(cacheBag, appSecret, func() (profile *Profile, err error) {
 		address := fmt.Sprintf("%s/%s", marketUrl, path)
 		q := url.Values{}
@@ -39,11 +41,11 @@ func fetchProfileByAppSecret(client *http.Client, spanContext opentracing.SpanCo
 		req, _ := http.NewRequest("GET", address, nil)
 		req.URL.RawQuery = q.Encode()
 
-		return fetchProfile(client, req, spanContext)
+		return fetchProfile(ctx, client, req)
 	})
 }
 
-func fetchProfileByAppGroupSecret(client *http.Client, spanContext opentracing.SpanContext, cacheBag *cache.Cache, marketUrl, path, appGroupSecret string, appName string) (*Profile, error) {
+func fetchProfileByAppGroupSecret(ctx context.Context, client *http.Client, cacheBag *cache.Cache, marketUrl, path, appGroupSecret string, appName string) (*Profile, error) {
 	return fetchUsingCache(cacheBag, appGroupSecret+"_"+appName, func() (profile *Profile, err error) {
 		address := fmt.Sprintf("%s/%s", marketUrl, path)
 		q := url.Values{}
@@ -53,33 +55,31 @@ func fetchProfileByAppGroupSecret(client *http.Client, spanContext opentracing.S
 
 		req.URL.RawQuery = q.Encode()
 
-		return fetchProfile(client, req, spanContext)
+		return fetchProfile(ctx, client, req)
 	})
 }
 
-func fetchProfile(client *http.Client, req *http.Request, spanContext opentracing.SpanContext) (profile *Profile, err error) {
-	if config.EnableTracing {
-		err = opentracing.GlobalTracer().Inject(
-			spanContext,
-			opentracing.HTTPHeaders,
-			opentracing.HTTPHeadersCarrier(req.Header))
-		if err != nil {
-			log.Errorf("Error when inject trace header: %q", err.Error())
-		}
-	}
+func fetchProfile(ctx context.Context, client *http.Client, req *http.Request) (profile *Profile, err error) {
+	ctx, span := ProducerTracer.Start(ctx, "fetchProfile", trace.WithAttributes(
+		attribute.String("url", req.URL.String()),
+	))
+	defer span.End()
 
 	startTime := time.Now()
 	res, err := client.Do(req)
 	instrumentation.ObserveBaritoMarketLatency(time.Since(startTime))
 	if err != nil {
+		span.SetStatus(codes.Error, "Failed to fetch profile")
 		return
 	}
 
 	if res.StatusCode == http.StatusOK {
-		body, _ := ioutil.ReadAll(res.Body)
+		body, _ := io.ReadAll(res.Body)
 		profile, err = NewProfileFromBytes(body)
+		return
 	}
 
+	span.SetStatus(codes.Error, fmt.Sprintf("Failed to fetch profile, status code: %d", res.StatusCode))
 	return
 }
 

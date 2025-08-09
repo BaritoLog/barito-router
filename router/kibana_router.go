@@ -15,7 +15,6 @@ import (
 	"github.com/BaritoLog/go-boilerplate/httpkit"
 	"github.com/gorilla/mux"
 	"github.com/hashicorp/consul/api"
-	"github.com/opentracing/opentracing-go"
 	"github.com/patrickmn/go-cache"
 	"golang.org/x/time/rate"
 )
@@ -93,14 +92,12 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	span := opentracing.StartSpan("barito_router_viewer.view_kibana")
-	defer span.Finish()
+	ctx := req.Context()
 
 	params := mux.Vars(req)
 	clusterName := params["cluster_name"]
 
-	span.SetTag("app-group", clusterName)
-	profile, err := fetchProfileByClusterName(r.client, span.Context(), r.cacheBag, r.marketUrl, r.accessToken, r.profilePath, clusterName)
+	profile, err := fetchProfileByClusterName(ctx, r.client, r.cacheBag, r.marketUrl, r.accessToken, r.profilePath, clusterName)
 	if profile != nil {
 		instrumentation.RunTransaction(r.appCtx.NewRelicApp(), r.profilePath, w, req)
 	}
@@ -153,10 +150,9 @@ func RateLimiter(limiter *rate.Limiter) func(http.Handler) http.Handler {
 }
 
 func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	startTime := time.Now()
 	esPort := 9200
-	span := opentracing.StartSpan("barito_router_viewer.elasticsearch")
-	defer span.Finish()
 
 	vars := mux.Vars(req)
 	clusterName := vars["cluster_name"]
@@ -166,7 +162,6 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 		http.Error(w, "clusterName is required", http.StatusBadRequest)
 		return
 	}
-	span.SetTag("app-group", clusterName)
 
 	appGroupSecret := req.Header.Get("App-Group-Secret")
 	if appGroupSecret == "" {
@@ -174,7 +169,7 @@ func (r *kibanaRouter) ServeElasticsearch(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	profile, err := fetchProfileByClusterName(r.client, span.Context(), r.cacheBag, r.marketUrl, r.accessToken, r.profilePath, clusterName)
+	profile, err := fetchProfileByClusterName(ctx, r.client, r.cacheBag, r.marketUrl, r.accessToken, r.profilePath, clusterName)
 	if err != nil || profile == nil || profile.AppGroupSecret != appGroupSecret {
 		http.Error(w, "Invalid app secret or cluster name", http.StatusUnauthorized)
 		return

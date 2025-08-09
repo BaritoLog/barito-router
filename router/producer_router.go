@@ -8,7 +8,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/BaritoLog/barito-router/appcontext"
@@ -16,9 +15,13 @@ import (
 	"github.com/BaritoLog/barito-router/instrumentation"
 	pb "github.com/bentol/barito-proto/producer"
 	"github.com/mostynb/go-grpc-compression/zstd"
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 )
 
@@ -32,6 +35,10 @@ const (
 	AppNoSecretPath            = "api/no_secret"
 
 	ErrorDoubleRouterForward = "Request already forwarded from another router, skipping forwarding again."
+)
+
+var (
+	ProducerTracer = otel.Tracer("barito-router.producer")
 )
 
 type ProducerRouter interface {
@@ -66,24 +73,25 @@ func NewProducerRouter(addr, marketUrl, profilePath string, profileByAppGroupPat
 }
 
 func (p *producerRouter) Server() *http.Server {
+	handler := otelhttp.NewHandler(p, "/")
 	return &http.Server{
 		Addr:    p.addr,
-		Handler: p,
+		Handler: handler,
 	}
 }
 
 func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	reqBody := []byte{}
+
 	if req.URL.Path == "/ping" {
 		OnPing(w, req)
 		return
 	}
+	ctx, otelSpan := ProducerTracer.Start(req.Context(), "ServeHTTP")
+	defer otelSpan.End()
 
-	span := opentracing.StartSpan("barito_router_producer.produce_log")
-	defer span.Finish()
-
-	profile, err := p.getProfile(w, req, span)
-	if p.isProfileError(w, req, profile, err) {
+	profile, err := p.getProfile(ctx, w, req)
+	if p.isProfileError(w, req, profile, err, otelSpan) {
 		return
 	}
 
@@ -92,7 +100,6 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		req.Header.Get(AppNameHeaderName),
 		profile.ProducerAddress,
 	)
-	span.SetTag("app-group", profile.ClusterName)
 
 	if req.Body != nil {
 		reqBody, _ = io.ReadAll(req.Body)
@@ -104,11 +111,11 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if host, isEligible := p.isEligibleForRouterLocationForwarding(profile); isEligible {
 			// make sure the request is not forwarded from another router
 			if req.Header.Get(RouterForwardingHeaderName) != "" {
-				p.onDoubleRouterForward(w, req, profile.ClusterName)
+				p.onDoubleRouterForward(w, req, profile.ClusterName, otelSpan)
 				return
 			}
 
-			p.onEligibleForwarding(w, req, host, profile.ClusterName, reqBody)
+			p.onEligibleForwarding(ctx, w, req, host, profile.ClusterName, reqBody)
 			return
 		}
 	}
@@ -117,23 +124,10 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var produceResults []*pb.ProduceResult
 	var produceErrors []error
 
-	// ConsulHosts are only used in the legacy infrastructure(LXC containers).
-	if len(profile.ConsulHosts) > 0 {
-		pAttrConsul, err := p.fetchProducerAttributesFromConsul(w, req, profile)
-		if err == nil {
-			result, err := p.handleProduce(req, reqBody, pAttrConsul, profile)
-
-			produceResults = append(produceResults, result)
-			produceErrors = append(produceErrors, err)
-		} else {
-			produceErrors = append(produceErrors, err)
-		}
-	}
-
 	// profile.ProducerAddress is used only for the K8s infrastructure.
 	if profile.ProducerAddress != "" {
 		pAttrK8s := p.fetchK8sProducerAttributes(profile)
-		result, err := p.handleProduce(req, reqBody, pAttrK8s, profile)
+		result, err := p.handleProduce(ctx, req, reqBody, pAttrK8s, profile)
 
 		produceResults = append(produceResults, result)
 		produceErrors = append(produceErrors, err)
@@ -156,89 +150,56 @@ func isAppGroupSecretAvailable(appGroupSecret string, appName string) bool {
 	return false
 }
 
-func (p *producerRouter) getProfile(w http.ResponseWriter, req *http.Request, span opentracing.Span) (*Profile, error) {
-
+func (p *producerRouter) getProfile(ctx context.Context, w http.ResponseWriter, req *http.Request) (*Profile, error) {
 	var err error
 	var profile *Profile
+
+	ctx, span := ProducerTracer.Start(ctx, "getProfile")
+	defer span.End()
 
 	appSecret := req.Header.Get(AppSecretHeaderName)
 	appGroupSecret := req.Header.Get(AppGroupSecretHeaderName)
 	appName := req.Header.Get(AppNameHeaderName)
 
 	if isAppSecretAvailable(appSecret) {
-		profile, err = fetchProfileByAppSecret(p.client, span.Context(), p.cacheBag, p.marketUrl, p.profilePath, appSecret)
-		if profile != nil {
-			instrumentation.RunTransaction(p.appCtx.NewRelicApp(), p.profileByAppGroupPath, w, req)
+		profile, err = fetchProfileByAppSecret(ctx, p.client, p.cacheBag, p.marketUrl, p.profilePath, appSecret)
+		if err != nil {
+			span.SetStatus(codes.Error, "Failed to fetch profile by app secret")
 		}
 		return profile, err
 	}
 
 	if isAppGroupSecretAvailable(appGroupSecret, appName) {
-		profile, err = fetchProfileByAppGroupSecret(p.client, span.Context(), p.cacheBag, p.marketUrl, p.profileByAppGroupPath, appGroupSecret, appName)
-		if profile != nil {
-			instrumentation.RunTransaction(p.appCtx.NewRelicApp(), p.profileByAppGroupPath, w, req)
+		profile, err = fetchProfileByAppGroupSecret(ctx, p.client, p.cacheBag, p.marketUrl, p.profileByAppGroupPath, appGroupSecret, appName)
+		if err != nil {
+			span.SetStatus(codes.Error, "Failed to fetch profile by app secret")
 		}
 		return profile, err
 
 	}
 
+	span.SetStatus(codes.Unset, "No app secret or app group secret provided")
 	onNoSecret(w)
-	instrumentation.RunTransaction(p.appCtx.NewRelicApp(), AppNoSecretPath, w, req)
 	return nil, nil
 }
 
-func (p *producerRouter) isProfileError(w http.ResponseWriter, req *http.Request, profile *Profile, err error) bool {
+func (p *producerRouter) isProfileError(w http.ResponseWriter, req *http.Request, profile *Profile, err error, span trace.Span) bool {
 
 	appGroupSecret := req.Header.Get(AppGroupSecretHeaderName)
 	appName := req.Header.Get(AppNameHeaderName)
 	if err != nil {
 		onTradeError(w, err)
-		logProduceError(instrumentation.ErrorFetchProfile, "", appGroupSecret, appName, profile.ProducerAddress, req, err)
+		logProduceError(instrumentation.ErrorFetchProfile, "", appGroupSecret, appName, profile.ProducerAddress, req, err, span)
 		return true
 	}
 
 	if profile == nil {
 		onNoProfile(w)
-		logProduceError(instrumentation.ErrorFetchProfile, "", appGroupSecret, appName, "", req, err)
+		logProduceError(instrumentation.ErrorFetchProfile, "", appGroupSecret, appName, "", req, err, span)
 		instrumentation.RunTransaction(p.appCtx.NewRelicApp(), AppNoProfilePath, w, req)
 		return true
 	}
 	return false
-}
-
-func (p *producerRouter) fetchProducerAttributesFromConsul(w http.ResponseWriter, req *http.Request, profile *Profile) (producerAttributes, error) {
-
-	appGroupSecret := req.Header.Get(AppGroupSecretHeaderName)
-	appName := req.Header.Get(AppNameHeaderName)
-	producerName, _ := profile.MetaServiceName(KeyProducer)
-
-	srv, consulAddr, err := consulService(profile.ConsulHosts, producerName, profile.ClusterName, p.cacheBag)
-	if err != nil {
-		onConsulError(w, err)
-		logProduceError(instrumentation.ErrorConsulCall, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
-		return producerAttributes{}, err
-	}
-	if srv == nil {
-		err = fmt.Errorf("Can't find service from consul: %s", KeyProducer)
-		onConsulError(w, err)
-		logProduceError(instrumentation.ErrorNoProducer, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
-		return producerAttributes{}, err
-	}
-
-	if config.ProducerPort != "" {
-		port, err := strconv.Atoi(config.ProducerPort)
-		if err == nil {
-			srv.ServicePort = port
-		}
-	}
-
-	pAttr := producerAttributes{
-		consulAddr:   consulAddr,
-		producerAddr: fmt.Sprintf("%s:%d", srv.ServiceAddress, srv.ServicePort),
-		producerName: producerName,
-		appSecret:    profile.AppSecret,
-	}
-	return pAttr, nil
 }
 
 func (p *producerRouter) fetchK8sProducerAttributes(profile *Profile) producerAttributes {
@@ -255,11 +216,16 @@ func (p *producerRouter) fetchK8sProducerAttributes(profile *Profile) producerAt
 	return pAttr
 }
 
-func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr producerAttributes, profile *Profile) (*pb.ProduceResult, error) {
+func (p *producerRouter) handleProduce(ctx context.Context, req *http.Request, reqBody []byte, pAttr producerAttributes, profile *Profile) (*pb.ProduceResult, error) {
 	appGroupSecret := req.Header.Get(AppGroupSecretHeaderName)
 	appName := req.Header.Get(AppNameHeaderName)
 	producerClient := p.producerStore.GetClient(pAttr)
-	ctx := context.Background()
+
+	ctx, span := ProducerTracer.Start(ctx, "handleProduce", trace.WithAttributes(
+		attribute.String("appGroupSecret", appGroupSecret),
+		attribute.String("appName", appName),
+	))
+	defer span.End()
 
 	timberContext := TimberContextFromProfile(profile)
 	var result *pb.ProduceResult
@@ -273,7 +239,7 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 		gzipReader, err := gzip.NewReader(bytes.NewReader(reqBody))
 		if err != nil {
 			log.Errorf("%s", err.Error())
-			logProduceError(instrumentation.ErrorGzipDecompression, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
+			logProduceError(instrumentation.ErrorGzipDecompression, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err, span)
 			return nil, err
 		}
 		defer gzipReader.Close()
@@ -282,7 +248,7 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 		reqBody, err = io.ReadAll(gzipReader)
 		if err != nil {
 			log.Errorf("%s", err.Error())
-			logProduceError(instrumentation.ErrorGzipDecompression, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
+			logProduceError(instrumentation.ErrorGzipDecompression, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err, span)
 			return nil, err
 		}
 	}
@@ -291,7 +257,7 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 		timberCollection, err := ConvertBytesToTimberCollection(reqBody, timberContext)
 		if err != nil {
 			log.Errorf("%s", err.Error())
-			logProduceError(instrumentation.ErrorTimberConvert, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
+			logProduceError(instrumentation.ErrorTimberConvert, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err, span)
 			return nil, err
 		}
 
@@ -300,7 +266,7 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 		instrumentation.ObserveProducerLatency(profile.ClusterName, appName, pAttr.producerAddr, time.Since(startTime))
 
 		if err != nil {
-			logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
+			logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err, span)
 			return nil, err
 		}
 		instrumentation.ObserveByteIngestion(profile.ClusterName, appName, pAttr.producerAddr, reqBody)
@@ -311,7 +277,7 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 		timber, err := ConvertBytesToTimber(reqBody, timberContext)
 		if err != nil {
 			log.Errorf("%s", err.Error())
-			logProduceError(instrumentation.ErrorTimberConvert, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
+			logProduceError(instrumentation.ErrorTimberConvert, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err, span)
 			return nil, err
 		}
 
@@ -320,7 +286,7 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 		instrumentation.ObserveProducerLatency(profile.ClusterName, appName, pAttr.producerAddr, time.Since(startTime))
 
 		if err != nil {
-			logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err)
+			logProduceError(instrumentation.ErrorProducerCall, profile.ClusterName, appGroupSecret, appName, profile.ProducerAddress, req, err, span)
 			return nil, err
 		}
 		instrumentation.ObserveByteIngestion(profile.ClusterName, appName, pAttr.producerAddr, reqBody)
@@ -355,17 +321,28 @@ func (p *producerRouter) forwardToOtherRouter(host string, req *http.Request, re
 	return p.client.Do(newReq)
 }
 
-func (p *producerRouter) onDoubleRouterForward(w http.ResponseWriter, req *http.Request, clusterName string) {
+func (p *producerRouter) onDoubleRouterForward(w http.ResponseWriter, req *http.Request, clusterName string, span trace.Span) {
 	slog.Error(ErrorDoubleRouterForward)
+	span.SetStatus(codes.Error, ErrorDoubleRouterForward)
 	instrumentation.IncreaseDoubleRouterForward(clusterName, req.Header.Get(AppNameHeaderName))
 	w.WriteHeader(http.StatusInternalServerError)
 	w.Write([]byte(ErrorDoubleRouterForward))
 }
 
-func (p *producerRouter) onEligibleForwarding(w http.ResponseWriter, req *http.Request, otherRouterHost, clusterName string, reqBody []byte) {
+func (p *producerRouter) onEligibleForwarding(ctx context.Context, w http.ResponseWriter, req *http.Request, otherRouterHost, clusterName string, reqBody []byte) {
+	_, span := ProducerTracer.Start(ctx, "onEligibleForwarding",
+		trace.WithAttributes(
+			attribute.String("otherRouterHost", otherRouterHost),
+			attribute.String("clusterName", clusterName),
+			attribute.String("appName", req.Header.Get(AppNameHeaderName)),
+		),
+	)
+	defer span.End()
+
 	appName := req.Header.Get(AppNameHeaderName)
 	resp, err := p.forwardToOtherRouter(otherRouterHost, req, reqBody, clusterName)
 	if err != nil {
+		span.SetStatus(codes.Error, "Error forwarding to other router")
 		slog.Error("Error forwarding to other router", slog.String("error", err.Error()))
 		instrumentation.IncreaseForwardToOtherRouterFailed(clusterName, appName, otherRouterHost)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -373,13 +350,13 @@ func (p *producerRouter) onEligibleForwarding(w http.ResponseWriter, req *http.R
 	}
 	defer resp.Body.Close()
 
-	fmt.Println("Response from other router:", resp.StatusCode)
 	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
 	w.WriteHeader(resp.StatusCode)
 	_, err = io.Copy(w, resp.Body)
 	if err != nil {
 		slog.Error("Error copying response body", slog.String("error", err.Error()))
 		instrumentation.IncreaseForwardToOtherRouterFailed(clusterName, appName, otherRouterHost)
+		span.SetStatus(codes.Error, "Error copying response body")
 		return
 	}
 	instrumentation.IncreaseForwardToOtherRouterSuccess(clusterName, appName, otherRouterHost)

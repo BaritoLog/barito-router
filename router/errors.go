@@ -8,6 +8,8 @@ import (
 	"github.com/BaritoLog/barito-router/instrumentation"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/status"
 )
 
@@ -65,7 +67,7 @@ func onRpcSuccess(w http.ResponseWriter, message string) {
 	w.Write([]byte(message))
 }
 
-func logProduceError(context, clusterName, appGroupSecret, appName, producerAddr string, r *http.Request, err error) {
+func logProduceError(context, clusterName, appGroupSecret, appName, producerAddr string, r *http.Request, err error, span trace.Span) {
 	maskedAppGroupSecret := appGroupSecret
 	if len(maskedAppGroupSecret) > 6 {
 		maskedAppGroupSecret = appGroupSecret[0:6]
@@ -76,6 +78,8 @@ func logProduceError(context, clusterName, appGroupSecret, appName, producerAddr
 	}
 	msg := fmt.Sprintf("Got error clusterName=%q, appgroupSecret=%q, appname=%q, context=%q, error=%q", clusterName, maskedAppGroupSecret, appName, context, errorMsg)
 	log.Errorf("%s", msg)
+
+	span.SetStatus(codes.Error, errorMsg)
 
 	instrumentation.IncreaseProducerRequestError(clusterName, appName, producerAddr, r, context)
 }
