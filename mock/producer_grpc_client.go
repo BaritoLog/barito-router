@@ -5,8 +5,8 @@ package mock
 
 import (
 	context "context"
-	gomock "github.com/golang/mock/gomock"
 	producer "github.com/bentol/barito-proto/producer"
+	gomock "github.com/golang/mock/gomock"
 	grpc "google.golang.org/grpc"
 	reflect "reflect"
 )
