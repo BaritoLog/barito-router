@@ -287,6 +287,8 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 		}
 	}
 
+	fmt.Println(string(reqBody))
+
 	if req.URL.Path == "/produce_batch" {
 		timberCollection, err := ConvertBytesToTimberCollection(reqBody, timberContext)
 		if err != nil {
