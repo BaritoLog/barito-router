@@ -2,6 +2,7 @@ package router
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -28,6 +29,8 @@ func ConvertBytesToTimberCollection(b []byte, context pb.TimberContext) (timberC
 	if err != nil {
 		return
 	}
+
+	fmt.Println(string(b))
 
 	for _, timberMap := range timberColMap["items"].([]interface{}) {
 		timberContent, _ := structpb.NewValue(timberMap)
