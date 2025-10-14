@@ -59,31 +59,47 @@ func RunProducerRouter(appCtx *appcontext.AppContext) {
 func RunKibanaRouter(appCtx *appcontext.AppContext) {
 	limiter := rate.NewLimiter(1, 5)
 
-	ssoClient := router.NewSSOClient(config.SSOClientID, config.SSOClientSecret, config.BaritoViewerUrl+config.SSORedirectPath, config.AllowedDomains, config.HMACJWTSecretString)
-	kibanaRouter := router.NewKibanaRouterWithSSO(
-		config.KibanaRouterAddress,
-		config.BaritoMarketUrl,
-		config.BaritoMarketAccessToken,
-		config.ProfileApiByClusternamePath,
-		config.AuthorizeApiPath,
-		appCtx,
-		*ssoClient,
-	)
-
 	r := mux.NewRouter()
 	r.HandleFunc("/ping", router.OnPing)
 
-	r.HandleFunc(router.PATH_LOGIN, ssoClient.HandleLogin)
-	r.HandleFunc(router.PATH_CALLBACK, ssoClient.HandleCallback)
+	var kibanaRouter router.KibanaRouter
+	var ssoClient *router.SSOClient
+	if config.EnableSSO {
+		ssoClient = router.NewSSOClient(config.SSOClientID, config.SSOClientSecret, config.BaritoViewerUrl+config.SSORedirectPath, config.AllowedDomains, config.HMACJWTSecretString)
+
+		r.HandleFunc(router.PATH_LOGIN, ssoClient.HandleLogin)
+		r.HandleFunc(router.PATH_CALLBACK, ssoClient.HandleCallback)
+
+		kibanaRouter = router.NewKibanaRouterWithSSO(
+			config.KibanaRouterAddress,
+			config.BaritoMarketUrl,
+			config.BaritoMarketAccessToken,
+			config.ProfileApiByClusternamePath,
+			config.AuthorizeApiPath,
+			appCtx,
+			*ssoClient,
+		)
+	} else {
+		kibanaRouter = router.NewKibanaRouter(
+			config.KibanaRouterAddress,
+			config.BaritoMarketUrl,
+			config.BaritoMarketAccessToken,
+			config.ProfileApiByClusternamePath,
+			config.AuthorizeApiPath,
+			appCtx,
+		)
+	}
 
 	elasticsearchRoute := r.PathPrefix("/{cluster_name}").Subrouter()
 	elasticsearchRoute.PathPrefix("/elasticsearch/{es_endpoint:.*}").Handler(
 		router.RateLimiter(limiter)(http.HandlerFunc(kibanaRouter.ServeElasticsearch)),
 	)
-
 	kibanaRoute := r.PathPrefix("/").Subrouter()
 	kibanaRoute.PathPrefix("/{cluster_name}").Handler(kibanaRouter)
-	kibanaRoute.Use(ssoClient.MustBeAuthenticatedMiddleware)
+
+	if config.EnableSSO {
+		kibanaRoute.Use(ssoClient.MustBeAuthenticatedMiddleware)
+	}
 	kibanaRoute.Use(kibanaRouter.MustBeAuthorizedMiddleware)
 
 	srv := &http.Server{
