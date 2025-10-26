@@ -136,6 +136,7 @@ func (r *kibanaRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		targetUrl = fmt.Sprintf("https://%s", profile.KibanaAddress)
 	}
 
+	fmt.Println("Proxying to", targetUrl, "from", sourceUrl)
 	proxy := NewKibanaProxy(sourceUrl, targetUrl, profile.KibanaMtlsEnabled)
 	proxy.ReverseProxy().ServeHTTP(w, req)
 }
