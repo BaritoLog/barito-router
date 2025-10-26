@@ -99,8 +99,8 @@ func RunKibanaRouter(appCtx *appcontext.AppContext) {
 
 	if config.EnableSSO {
 		kibanaRoute.Use(ssoClient.MustBeAuthenticatedMiddleware)
+		kibanaRoute.Use(kibanaRouter.MustBeAuthorizedMiddleware)
 	}
-	kibanaRoute.Use(kibanaRouter.MustBeAuthorizedMiddleware)
 
 	srv := &http.Server{
 		Handler:      r,
