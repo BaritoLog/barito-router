@@ -27,6 +27,19 @@ require (
 )
 
 require (
+	github.com/DataDog/datadog-go v3.7.1+incompatible // indirect
+	github.com/afex/hystrix-go v0.0.0-20180502004556-fa1af6a1f4f5 // indirect
+	github.com/cactus/go-statsd-client/statsd v0.0.0-20200423205355-cb0885a1018c // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/gojek/heimdall/v7 v7.3.1
+	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
+	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
+
+require (
 	cloud.google.com/go/compute/metadata v0.7.0 // indirect
 	github.com/HdrHistogram/hdrhistogram-go v1.0.1 // indirect
 	github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da // indirect
@@ -49,8 +62,8 @@ require (
 	github.com/prometheus/procfs v0.2.0 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
-	github.com/stretchr/objx v0.5.0 // indirect
-	github.com/stretchr/testify v1.8.0 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
+	github.com/stretchr/testify v1.11.1 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/net v0.46.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
