@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -15,6 +16,8 @@ import (
 	"github.com/BaritoLog/barito-router/config"
 	"github.com/BaritoLog/barito-router/instrumentation"
 	pb "github.com/bentol/barito-proto/producer"
+	"github.com/gojek/heimdall/v7"
+	"github.com/gojek/heimdall/v7/hystrix"
 	"github.com/mostynb/go-grpc-compression/zstd"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/patrickmn/go-cache"
@@ -32,7 +35,25 @@ const (
 	AppNoSecretPath            = "api/no_secret"
 
 	ErrorDoubleRouterForward = "Request already forwarded from another router, skipping forwarding again."
+
+	// VictoriaLogsCommandName is the hystrix circuit-breaker command name for
+	// the fire-and-forget double-write to VictoriaLogs.
+	VictoriaLogsCommandName = "victorialogs"
+	// K8sMetadataMarker is the token that identifies a k8s log (skipped for VictoriaLogs).
+	K8sMetadataMarker = `"k8s_metadata"`
+	// VictoriaLogsTimeout bounds a single fire-and-forget write to VictoriaLogs.
+	VictoriaLogsTimeout = 10 * time.Second
 )
+
+// vlogsJob is one enqueued double-write. Body is held compressed (as received)
+// so the queue stays small and decompression happens off the produce path.
+type vlogsJob struct {
+	path    string
+	body    []byte
+	isGzip  bool
+	appName string // X-App-Name header; exact app on the app-group path
+	profile *Profile
+}
 
 type ProducerRouter interface {
 	Server() *http.Server
@@ -49,10 +70,28 @@ type producerRouter struct {
 	appCtx                            *appcontext.AppContext
 	producerStore                     *ProducerStore
 	isRouterLocationForwardingEnabled bool
+	vlogsClient                       heimdall.Doer
+	vlogsJobs                         chan vlogsJob
+}
+
+// newVictoriaLogsClient builds the circuit-broken HTTP client for the
+// fire-and-forget double-write to VictoriaLogs. When VictoriaLogs is slow or
+// down, the breaker opens and writes fail fast instead of piling up goroutines.
+func newVictoriaLogsClient() heimdall.Doer {
+	return hystrix.NewClient(
+		hystrix.WithHTTPTimeout(VictoriaLogsTimeout),
+		hystrix.WithHystrixTimeout(VictoriaLogsTimeout),
+		hystrix.WithHTTPClient(createClient()),
+		hystrix.WithCommandName(VictoriaLogsCommandName),
+		hystrix.WithMaxConcurrentRequests(100),
+		hystrix.WithRequestVolumeThreshold(20),
+		hystrix.WithErrorPercentThreshold(25),
+		hystrix.WithSleepWindow(5000),
+	)
 }
 
 func NewProducerRouter(addr, marketUrl, profilePath string, profileByAppGroupPath string, appCtx *appcontext.AppContext) ProducerRouter {
-	return &producerRouter{
+	p := &producerRouter{
 		addr:                              addr,
 		marketUrl:                         marketUrl,
 		profilePath:                       profilePath,
@@ -62,6 +101,40 @@ func NewProducerRouter(addr, marketUrl, profilePath string, profileByAppGroupPat
 		appCtx:                            appCtx,
 		producerStore:                     NewProducerStore(),
 		isRouterLocationForwardingEnabled: len(config.RouterLocationForwardingMap) > 0,
+		vlogsClient:                       newVictoriaLogsClient(),
+	}
+	if config.VictoriaLogsUrl != "" {
+		p.startVictoriaLogsWorkers()
+	}
+	return p
+}
+
+// startVictoriaLogsWorkers launches the fixed worker pool that drains the
+// double-write queue. Workers live for the process lifetime.
+func (p *producerRouter) startVictoriaLogsWorkers() {
+	p.vlogsJobs = make(chan vlogsJob, config.VictoriaLogsQueueSize)
+	for i := 0; i < config.VictoriaLogsWorkers; i++ {
+		go p.vlogsWorker()
+	}
+}
+
+// enqueueVictoriaLogs hands a job to the worker pool without ever blocking:
+// a full queue drops the log and counts it, so the produce path is unaffected.
+func (p *producerRouter) enqueueVictoriaLogs(job vlogsJob) {
+	select {
+	case p.vlogsJobs <- job:
+	default:
+		instrumentation.IncreaseVictoriaLogsDropped(job.profile.ClusterName)
+	}
+}
+
+func (p *producerRouter) vlogsWorker() {
+	for job := range p.vlogsJobs {
+		body := job.body
+		if job.isGzip {
+			body = decompressGzip(body)
+		}
+		p.handleProduceToVictoriaLogs(context.Background(), job.path, body, job.appName, job.profile)
 	}
 }
 
@@ -137,6 +210,20 @@ func (p *producerRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 		produceResults = append(produceResults, result)
 		produceErrors = append(produceErrors, err)
+	}
+
+	if config.VictoriaLogsUrl != "" {
+		// Fire-and-forget: hand the write to the worker pool and move on. A
+		// non-blocking send means a full queue drops the log instead of ever
+		// blocking the produce critical path. Body stays compressed here; the
+		// worker decompresses off the hot path.
+		p.enqueueVictoriaLogs(vlogsJob{
+			path:    req.URL.Path,
+			body:    reqBody,
+			isGzip:  req.Header.Get("Content-Encoding") == "gzip",
+			appName: req.Header.Get(AppNameHeaderName),
+			profile: profile,
+		})
 	}
 
 	checkProduceResultsAndRespond(w, produceResults, produceErrors)
@@ -328,6 +415,118 @@ func (p *producerRouter) handleProduce(req *http.Request, reqBody []byte, pAttr 
 	}
 
 	return nil, fmt.Errorf("Invalid URL called - %s", req.URL.Path)
+}
+
+func isK8sLog(reqBody []byte) bool {
+	return bytes.Contains(reqBody, []byte(K8sMetadataMarker))
+}
+
+func buildVictoriaLogsBody(path string, reqBody []byte) []byte {
+	if path == "/produce_batch" {
+		var batch map[string][]json.RawMessage
+		if err := json.Unmarshal(reqBody, &batch); err != nil {
+			return nil
+		}
+
+		items := batch["items"]
+		if len(items) == 0 {
+			return nil
+		}
+
+		var buf bytes.Buffer
+		for _, item := range items {
+			if isK8sLog(item) {
+				continue
+			}
+			if err := json.Compact(&buf, item); err != nil {
+				continue
+			}
+			buf.WriteByte('\n')
+		}
+
+		if buf.Len() == 0 {
+			return nil
+		}
+		return buf.Bytes()
+	}
+
+	if isK8sLog(reqBody) {
+		return nil
+	}
+	result := make([]byte, len(reqBody)+1)
+	copy(result, reqBody)
+	result[len(reqBody)] = '\n'
+	return result
+}
+
+// decompressGzip inflates a gzip body, returning the original bytes if it is
+// not valid gzip (best-effort; the double-write must not fail loudly).
+func decompressGzip(b []byte) []byte {
+	r, err := gzip.NewReader(bytes.NewReader(b))
+	if err != nil {
+		return b
+	}
+	defer r.Close()
+	if d, err := io.ReadAll(r); err == nil {
+		return d
+	}
+	return b
+}
+
+func (p *producerRouter) handleProduceToVictoriaLogs(reqCtx context.Context, path string, reqBody []byte, appName string, profile *Profile) {
+	// Runs in its own goroutine (fire-and-forget). An unrecovered panic here
+	// would crash the whole router, so contain it — the double-write is best-effort.
+	defer func() {
+		if r := recover(); r != nil {
+			log.Errorf("recovered from panic in VictoriaLogs double-write: %v", r)
+			if profile != nil {
+				instrumentation.IncreaseVictoriaLogsFailed(profile.ClusterName)
+			}
+		}
+	}()
+
+	ctx, cancel := context.WithTimeout(reqCtx, VictoriaLogsTimeout)
+	defer cancel()
+
+	body := buildVictoriaLogsBody(path, reqBody)
+	if body == nil {
+		return
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, config.VictoriaLogsUrl, bytes.NewReader(body))
+	if err != nil {
+		log.Errorf("failed to create VictoriaLogs request: %v", err)
+		instrumentation.IncreaseVictoriaLogsFailed(profile.ClusterName)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	// Tag every ingested log with the origin the router knows (from the profile,
+	// not the dynamic client payload) so VictoriaLogs partitions streams by
+	// cluster/app instead of collapsing everything into the default stream.
+	if appName == "" {
+		appName = profile.Name
+	}
+	req.Header.Set("VL-Stream-Fields", "cluster_name,application_name,app_group")
+	req.Header.Set("VL-Extra-Fields", fmt.Sprintf("cluster_name=%s,application_name=%s,app_group=%s",
+		profile.ClusterName, appName, profile.AppGroup))
+
+	resp, err := p.vlogsClient.Do(req)
+	if err != nil {
+		log.Errorf("failed to forward to VictoriaLogs: %v", err)
+		instrumentation.IncreaseVictoriaLogsFailed(profile.ClusterName)
+		return
+	}
+	defer func() {
+		io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+	}()
+
+	if resp.StatusCode >= 400 {
+		log.Errorf("VictoriaLogs returned status %d for cluster %s", resp.StatusCode, profile.ClusterName)
+		instrumentation.IncreaseVictoriaLogsFailed(profile.ClusterName)
+		return
+	}
+	instrumentation.IncreaseVictoriaLogsSuccess(profile.ClusterName)
 }
 
 func (p *producerRouter) isEligibleForRouterLocationForwarding(profile *Profile) (string, bool) {

@@ -26,6 +26,9 @@ var latencyToMarket prometheus.Summary
 var latencyToConsul *prometheus.SummaryVec
 var latencyToProducer *prometheus.SummaryVec
 var totalLogBytesIngested *prometheus.CounterVec
+var victoriaLogsSuccess *prometheus.CounterVec
+var victoriaLogsFailed *prometheus.CounterVec
+var victoriaLogsDropped *prometheus.CounterVec
 
 // list error message for producerRequestError metrics
 const (
@@ -100,6 +103,18 @@ func InitProducerInstrumentation() {
 		Name: "barito_router_produced_total_log_bytes",
 		Help: "Total log bytes being ingested by the router",
 	}, []string{"app_group", "app_name", "producer_address"})
+	victoriaLogsSuccess = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "barito_router_victorialogs_forward_success_total",
+		Help: "Number of successful forwards to VictoriaLogs",
+	}, []string{"app_group"})
+	victoriaLogsFailed = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "barito_router_victorialogs_forward_failed_total",
+		Help: "Number of failed forwards to VictoriaLogs",
+	}, []string{"app_group"})
+	victoriaLogsDropped = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "barito_router_victorialogs_forward_dropped_total",
+		Help: "Number of logs dropped before forwarding to VictoriaLogs because the worker queue was full",
+	}, []string{"app_group"})
 }
 
 func IncreaseProducerRequestCount(appGroup, appName, producerAddress string) {
@@ -162,3 +177,16 @@ func ObserveProducerLatency(appGroup, appName, producerAddress string, timeDurat
 func ObserveByteIngestion(appGroup, appName, producerAddress string, receivedByte []byte) {
 	totalLogBytesIngested.WithLabelValues(appGroup, appName, producerAddress).Add(math.Round(float64(len(receivedByte))))
 }
+
+func IncreaseVictoriaLogsSuccess(appGroup string) {
+	victoriaLogsSuccess.WithLabelValues(appGroup).Inc()
+}
+
+func IncreaseVictoriaLogsFailed(appGroup string) {
+	victoriaLogsFailed.WithLabelValues(appGroup).Inc()
+}
+
+func IncreaseVictoriaLogsDropped(appGroup string) {
+	victoriaLogsDropped.WithLabelValues(appGroup).Inc()
+}
+

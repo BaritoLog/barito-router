@@ -36,6 +36,9 @@ const (
 	EnvRouterLocationForwardingMap       = "BARITO_ROUTER_LOCATION_FORWARDING_MAP"
 	EnvViewerLocationForwardingMap       = "BARITO_VIEWER_LOCATION_FORWARDING_MAP"
 	EnvJaegerServiceName                 = "BARITO_JAEGER_SERVICE_NAME"
+	EnvVictoriaLogsUrl                   = "BARITO_VICTORIA_LOGS_URL"
+	EnvVictoriaLogsQueueSize             = "BARITO_VICTORIA_LOGS_QUEUE_SIZE"
+	EnvVictoriaLogsWorkers               = "BARITO_VICTORIA_LOGS_WORKERS"
 
 	DefaultProducerRouterAddress             = ":8081"
 	DefaultKibanaRouterAddress               = ":8083"
@@ -50,6 +53,9 @@ const (
 	DefaultRouterLocationForwardingMap       = ""
 	DefaultViewerLocationForwardingMap       = ""
 	DefaultJaegerServiceName                 = "barito_router"
+	DefaultVictoriaLogsUrl                   = ""
+	DefaultVictoriaLogsQueueSize             = 20000
+	DefaultVictoriaLogsWorkers               = 16
 	DefaultNewRelicAppName                   = "barito_router"
 	DefaultNewRelicLicenseKey                = ""
 	DefaultEnableTracing                     = false
@@ -86,6 +92,9 @@ var (
 	SSOClientSecret                string
 	HMACJWTSecretString            string
 	AllowedDomains                 string
+	VictoriaLogsUrl                string
+	VictoriaLogsQueueSize          int
+	VictoriaLogsWorkers            int
 	RouterLocationForwardingMap    map[string]string
 	ViewerLocationForwardingMap    map[string]string
 	CacheExpirationTimeSeconds     time.Duration
@@ -188,6 +197,19 @@ func init() {
 		DefaultBackupCacheExpirationTimeHours,
 	)
 	BackupCacheExpirationTimeHours = time.Duration(temp) * time.Hour
+
+	VictoriaLogsUrl, _ = envkit.GetString(
+		EnvVictoriaLogsUrl,
+		DefaultVictoriaLogsUrl,
+	)
+	VictoriaLogsQueueSize, _ = envkit.GetInt(
+		EnvVictoriaLogsQueueSize,
+		DefaultVictoriaLogsQueueSize,
+	)
+	VictoriaLogsWorkers, _ = envkit.GetInt(
+		EnvVictoriaLogsWorkers,
+		DefaultVictoriaLogsWorkers,
+	)
 
 	RouterLocationForwardingMap = make(map[string]string)
 	routerLocationMapsString, _ := envkit.GetString(
